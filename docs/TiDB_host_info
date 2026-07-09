@@ -1,0 +1,9 @@
+HOST: gateway01.ap-southeast-1.prod.aws.tidbcloud.com
+
+PORT: 4000
+
+USERNAME: 2YFZpUEwqurTC9h.root
+
+PASSWORD:  KcZMZjy2BDZFibbx
+
+DATABASE: performance_assessment_db
