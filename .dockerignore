@@ -1,0 +1,15 @@
+.git
+.github
+.agents
+.codex
+.qodo
+.vscode
+target
+backend
+docs
+*.log
+backend-start.log
+HELP.md
+README.md
+Dockerfile
+.dockerignore
