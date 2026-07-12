@@ -167,12 +167,14 @@ public class ManualStudentRepository {
                     ay.academic_year_id,
                     ay.year_name AS academic_year
                 FROM student st
+                LEFT JOIN (
+                    SELECT student_id, MAX(student_enrollment_id) AS student_enrollment_id
+                    FROM student_enrollment
+                    GROUP BY student_id
+                ) latest_enrollment
+                    ON latest_enrollment.student_id = st.student_id
                 LEFT JOIN student_enrollment se
-                    ON se.student_enrollment_id = (
-                        SELECT MAX(se2.student_enrollment_id)
-                        FROM student_enrollment se2
-                        WHERE se2.student_id = st.student_id
-                    )
+                    ON se.student_enrollment_id = latest_enrollment.student_enrollment_id
                 LEFT JOIN section sec
                     ON sec.section_id = se.section_id
                 LEFT JOIN grade_level gl
@@ -206,12 +208,14 @@ public class ManualStudentRepository {
                     ay.academic_year_id,
                     ay.year_name AS academic_year
                 FROM student st
+                LEFT JOIN (
+                    SELECT student_id, MAX(student_enrollment_id) AS student_enrollment_id
+                    FROM student_enrollment
+                    GROUP BY student_id
+                ) latest_enrollment
+                    ON latest_enrollment.student_id = st.student_id
                 LEFT JOIN student_enrollment se
-                    ON se.student_enrollment_id = (
-                        SELECT MAX(se2.student_enrollment_id)
-                        FROM student_enrollment se2
-                        WHERE se2.student_id = st.student_id
-                    )
+                    ON se.student_enrollment_id = latest_enrollment.student_enrollment_id
                 LEFT JOIN section sec
                     ON sec.section_id = se.section_id
                 LEFT JOIN grade_level gl

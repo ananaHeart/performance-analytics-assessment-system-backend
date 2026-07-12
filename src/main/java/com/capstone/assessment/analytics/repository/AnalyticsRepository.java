@@ -99,21 +99,19 @@ public class AnalyticsRepository {
                 JOIN test_item_result tir ON tir.test_result_id = tr.test_result_id
                 JOIN part_skill_mapping psm
                   ON psm.test_part_id = tir.test_part_id
-                 AND (
-                        (psm.mapping_mode = 'RANGE' AND tir.item_number BETWEEN psm.start_item AND psm.end_item)
-                        OR
-                        (
-                            psm.mapping_mode = 'CUSTOM'
-                            AND EXISTS (
-                                SELECT 1
-                                FROM skill_item si
-                                WHERE si.mapping_id = psm.mapping_id
-                                  AND si.item_number = tir.item_number
-                            )
-                        )
-                     )
+                LEFT JOIN (
+                    SELECT DISTINCT mapping_id, item_number
+                    FROM skill_item
+                ) si
+                  ON si.mapping_id = psm.mapping_id
+                 AND si.item_number = tir.item_number
                 JOIN competency_tags ct ON ct.competency_id = psm.competency_id
                 WHERE tr.test_id = ?
+                  AND (
+                        (psm.mapping_mode = 'RANGE' AND tir.item_number BETWEEN psm.start_item AND psm.end_item)
+                        OR
+                        (psm.mapping_mode = 'CUSTOM' AND si.mapping_id IS NOT NULL)
+                      )
                 GROUP BY ct.competency_id, ct.competency_name
                 ORDER BY mastery_rate ASC
                 """;
@@ -191,20 +189,18 @@ public class AnalyticsRepository {
                 JOIN part_skill_mapping psm
                   ON psm.test_part_id = tir.test_part_id
                  AND psm.competency_id = ?
-                 AND (
+                LEFT JOIN (
+                    SELECT DISTINCT mapping_id, item_number
+                    FROM skill_item
+                ) si
+                  ON si.mapping_id = psm.mapping_id
+                 AND si.item_number = tir.item_number
+                WHERE tr.test_id = ?
+                  AND (
                         (psm.mapping_mode = 'RANGE' AND tir.item_number BETWEEN psm.start_item AND psm.end_item)
                         OR
-                        (
-                            psm.mapping_mode = 'CUSTOM'
-                            AND EXISTS (
-                                SELECT 1
-                                FROM skill_item si
-                                WHERE si.mapping_id = psm.mapping_id
-                                  AND si.item_number = tir.item_number
-                            )
-                        )
-                     )
-                WHERE tr.test_id = ?
+                        (psm.mapping_mode = 'CUSTOM' AND si.mapping_id IS NOT NULL)
+                      )
                 GROUP BY s.student_id, s.first_name, s.last_name
                 HAVING percentage < ?
                 ORDER BY percentage ASC, s.student_id ASC
@@ -273,22 +269,20 @@ public class AnalyticsRepository {
                      AND tp.test_id = tr.test_id
                     JOIN part_skill_mapping psm
                       ON psm.test_part_id = tir.test_part_id
-                     AND (
-                            (psm.mapping_mode = 'RANGE' AND tir.item_number BETWEEN psm.start_item AND psm.end_item)
-                            OR
-                            (
-                                psm.mapping_mode = 'CUSTOM'
-                                AND EXISTS (
-                                    SELECT 1
-                                    FROM skill_item si
-                                    WHERE si.mapping_id = psm.mapping_id
-                                      AND si.item_number = tir.item_number
-                                )
-                            )
-                         )
+                    LEFT JOIN (
+                        SELECT DISTINCT mapping_id, item_number
+                        FROM skill_item
+                    ) si
+                      ON si.mapping_id = psm.mapping_id
+                     AND si.item_number = tir.item_number
                     JOIN competency_tags ct ON ct.competency_id = psm.competency_id
                     WHERE tr.student_id = ?
                       AND t.class_id = ?
+                      AND (
+                            (psm.mapping_mode = 'RANGE' AND tir.item_number BETWEEN psm.start_item AND psm.end_item)
+                            OR
+                            (psm.mapping_mode = 'CUSTOM' AND si.mapping_id IS NOT NULL)
+                          )
 
                     UNION ALL
 
