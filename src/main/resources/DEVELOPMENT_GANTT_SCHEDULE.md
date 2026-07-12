@@ -1,5 +1,7 @@
 # Development Gantt Schedule
 
+Documentation timeline note: This schedule was first prepared around May 2026 and updated in July 2026 to reflect completed integration work, TiDB Cloud preparation, Render Docker deployment preparation, and ongoing testing/debugging.
+
 Project:
 A Mobile and Web Performance Analytic Assessment System
 
@@ -19,17 +21,17 @@ The development schedule follows a module-based approach. Core backend modules s
 | 10 | Import / Student Setup Module | May 24, 2026 | May 24, 2026 | 1 day | Completed |
 | 11 | Authentication and Teacher Approval | May 24, 2026 | May 25, 2026 | 2 days | Completed |
 | 12 | Temporary RBAC Testing | May 25, 2026 | May 25, 2026 | 1 day | Completed |
-| 13 | Web Dashboard Development | May 26, 2026 | Jun 08, 2026 | 14 days | Planned |
-| 14 | Mobile App Development | Jun 09, 2026 | Jun 22, 2026 | 14 days | Planned |
-| 15 | Web-Mobile-Backend Integration | Jun 23, 2026 | Jun 30, 2026 | 8 days | Planned |
-| 16 | JWT / Production Security Upgrade | Jul 01, 2026 | Jul 05, 2026 | 5 days | Planned |
-| 17 | TiDB Cloud and Render Deployment | Jul 06, 2026 | Jul 10, 2026 | 5 days | Planned |
-| 18 | System Testing and Debugging | Jul 11, 2026 | Jul 20, 2026 | 10 days | Planned |
+| 13 | Web Dashboard Development | May 26, 2026 | Jun 08, 2026 | 14 days | Completed |
+| 14 | Mobile App Development | Jun 09, 2026 | Jun 22, 2026 | 14 days | Completed |
+| 15 | Web-Mobile-Backend Integration | Jun 23, 2026 | Jun 30, 2026 | 8 days | Completed |
+| 16 | JWT / Production Security Upgrade | Jul 01, 2026 | Jul 05, 2026 | 5 days | Partially Completed |
+| 17 | TiDB Cloud and Render Deployment | Jul 06, 2026 | Jul 10, 2026 | 5 days | In Progress |
+| 18 | System Testing and Debugging | Jul 11, 2026 | Jul 20, 2026 | 10 days | In Progress |
 | 19 | Documentation and Final Revision | Jul 21, 2026 | Jul 31, 2026 | 11 days | Planned |
 
 ## Current Progress
 
-As of May 25, 2026, the backend has completed the following modules:
+As of July 12, 2026, the backend has completed the following modules:
 - Sync Module
 - Analytics Module
 - School Setup Module
@@ -37,6 +39,12 @@ As of May 25, 2026, the backend has completed the following modules:
 - Export Reports Module
 - Import / Student Setup Module with Manual Input and SF1 Smart Import
 - Basic Authentication, Teacher Approval, and Temporary RBAC Module
+- Rule-Based LMS Mapping Module
+- Teacher Intervention Recommendation Endpoint
+- Student Skill Mastery Endpoint
+- Student Scores Export Endpoint
+- TiDB Cloud Profile Configuration
+- Render Docker Deployment Preparation
 
 Next planned phase:
-Web Dashboard Development.
+Finish Render deployment verification, complete final security hardening if required, and prepare final documentation evidence for panel review.

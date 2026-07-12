@@ -1,5 +1,7 @@
 # Development Gantt Plan
 
+Documentation timeline note: This plan was prepared around May 2026 as the phase-level development guide and remained the project planning reference through July 2026.
+
 ## Project Title
 
 A Mobile and Web Performance Analytic Assessment System

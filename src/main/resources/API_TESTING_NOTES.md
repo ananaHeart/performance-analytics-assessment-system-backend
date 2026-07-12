@@ -1,6 +1,10 @@
 # API Testing Notes
 
+Documentation timeline note: Initial API testing notes were written around late May 2026. Deeper LMS, intervention, student skill mastery, selected assessment score export, and deployment notes were added from late June to July 2026.
+
 ## Sync Endpoints
+
+Approximate testing/documentation period: late May 2026, with restore behavior checked again during later integration testing.
 
 ### `GET /api/sync/download/1`
 - Purpose: Downloads assigned classes, students, tests, test parts, answer keys, and competency tags for teacher mobile SQLite.
@@ -15,6 +19,8 @@
 
 ## Analytics Endpoints
 
+Approximate testing/documentation period: late May 2026 for core analytics; late June to early July 2026 for deeper LMS, teacher intervention, and student skill mastery.
+
 ### `GET /api/analytics/item-analysis?testId=1`
 - Purpose: Computes item success rate from `test_item_result`.
 - Status: Working.
@@ -27,6 +33,18 @@
 - Purpose: Shows students below mastery threshold for teacher remediation planning.
 - Status: Working.
 - Note: This is teacher decision-support only, not direct-to-student intervention.
+
+### `GET /api/analytics/teacher-interventions?testId=1`
+- Purpose: Returns teacher-facing intervention recommendations based on computed mastery status.
+- Status: Working.
+- Expected: Returns competency, mastery rate, status, affected learner count, recommendation text, and affected students.
+- Note: The recommendation text is for the teacher only and does not mention sync/synced results.
+
+### `GET /api/analytics/student-skill-mastery?studentId=1&classId=1`
+- Purpose: Returns all assessed skills for one student in one class.
+- Status: Working.
+- Expected: Returns mastered, developing, and needs-support skills, not only low-mastery records.
+- Note: Uses branch skill item mapping when available and falls back to test part competency when no branch mapping exists.
 
 ### `GET /api/analytics/lms-affected-students?testId=1`
 - Purpose: Groups affected students under each least mastered competency.
@@ -45,6 +63,8 @@
 - Status: Working.
 
 ## Assessment Setup Endpoints
+
+Approximate testing/documentation period: late May 2026 for core setup; late June 2026 for grading period and skill mapping flows.
 
 ### `GET /api/assessments/teacher/1`
 - Purpose: Lists assessments under the teacher's assigned classes.
@@ -101,6 +121,8 @@ The system does not store actual test questions. It only stores assessment metad
 
 ## Export Report Endpoints
 
+Approximate testing/documentation period: late May 2026 for item analysis and LMS exports; late June to early July 2026 for student score export.
+
 ### `GET /api/export/item-analysis/1`
 - Purpose: Downloads an Excel file for item analysis.
 - Status: Working.
@@ -113,10 +135,38 @@ The system does not store actual test questions. It only stores assessment metad
 - Test result: Downloaded `lms-report-test-1.xlsx`.
 - Output columns: `Competency ID`, `Competency Name`, `Mastery Rate`, `Status`.
 
+### `GET /api/export/student-scores/1`
+- Purpose: Downloads an Excel file containing checked student score rows for one selected assessment.
+- Status: Working.
+- Test result: Downloads `student-scores-test-1.xlsx`.
+- Output columns: `Student ID`, `LRN`, `Student Name`, `Gender`, `Grade Level`, `Section`, `Assessment Name`, `Test ID`, `Total Score`, `Max Score`, `Percentage`, `Status / Performance`, `Checked At`.
+
 Important note:
 Export reports use backend analytics results and Apache POI. The Excel files are generated from synchronized item-level records, not from frontend/mobile calculations.
 
+## Deployment Configuration Notes
+
+Approximate documentation period: July 2026.
+
+### Local Development
+- Default profile uses XAMPP/MySQL through `application.properties`.
+- Local database URL points to `localhost:3306/performance_assessment_db`.
+- SQL initialization defaults to `always` for local development.
+
+### TiDB Cloud / Render
+- Cloud profile file: `application-tidb.properties`.
+- Activate with `SPRING_PROFILES_ACTIVE=tidb`.
+- Required environment variables:
+  - `SPRING_DATASOURCE_URL`
+  - `SPRING_DATASOURCE_USERNAME`
+  - `SPRING_DATASOURCE_PASSWORD`
+  - `SPRING_SQL_INIT_MODE=never`
+- Render Docker deployment is supported through `Dockerfile`.
+- Runtime port uses `server.port=${PORT:8080}`.
+
 ## Import / Student Setup Endpoints
+
+Approximate testing/documentation period: late May 2026.
 
 ### `GET /api/import/manual-students`
 - Purpose: Retrieves manually encoded and imported student records with enrollment details.
@@ -179,6 +229,8 @@ Important notes:
 - Students are not system users. Student records are used only for class lists, assessment recording, analytics, LMS, and teacher remediation planning.
 
 ## Authentication and Teacher Approval Endpoints
+
+Approximate testing/documentation period: late May 2026.
 
 ### `POST /api/auth/login`
 - Purpose: Authenticates an approved teacher or principal account.
@@ -287,10 +339,11 @@ This is a temporary local token guard for development testing only. It proves th
 5. Basic Export Reports Module
 6. Import / Student Setup Module with Manual Input and SF1 Smart Import
 7. Basic Authentication, Teacher Approval, and Temporary RBAC Module
-
-## Next Planned Module
-
-SF1 import module for importing student records and enrollment data from official school files.
+8. Rule-Based LMS Mapping Module
+9. Teacher Intervention Recommendation Endpoint
+10. Student Skill Mastery Endpoint
+11. Student Scores Export Endpoint
+12. TiDB Cloud / Render Docker Deployment Configuration
 
 ## Defense Notes
 

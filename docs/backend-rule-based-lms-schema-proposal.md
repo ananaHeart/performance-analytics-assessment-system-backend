@@ -1,6 +1,8 @@
 # Backend Rule-Based LMS Schema Proposal
 
-This document records the final database and analytics design decision for deeper rule-based Least Mastered Skills (LMS) analytics. It is a planning document only. No database migration, backend code change, API contract change, or mobile sync change has been applied.
+Documentation timeline note: This design note was drafted around late June 2026 during the deeper LMS planning work and updated in July 2026 to reflect the implemented database naming and backend behavior.
+
+This document records the final database and analytics design decision for deeper rule-based Least Mastered Skills (LMS) analytics. The design has been implemented in the backend using `parent_competency_id`, `part_skill_mapping`, and `skill_item`. Mobile sync remains unchanged because deeper LMS is computed on the backend after uploaded checking results are stored.
 
 ## 1. Scope and Restrictions
 
@@ -48,21 +50,21 @@ Branch skills or subcompetencies are modeled inside the existing `competency_tag
 
 Example:
 
-- Root: Grammar, `root_competency_id = NULL`
-- Branch: Verb, `root_competency_id = Grammar competency_id`
-- Branch: Noun, `root_competency_id = Grammar competency_id`
-- Branch: Conjunction, `root_competency_id = Grammar competency_id`
-- Branch: Subject-Verb Agreement, `root_competency_id = Grammar competency_id`
+- Root: Grammar, `parent_competency_id = NULL`
+- Branch: Verb, `parent_competency_id = Grammar competency_id`
+- Branch: Noun, `parent_competency_id = Grammar competency_id`
+- Branch: Conjunction, `parent_competency_id = Grammar competency_id`
+- Branch: Subject-Verb Agreement, `parent_competency_id = Grammar competency_id`
 
 The system should not create separate `root_competency`, `branch_competency`, `sub_skill`, or `skill_category` tables.
 
 ## 4. Exact Proposed Columns and Tables
 
-### 4.1 `competency_tags.root_competency_id`
+### 4.1 `competency_tags.parent_competency_id`
 
 Add:
 
-- `root_competency_id INT NULL`
+- `parent_competency_id INT NULL`
 
 Reason:
 
@@ -70,9 +72,9 @@ This allows the existing competency table to represent both root competencies an
 
 Relationships:
 
-- `competency_tags.root_competency_id` references `competency_tags.competency_id`
-- Root competencies have `root_competency_id = NULL`
-- Branch skills have `root_competency_id` pointing to the root competency
+- `competency_tags.parent_competency_id` references `competency_tags.competency_id`
+- Root competencies have `parent_competency_id = NULL`
+- Branch skills have `parent_competency_id` pointing to the root competency
 
 ### 4.2 `part_skill_mapping`
 
@@ -262,10 +264,10 @@ This SQL is a draft only. Do not apply it until migration is explicitly approved
 
 ```sql
 ALTER TABLE competency_tags
-ADD COLUMN root_competency_id INT NULL AFTER competency_id,
-ADD INDEX idx_competency_tags_root_id (root_competency_id),
-ADD CONSTRAINT fk_competency_tags_root
-    FOREIGN KEY (root_competency_id)
+ADD COLUMN parent_competency_id INT NULL AFTER competency_id,
+ADD INDEX idx_competency_tags_parent_id (parent_competency_id),
+ADD CONSTRAINT fk_competency_tags_parent
+    FOREIGN KEY (parent_competency_id)
     REFERENCES competency_tags (competency_id);
 ```
 
@@ -347,7 +349,7 @@ The following tables are intentionally not proposed now:
 
 - `root_competency`: not needed because root competencies remain in `competency_tags`.
 - `branch_competency`: not needed because branch skills remain in `competency_tags`.
-- `sub_skill`: not needed because branch skills/subcompetencies are modeled through `root_competency_id`.
+- `sub_skill`: not needed because branch skills/subcompetencies are modeled through `parent_competency_id`.
 - `skill_category`: not needed for the current LMS computation.
 - `quarter`: not needed because quarter filtering is out of scope.
 - `blueprint_template`: deferred because templates are a setup convenience, not required for LMS computation.
