@@ -1,6 +1,6 @@
 # Development Gantt Schedule
 
-Documentation timeline note: This schedule was first prepared around May 2026 and updated in July 2026 to reflect completed integration work, TiDB Cloud preparation, Render Docker deployment preparation, and ongoing testing/debugging.
+Documentation timeline note: This schedule was first prepared around May 2026 and updated through July 29, 2026 to reflect completed integration work, TiDB Cloud preparation, Render Docker deployment preparation, deployment debugging, SF1-based section handling, database redesign/polishing review, range-only part-skill mapping cleanup, and ongoing testing/debugging.
 
 Project:
 A Mobile and Web Performance Analytic Assessment System
@@ -25,13 +25,44 @@ The development schedule follows a module-based approach. Core backend modules s
 | 14 | Mobile App Development | Jun 09, 2026 | Jun 22, 2026 | 14 days | Completed |
 | 15 | Web-Mobile-Backend Integration | Jun 23, 2026 | Jun 30, 2026 | 8 days | Completed |
 | 16 | JWT / Production Security Upgrade | Jul 01, 2026 | Jul 05, 2026 | 5 days | Partially Completed |
-| 17 | TiDB Cloud and Render Deployment | Jul 06, 2026 | Jul 10, 2026 | 5 days | In Progress |
+| 17 | TiDB Cloud and Render Deployment | Jul 06, 2026 | Jul 12, 2026 | 7 days | Partially Completed |
 | 18 | System Testing and Debugging | Jul 11, 2026 | Jul 20, 2026 | 10 days | In Progress |
-| 19 | Documentation and Final Revision | Jul 21, 2026 | Jul 31, 2026 | 11 days | Planned |
+| 19 | Documentation and Final Revision | Jul 13, 2026 | Jul 31, 2026 | 19 days | In Progress |
+
+## Dated Backend Update Timeline
+
+This section records the major backend functions and deployment-related fixes added after the original May 2026 schedule. Dates are based on the actual project update period and are written for panel timeline presentation.
+
+| Date / Period | Backend Function or Activity | Module / Area | Status |
+| --- | --- | --- | --- |
+| Late May 2026 | Initial Spring Boot backend setup, base API response format, SQL schema, and local MySQL configuration | Backend Foundation | Completed |
+| Late May 2026 | Sync download and upload APIs for mobile offline workflow | Sync Module | Completed |
+| Late May 2026 | Item analysis, least mastered skills, affected students, trends, and sync activity endpoints | Analytics Module | Completed |
+| Late May 2026 | School setup APIs for grade levels, subjects, teachers, students, sections, and class assignments | School Setup Module | Completed |
+| Late May 2026 | Assessment creation, test parts, competency options, and answer key storage | Assessment Setup Module | Completed |
+| Late May 2026 | Excel export support for item analysis and LMS reports | Export Module | Completed |
+| Late May 2026 | SF1 student import, student enrollment, manual student input, and validation workflow | Import / Student Setup | Completed |
+| Late May 2026 | Teacher registration, login, approval status, and temporary role checks | Authentication Module | Completed |
+| Late June 2026 | Grading period table and grading period API support | Assessment Setup / Grading Period | Completed |
+| Late June 2026 | Rule-based LMS mapping using `parent_competency_id`, `part_skill_mapping`, and branch item coverage | Deeper LMS Mapping | Completed |
+| Late June 2026 | Part skill mapping preview, save, and retrieval APIs | Assessment Setup / Skill Mapping | Completed |
+| Late June 2026 | Teacher-facing intervention recommendation endpoint | Analytics Module | Completed |
+| Late June to Early July 2026 | Student-centered skill mastery endpoint for student profile dashboard | Analytics Module | Completed |
+| Early July 2026 | Selected assessment student score Excel export endpoint | Export Module | Completed |
+| July 2026 | TiDB Cloud profile configuration with environment variables | Deployment Configuration | Completed |
+| July 12, 2026 | Deployment approach changed from expected Render Java runtime to Render Docker deployment due to available runtime options | Deployment Configuration | Completed |
+| July 12, 2026 | Dockerfile and `.dockerignore` preparation for Render Docker deployment | Deployment Configuration | Completed |
+| July 12, 2026 | CORS update for deployed React frontend origin and OPTIONS preflight | Deployment Debugging | Completed |
+| July 12, 2026 | TiDB SQL compatibility fix for subqueries inside `JOIN ON` conditions | Deployment Debugging / Analytics SQL | Completed |
+| July 13, 2026 | SF1-based section creation and available section filtering for class assignment | School Setup / Import Workflow | Completed |
+| July 13, 2026 | Gantt documentation updated with dated backend function timeline | Documentation | Completed |
+| July 27, 2026 | Database redesign and polishing review documented | Database Design / Documentation | Documented |
+| July 27, 2026 | Curriculum, intervention, answer key, term period, student enrollment, and item result analytics meanings reviewed | Database Design | Under Review |
+| July 29, 2026 | Part-skill mapping finalized as range-only; `skill_item` and `mapping_mode` removed from active design | Deeper LMS Mapping / Database Cleanup | Completed |
 
 ## Current Progress
 
-As of July 12, 2026, the backend has completed the following modules:
+As of July 13, 2026, the backend has completed the following modules:
 - Sync Module
 - Analytics Module
 - School Setup Module
@@ -45,6 +76,11 @@ As of July 12, 2026, the backend has completed the following modules:
 - Student Scores Export Endpoint
 - TiDB Cloud Profile Configuration
 - Render Docker Deployment Preparation
+- CORS Configuration for Deployed Frontend
+- TiDB SQL Compatibility Fixes
+- SF1-Based Section Creation and Available Section Filtering for Class Assignment
+- July 27, 2026 Database Redesign and Polishing Documentation
+- July 29, 2026 Range-Only Part-Skill Mapping Cleanup
 
 Next planned phase:
-Finish Render deployment verification, complete final security hardening if required, and prepare final documentation evidence for panel review.
+Finish Render deployment verification, finalize the July 27 database design decisions, apply any required production database ALTER scripts only after approval, complete final security hardening if required, and prepare final documentation evidence for panel review.

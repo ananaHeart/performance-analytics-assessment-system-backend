@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS school_profile (
 CREATE TABLE IF NOT EXISTS `user` (
     user_id INT NOT NULL AUTO_INCREMENT,
     first_name VARCHAR(30) NOT NULL,
+    middle_initial VARCHAR(10),
     last_name VARCHAR(30) NOT NULL,
     gender ENUM('male', 'female') NOT NULL,
     date_birth DATE NOT NULL,
@@ -30,6 +31,17 @@ CREATE TABLE IF NOT EXISTS academic_year (
     CONSTRAINT uk_academic_year_year_name UNIQUE (year_name)
 );
 
+CREATE TABLE IF NOT EXISTS curriculum (
+    curriculum_id INT NOT NULL AUTO_INCREMENT,
+    curriculum_name VARCHAR(100) NOT NULL,
+    version VARCHAR(50),
+    status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_curriculum PRIMARY KEY (curriculum_id),
+    CONSTRAINT uk_curriculum_name_version UNIQUE (curriculum_name, version),
+    INDEX idx_curriculum_status (status)
+);
+
 CREATE TABLE IF NOT EXISTS grade_level (
     grade_level_id INT NOT NULL AUTO_INCREMENT,
     grade_level_name VARCHAR(20) NOT NULL,
@@ -40,12 +52,17 @@ CREATE TABLE IF NOT EXISTS grade_level (
 CREATE TABLE IF NOT EXISTS section (
     section_id INT NOT NULL AUTO_INCREMENT,
     grade_level_id INT NOT NULL,
+    academic_year_id INT NOT NULL,
     section_name VARCHAR(50) NOT NULL,
     CONSTRAINT pk_section PRIMARY KEY (section_id),
-    CONSTRAINT uk_section_grade_level_name UNIQUE (grade_level_id, section_name),
+    CONSTRAINT uk_section_grade_level_year_name UNIQUE (grade_level_id, academic_year_id, section_name),
     CONSTRAINT fk_section_grade_level
         FOREIGN KEY (grade_level_id) REFERENCES grade_level (grade_level_id),
-    INDEX idx_section_grade_level_id (grade_level_id)
+    CONSTRAINT fk_section_academic_year
+        FOREIGN KEY (academic_year_id) REFERENCES academic_year (academic_year_id),
+    INDEX idx_section_grade_level_id (grade_level_id),
+    INDEX idx_section_academic_year_id (academic_year_id),
+    INDEX idx_section_grade_year (grade_level_id, academic_year_id)
 );
 
 CREATE TABLE IF NOT EXISTS subject (
@@ -54,6 +71,17 @@ CREATE TABLE IF NOT EXISTS subject (
     subject_name VARCHAR(30) NOT NULL,
     CONSTRAINT pk_subject PRIMARY KEY (subject_id),
     CONSTRAINT uk_subject_code UNIQUE (subject_code)
+);
+
+CREATE TABLE IF NOT EXISTS intervention (
+    intervention_id INT NOT NULL AUTO_INCREMENT,
+    intervention_name VARCHAR(100) NOT NULL,
+    description TEXT,
+    status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_intervention PRIMARY KEY (intervention_id),
+    CONSTRAINT uk_intervention_name UNIQUE (intervention_name),
+    INDEX idx_intervention_status (status)
 );
 
 CREATE TABLE IF NOT EXISTS student (
@@ -92,7 +120,7 @@ CREATE TABLE IF NOT EXISTS `class` (
     section_id INT NOT NULL,
     assigned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT pk_class PRIMARY KEY (class_id),
-    CONSTRAINT uk_class_assignment UNIQUE (academic_year_id, user_id, subject_id, section_id),
+    CONSTRAINT uk_class_assignment UNIQUE (academic_year_id, subject_id, section_id),
     CONSTRAINT fk_class_academic_year
         FOREIGN KEY (academic_year_id) REFERENCES academic_year (academic_year_id),
     CONSTRAINT fk_class_user
@@ -203,10 +231,9 @@ CREATE TABLE IF NOT EXISTS part_skill_mapping (
     mapping_id INT NOT NULL AUTO_INCREMENT,
     test_part_id INT NOT NULL,
     competency_id INT NOT NULL,
-    mapping_mode ENUM('RANGE', 'CUSTOM') NOT NULL DEFAULT 'RANGE',
     item_count INT NOT NULL,
-    start_item INT,
-    end_item INT,
+    start_item INT NOT NULL,
+    end_item INT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT pk_part_skill_mapping PRIMARY KEY (mapping_id),
@@ -219,31 +246,10 @@ CREATE TABLE IF NOT EXISTS part_skill_mapping (
     CONSTRAINT chk_part_skill_mapping_item_count
         CHECK (item_count > 0),
     CONSTRAINT chk_part_skill_mapping_range_values
-        CHECK (
-            (mapping_mode = 'RANGE' AND start_item IS NOT NULL AND end_item IS NOT NULL AND start_item >= 1 AND end_item >= start_item)
-            OR
-            (mapping_mode = 'CUSTOM' AND start_item IS NULL AND end_item IS NULL)
-        ),
+        CHECK (start_item >= 1 AND end_item >= start_item),
     INDEX idx_part_skill_mapping_test_part_id (test_part_id),
     INDEX idx_part_skill_mapping_competency_id (competency_id),
-    INDEX idx_part_skill_mapping_mode (mapping_mode),
     INDEX idx_part_skill_mapping_range (test_part_id, start_item, end_item)
-);
-
-CREATE TABLE IF NOT EXISTS skill_item (
-    mapping_item_id INT NOT NULL AUTO_INCREMENT,
-    mapping_id INT NOT NULL,
-    item_number INT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_skill_item PRIMARY KEY (mapping_item_id),
-    CONSTRAINT uk_skill_item_mapping_item UNIQUE (mapping_id, item_number),
-    CONSTRAINT fk_skill_item_mapping
-        FOREIGN KEY (mapping_id) REFERENCES part_skill_mapping (mapping_id)
-        ON DELETE CASCADE,
-    CONSTRAINT chk_skill_item_number
-        CHECK (item_number >= 1),
-    INDEX idx_skill_item_mapping_id (mapping_id),
-    INDEX idx_skill_item_item_number (item_number)
 );
 
 CREATE TABLE IF NOT EXISTS test_item_result (

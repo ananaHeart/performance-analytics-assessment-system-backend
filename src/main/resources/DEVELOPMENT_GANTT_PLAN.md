@@ -1,6 +1,6 @@
 # Development Gantt Plan
 
-Documentation timeline note: This plan was prepared around May 2026 as the phase-level development guide and remained the project planning reference through July 2026.
+Documentation timeline note: This plan was prepared around May 2026 as the phase-level development guide and remained the project planning reference through July 2026. It was updated on July 13, 2026 to include dated notes for deployment debugging, SF1-based section handling, and final documentation preparation. It was updated again on July 27, 2026 to record database redesign and polishing review items, then on July 29, 2026 to record the range-only part-skill mapping cleanup.
 
 ## Project Title
 
@@ -96,17 +96,22 @@ Working analytics module with teacher and principal reporting endpoints.
 
 ## Phase 7. School Setup Module Development
 
+**Approximate development period**  
+May 21, 2026 to May 22, 2026. Updated on July 13, 2026 for SF1-based available section filtering.
+
 **Objective**  
 Build backend support for grade levels, subjects, sections, teachers, students, and class assignments.
 
 **Main tasks**
 - Create school setup DTOs, repository, service, and controller.
 - Implement listing endpoints for setup reference data.
-- Implement creation endpoints for sections and class assignments.
+- Implement class assignment creation for teacher, subject, grade level, section, and academic year.
+- Restrict available sections to imported SF1 sections with enrolled students.
+- Exclude sections already assigned for the selected subject and academic year.
 - Validate duplicate and invalid setup records.
 
 **Expected output**  
-Working school setup module for academic structure management.
+Working school setup module for academic structure management and SF1-based teacher assignment.
 
 ## Phase 8. Assessment Setup Module Development
 
@@ -138,6 +143,9 @@ Working export report module for downloadable analytics files.
 
 ## Phase 10. SF1 Import Module Development
 
+**Approximate development period**  
+May 24, 2026. Updated on July 13, 2026 so SF1 import creates section records when needed.
+
 **Objective**  
 Support import of student and enrollment data from official school files.
 
@@ -145,10 +153,12 @@ Support import of student and enrollment data from official school files.
 - Review SF1 source format and import rules.
 - Design import validation and parsing workflow.
 - Implement backend import processing for student and enrollment records.
+- Create section records from SF1 import using grade level, academic year, and detected section name.
+- Link imported students to the created or existing section through `student_enrollment`.
 - Handle duplicate, incomplete, and invalid rows safely.
 
 **Expected output**  
-Working SF1 import module for structured student data intake.
+Working SF1 import module for structured student data intake and section-based class assignment preparation.
 
 ## Phase 11. Authentication and Role-Based Access
 
@@ -208,6 +218,9 @@ Tested integrated system with resolved module interaction issues.
 
 ## Phase 15. Deployment Preparation
 
+**Approximate development period**  
+July 6, 2026 to July 12, 2026.
+
 **Objective**  
 Prepare the system for cloud deployment and final runtime configuration.
 
@@ -216,11 +229,18 @@ Prepare the system for cloud deployment and final runtime configuration.
 - Prepare environment variables and database connection settings.
 - Align the backend for future TiDB Cloud and Render deployment.
 - Check production-ready build and configuration settings.
+- Change the Render deployment approach from expected Java runtime deployment to Docker deployment when Java runtime was not available in the Render account.
+- Configure TiDB Cloud profile and Render Docker deployment files.
+- Fix deployment CORS configuration for the deployed React frontend.
+- Resolve TiDB SQL compatibility issues found during deployed dashboard testing.
 
 **Expected output**  
 Deployment-ready backend and environment preparation checklist.
 
 ## Phase 16. Documentation and Final Revision
+
+**Approximate development period**  
+July 13, 2026 to July 31, 2026.
 
 **Objective**  
 Finalize project documents, review outputs, and prepare for capstone presentation.
@@ -230,6 +250,18 @@ Finalize project documents, review outputs, and prepare for capstone presentatio
 - Finalize diagrams, module summaries, and testing records.
 - Review code structure and cleanup remaining issues.
 - Prepare final revision for submission and defense.
+- Update Gantt chart and schedule with dated backend function timeline.
+- Prepare panel-ready evidence for deployment, API testing, database schema, and module completion.
+- Document July 27 database redesign and polishing decisions before applying any schema migration.
 
 **Expected output**  
 Complete capstone documentation set and final reviewed system build.
+
+## Latest Dated Revision Notes
+
+| Date | Documentation Update | Related System Function |
+| --- | --- | --- |
+| July 12, 2026 | Updated deployment and testing references | Render Docker pivot, CORS fix, TiDB profile, Render Docker deployment, TiDB SQL compatibility |
+| July 13, 2026 | Updated Gantt plan and schedule timeline | SF1 section creation, available section filtering, teacher class assignment validation |
+| July 27, 2026 | Documented database redesign and polishing discussion | Curriculum, intervention, answer key, term period, student enrollment, and item analytics meaning |
+| July 29, 2026 | Finalized range-only part-skill mapping cleanup | Removed active backend dependency on `mapping_mode`, `CUSTOM`, and `skill_item`; verified local mapping and LMS APIs |

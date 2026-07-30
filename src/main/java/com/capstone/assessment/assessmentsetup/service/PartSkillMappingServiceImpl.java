@@ -14,16 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 @Service
 public class PartSkillMappingServiceImpl implements PartSkillMappingService {
 
     private static final String RANGE_MODE = "RANGE";
-    private static final String CUSTOM_MODE = "CUSTOM";
 
     private final PartSkillMappingRepository partSkillMappingRepository;
 
@@ -49,17 +46,10 @@ public class PartSkillMappingServiceImpl implements PartSkillMappingService {
             Long mappingId = partSkillMappingRepository.insertMapping(
                     mapping.testPartId(),
                     mapping.competencyId(),
-                    mapping.mappingMode(),
                     mapping.itemCount(),
                     mapping.startItem(),
                     mapping.endItem()
             );
-
-            if (CUSTOM_MODE.equals(mapping.mappingMode())) {
-                for (Integer itemNumber : mapping.itemNumbers()) {
-                    partSkillMappingRepository.insertSkillItem(mappingId, itemNumber);
-                }
-            }
 
             savedMappings.add(new PartSkillMappingEntryDto(
                     mappingId,
@@ -134,24 +124,19 @@ public class PartSkillMappingServiceImpl implements PartSkillMappingService {
                 throw new BadRequestException("Branch skill must belong to the test part parent competency.");
             }
 
-            String mappingMode = normalizeMappingMode(mappingRequest.mappingMode());
+            validateRangeOnly(mappingRequest.mappingMode());
             if (mappingRequest.itemCount() == null || mappingRequest.itemCount() <= 0) {
                 throw new BadRequestException("Item count must be greater than 0.");
             }
 
-            PartSkillMappingEntryDto normalizedMapping;
-            if (RANGE_MODE.equals(mappingMode)) {
-                normalizedMapping = normalizeRangeMapping(
-                        context,
-                        competency,
-                        mappingRequest,
-                        nextRangeStart,
-                        coveredItems
-                );
-                nextRangeStart = normalizedMapping.endItem() + 1;
-            } else {
-                normalizedMapping = normalizeCustomMapping(context, competency, mappingRequest, coveredItems);
-            }
+            PartSkillMappingEntryDto normalizedMapping = normalizeRangeMapping(
+                    context,
+                    competency,
+                    mappingRequest,
+                    nextRangeStart,
+                    coveredItems
+            );
+            nextRangeStart = normalizedMapping.endItem() + 1;
 
             normalizedMappings.add(normalizedMapping);
         }
@@ -220,69 +205,16 @@ public class PartSkillMappingServiceImpl implements PartSkillMappingService {
         );
     }
 
-    private PartSkillMappingEntryDto normalizeCustomMapping(
-            TestPartMappingContext context,
-            CompetencyContext competency,
-            PartSkillMappingEntryRequest request,
-            Set<Integer> coveredItems
-    ) {
-        if (request.startItem() != null || request.endItem() != null) {
-            throw new BadRequestException("Start item and end item must be null for custom mapping.");
-        }
-
-        if (request.itemNumbers() == null || request.itemNumbers().isEmpty()) {
-            throw new BadRequestException("Custom mapping requires at least one item number.");
-        }
-
-        Set<Integer> uniqueItemNumbers = new LinkedHashSet<>();
-        for (Integer itemNumber : request.itemNumbers()) {
-            if (itemNumber == null) {
-                throw new BadRequestException("Custom item number must not be null.");
-            }
-
-            if (itemNumber < 1 || itemNumber > context.numberOfItems()) {
-                throw new BadRequestException("Custom item number must be within the test part number of items.");
-            }
-
-            if (!uniqueItemNumbers.add(itemNumber)) {
-                throw new BadRequestException("Custom item number cannot repeat in the same branch skill mapping.");
-            }
-        }
-
-        if (uniqueItemNumbers.size() != request.itemCount()) {
-            throw new BadRequestException("Item count must match the number of custom item numbers.");
-        }
-
-        for (Integer itemNumber : uniqueItemNumbers) {
-            if (!coveredItems.add(itemNumber)) {
-                throw new BadRequestException("The same item number cannot be assigned to multiple branch skills.");
-            }
-        }
-
-        return new PartSkillMappingEntryDto(
-                null,
-                context.testPartId(),
-                competency.competencyId(),
-                competency.competencyName(),
-                CUSTOM_MODE,
-                request.itemCount(),
-                null,
-                null,
-                new ArrayList<>(uniqueItemNumbers)
-        );
-    }
-
-    private String normalizeMappingMode(String mappingMode) {
+    private void validateRangeOnly(String mappingMode) {
         if (mappingMode == null || mappingMode.isBlank()) {
-            return RANGE_MODE;
+            return;
         }
 
-        String normalizedMode = mappingMode.trim().toUpperCase(Locale.ROOT);
-        if (RANGE_MODE.equals(normalizedMode) || CUSTOM_MODE.equals(normalizedMode)) {
-            return normalizedMode;
+        if (RANGE_MODE.equalsIgnoreCase(mappingMode.trim())) {
+            return;
         }
 
-        throw new BadRequestException("Mapping mode must be either RANGE or CUSTOM.");
+        throw new BadRequestException("Only range mapping is supported.");
     }
 
     private PartSkillMappingPreviewResponse toPreviewResponse(

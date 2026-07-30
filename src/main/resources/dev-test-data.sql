@@ -27,11 +27,13 @@ VALUES (
 INSERT IGNORE INTO section (
     section_id,
     grade_level_id,
+    academic_year_id,
     section_name
 )
 VALUES (
     1,
     (SELECT grade_level_id FROM grade_level WHERE grade_level_name = 'Grade 7'),
+    (SELECT academic_year_id FROM academic_year WHERE year_name = '2025-2026'),
     'Rizal'
 );
 

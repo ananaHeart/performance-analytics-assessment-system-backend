@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -74,7 +75,6 @@ public class PartSkillMappingRepository {
     public Long insertMapping(
             Long testPartId,
             Long competencyId,
-            String mappingMode,
             Integer itemCount,
             Integer startItem,
             Integer endItem
@@ -83,12 +83,11 @@ public class PartSkillMappingRepository {
                 INSERT INTO part_skill_mapping (
                     test_part_id,
                     competency_id,
-                    mapping_mode,
                     item_count,
                     start_item,
                     end_item
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?)
                 """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -97,31 +96,21 @@ public class PartSkillMappingRepository {
             PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setLong(1, testPartId);
             preparedStatement.setLong(2, competencyId);
-            preparedStatement.setString(3, mappingMode);
-            preparedStatement.setInt(4, itemCount);
+            preparedStatement.setInt(3, itemCount);
             if (startItem == null) {
-                preparedStatement.setObject(5, null);
+                preparedStatement.setObject(4, null);
             } else {
-                preparedStatement.setInt(5, startItem);
+                preparedStatement.setInt(4, startItem);
             }
             if (endItem == null) {
-                preparedStatement.setObject(6, null);
+                preparedStatement.setObject(5, null);
             } else {
-                preparedStatement.setInt(6, endItem);
+                preparedStatement.setInt(5, endItem);
             }
             return preparedStatement;
         }, keyHolder);
 
         return Objects.requireNonNull(keyHolder.getKey(), "Failed to retrieve generated mapping_id").longValue();
-    }
-
-    public void insertSkillItem(Long mappingId, Integer itemNumber) {
-        String sql = """
-                INSERT INTO skill_item (mapping_id, item_number)
-                VALUES (?, ?)
-                """;
-
-        jdbcTemplate.update(sql, mappingId, itemNumber);
     }
 
     public List<PartSkillMappingEntryDto> findMappingsByTestPartId(Long testPartId) {
@@ -130,7 +119,6 @@ public class PartSkillMappingRepository {
                        psm.test_part_id,
                        psm.competency_id,
                        ct.competency_name,
-                       psm.mapping_mode,
                        psm.item_count,
                        psm.start_item,
                        psm.end_item
@@ -147,24 +135,13 @@ public class PartSkillMappingRepository {
                     rs.getLong("test_part_id"),
                     rs.getLong("competency_id"),
                     rs.getString("competency_name"),
-                    rs.getString("mapping_mode"),
+                    "RANGE",
                     rs.getInt("item_count"),
-                    getNullableInt(rs, "start_item"),
-                    getNullableInt(rs, "end_item"),
-                    findItemNumbersByMappingId(mappingId)
+                    rs.getInt("start_item"),
+                    rs.getInt("end_item"),
+                    buildRangeItemNumbers(rs.getInt("start_item"), rs.getInt("end_item"))
             );
         }, testPartId);
-    }
-
-    public List<Integer> findItemNumbersByMappingId(Long mappingId) {
-        String sql = """
-                SELECT item_number
-                FROM skill_item
-                WHERE mapping_id = ?
-                ORDER BY item_number
-                """;
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getInt("item_number"), mappingId);
     }
 
     private Long getNullableLong(java.sql.ResultSet rs, String columnLabel) throws java.sql.SQLException {
@@ -172,9 +149,12 @@ public class PartSkillMappingRepository {
         return rs.wasNull() ? null : value;
     }
 
-    private Integer getNullableInt(java.sql.ResultSet rs, String columnLabel) throws java.sql.SQLException {
-        int value = rs.getInt(columnLabel);
-        return rs.wasNull() ? null : value;
+    private List<Integer> buildRangeItemNumbers(Integer startItem, Integer endItem) {
+        List<Integer> itemNumbers = new ArrayList<>();
+        for (int itemNumber = startItem; itemNumber <= endItem; itemNumber++) {
+            itemNumbers.add(itemNumber);
+        }
+        return itemNumbers;
     }
 
     public record TestPartMappingContext(

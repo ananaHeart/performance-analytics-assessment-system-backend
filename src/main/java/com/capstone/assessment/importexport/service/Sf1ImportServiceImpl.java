@@ -37,6 +37,19 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
     private static final String IMPORT_SUCCESS_MESSAGE = "SF1 import completed successfully.";
     private static final Pattern EXACT_LRN_PATTERN = Pattern.compile("^\\d{12}$");
     private static final Pattern EMBEDDED_LRN_PATTERN = Pattern.compile("\\b(\\d{12})\\b");
+    private static final Pattern SCHOOL_YEAR_PATTERN = Pattern.compile(
+            "\\b(20\\d{2})\\s*(?:-|\\u2013|\\u2014|to)?\\s*(20\\d{2})\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern SINGLE_YEAR_PATTERN = Pattern.compile("(?<!\\d)(20\\d{2})(?!\\d)");
+    private static final Pattern SECTION_PATTERN = Pattern.compile(
+            "\\bsection\\s*[:\\-_]?\\s*([A-Za-z0-9][A-Za-z0-9 .'-]*)",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern GRADE_LEVEL_PATTERN = Pattern.compile(
+            "(?<![A-Za-z0-9])grade(?:\\s*level)?\\s*[:\\-_]?\\s*(7|8|9|10|11|12)(?![A-Za-z0-9])",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private static final int STUDENT_ROW_START_INDEX = 6;   // Excel row 7
     private static final int STUDENT_ROW_END_INDEX = 46;    // Excel row 47
@@ -53,6 +66,9 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
     private static final int SECTION_ROW_INDEX = 3;         // Row 4
     private static final int SECTION_START_COLUMN = 38;     // AM
     private static final int SECTION_END_COLUMN = 46;       // AU
+    private static final int GRADE_LEVEL_SCAN_ROW_LIMIT = 10;
+    private static final int HEADER_SCAN_ROW_LIMIT = 12;
+    private static final int HEADER_VALUE_LOOKAHEAD_COLUMNS = 10;
 
     private final Sf1ImportRepository sf1ImportRepository;
 
@@ -68,11 +84,21 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
 
     @Override
     @Transactional
-    public Sf1ImportSummaryResponse confirmImport(MultipartFile file, Long sectionId, Long academicYearId) {
+    public Sf1ImportSummaryResponse confirmImport(
+            MultipartFile file,
+            Long sectionId,
+            Long academicYearId,
+            Long gradeLevelId
+    ) {
         validateFile(file);
 
         ParsedSf1Data parsedSf1Data = parseSf1File(file);
-        ResolvedImportContext resolvedImportContext = resolveImportContext(parsedSf1Data, sectionId, academicYearId);
+        ResolvedImportContext resolvedImportContext = resolveImportContext(
+                parsedSf1Data,
+                sectionId,
+                academicYearId,
+                gradeLevelId
+        );
 
         List<Sf1PreviewRowDto> rows = parsedSf1Data.rows();
         int importedStudents = 0;
@@ -135,24 +161,36 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
             Sheet sheet = resolveSheet(workbook);
             DataFormatter formatter = new DataFormatter();
 
-            String detectedSchoolYear = readRangeValue(
-                    sheet,
-                    SCHOOL_YEAR_ROW_INDEX,
-                    SCHOOL_YEAR_START_COLUMN,
-                    SCHOOL_YEAR_END_COLUMN,
-                    formatter
+            String detectedSchoolYear = firstNonBlank(
+                    normalizeSchoolYear(readRangeValue(
+                            sheet,
+                            SCHOOL_YEAR_ROW_INDEX,
+                            SCHOOL_YEAR_START_COLUMN,
+                            SCHOOL_YEAR_END_COLUMN,
+                            formatter
+                    )),
+                    detectSchoolYear(sheet, formatter),
+                    detectSchoolYearFromFileName(file.getOriginalFilename())
             );
-            String detectedSectionName = readRangeValue(
-                    sheet,
-                    SECTION_ROW_INDEX,
-                    SECTION_START_COLUMN,
-                    SECTION_END_COLUMN,
-                    formatter
+            String detectedSectionName = firstNonBlank(
+                    normalizeSectionName(readRangeValue(
+                            sheet,
+                            SECTION_ROW_INDEX,
+                            SECTION_START_COLUMN,
+                            SECTION_END_COLUMN,
+                            formatter
+                    )),
+                    detectSectionName(sheet, formatter),
+                    detectSectionNameFromFileName(file.getOriginalFilename())
+            );
+            String detectedGradeLevelName = firstNonBlank(
+                    detectGradeLevelName(sheet, formatter),
+                    detectGradeLevelNameFromText(file.getOriginalFilename())
             );
 
             List<Sf1PreviewRowDto> rows = parseExactSf1Layout(sheet, formatter);
             List<Sf1PreviewRowDto> parsedRows = rows.isEmpty() ? parseGenericFallback(sheet, formatter) : rows;
-            return new ParsedSf1Data(detectedSchoolYear, detectedSectionName, parsedRows);
+            return new ParsedSf1Data(detectedSchoolYear, detectedSectionName, detectedGradeLevelName, parsedRows);
         } catch (BadRequestException exception) {
             throw exception;
         } catch (IOException | EncryptedDocumentException | EmptyFileException exception) {
@@ -189,10 +227,19 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
     private ResolvedImportContext resolveImportContext(
             ParsedSf1Data parsedSf1Data,
             Long sectionIdOverride,
-            Long academicYearIdOverride
+            Long academicYearIdOverride,
+            Long gradeLevelId
     ) {
         Long resolvedAcademicYearId = resolveAcademicYearId(parsedSf1Data.detectedSchoolYear(), academicYearIdOverride);
-        Long resolvedSectionId = resolveSectionId(parsedSf1Data.detectedSectionName(), sectionIdOverride);
+        Long resolvedGradeLevelId = sectionIdOverride == null
+                ? resolveGradeLevelId(parsedSf1Data.detectedGradeLevelName(), gradeLevelId)
+                : gradeLevelId;
+        Long resolvedSectionId = resolveSectionId(
+                parsedSf1Data.detectedSectionName(),
+                sectionIdOverride,
+                resolvedGradeLevelId,
+                resolvedAcademicYearId
+        );
         return new ResolvedImportContext(resolvedSectionId, resolvedAcademicYearId);
     }
 
@@ -208,16 +255,192 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
                 .orElseThrow(() -> new BadRequestException("Academic year from SF1 was not found in the system."));
     }
 
-    private Long resolveSectionId(String detectedSectionName, Long sectionIdOverride) {
+    private Long resolveGradeLevelId(String detectedGradeLevelName, Long gradeLevelIdOverride) {
+        if (gradeLevelIdOverride != null) {
+            if (!sf1ImportRepository.gradeLevelExists(gradeLevelIdOverride)) {
+                throw new ResourceNotFoundException("Grade level not found.");
+            }
+            return gradeLevelIdOverride;
+        }
+
+        if (isBlank(detectedGradeLevelName)) {
+            throw new BadRequestException("Grade level is required before confirming import.");
+        }
+
+        return sf1ImportRepository.findGradeLevelIdByName(detectedGradeLevelName)
+                .orElseThrow(() -> new BadRequestException("Detected grade level was not found in the system."));
+    }
+
+    private Long resolveSectionId(
+            String detectedSectionName,
+            Long sectionIdOverride,
+            Long gradeLevelId,
+            Long academicYearId
+    ) {
         if (sectionIdOverride != null) {
             if (!sf1ImportRepository.sectionExists(sectionIdOverride)) {
                 throw new ResourceNotFoundException("Section not found.");
             }
+            if (!sf1ImportRepository.sectionMatchesAcademicYear(sectionIdOverride, academicYearId)) {
+                throw new BadRequestException("Selected section does not match the selected academic year.");
+            }
             return sectionIdOverride;
         }
 
-        return sf1ImportRepository.findSectionIdByName(detectedSectionName)
-                .orElseThrow(() -> new BadRequestException("Section from SF1 was not found in the system."));
+        if (isBlank(detectedSectionName)) {
+            throw new BadRequestException("Section name from SF1 was not found.");
+        }
+
+        return sf1ImportRepository.findSectionIdByContext(detectedSectionName, gradeLevelId, academicYearId)
+                .orElseGet(() -> sf1ImportRepository.createSection(gradeLevelId, academicYearId, detectedSectionName));
+    }
+
+    private String detectSchoolYear(Sheet sheet, DataFormatter formatter) {
+        for (int rowIndex = sheet.getFirstRowNum();
+             rowIndex <= Math.min(sheet.getLastRowNum(), sheet.getFirstRowNum() + HEADER_SCAN_ROW_LIMIT);
+             rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) {
+                continue;
+            }
+
+            short lastCellNum = row.getLastCellNum();
+            if (lastCellNum < 0) {
+                continue;
+            }
+
+            for (int cellIndex = 0; cellIndex < lastCellNum; cellIndex++) {
+                String value = readCellValue(row, cellIndex, formatter);
+                if (!containsLabel(value, "school year")) {
+                    continue;
+                }
+
+                String inlineValue = normalizeSchoolYear(value);
+                if (!isBlank(inlineValue)) {
+                    return inlineValue;
+                }
+
+                String rightSideValue = normalizeSchoolYear(readRangeValue(
+                        row,
+                        cellIndex + 1,
+                        Math.min(lastCellNum - 1, cellIndex + HEADER_VALUE_LOOKAHEAD_COLUMNS),
+                        formatter
+                ));
+                if (!isBlank(rightSideValue)) {
+                    return rightSideValue;
+                }
+            }
+
+            String rowValue = normalizeSchoolYear(readRowText(row, formatter));
+            if (!isBlank(rowValue)) {
+                return rowValue;
+            }
+        }
+
+        return null;
+    }
+
+    private String detectSectionName(Sheet sheet, DataFormatter formatter) {
+        for (int rowIndex = sheet.getFirstRowNum();
+             rowIndex <= Math.min(sheet.getLastRowNum(), sheet.getFirstRowNum() + HEADER_SCAN_ROW_LIMIT);
+             rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) {
+                continue;
+            }
+
+            short lastCellNum = row.getLastCellNum();
+            if (lastCellNum < 0) {
+                continue;
+            }
+
+            for (int cellIndex = 0; cellIndex < lastCellNum; cellIndex++) {
+                String value = readCellValue(row, cellIndex, formatter);
+                if (!containsLabel(value, "section")) {
+                    continue;
+                }
+
+                String inlineValue = normalizeSectionName(value);
+                if (!isBlank(inlineValue)) {
+                    return inlineValue;
+                }
+
+                String rightSideValue = normalizeSectionName(readRangeValue(
+                        row,
+                        cellIndex + 1,
+                        Math.min(lastCellNum - 1, cellIndex + HEADER_VALUE_LOOKAHEAD_COLUMNS),
+                        formatter
+                ));
+                if (!isBlank(rightSideValue)) {
+                    return rightSideValue;
+                }
+            }
+
+            String rowValue = extractSectionNameFromText(readRowText(row, formatter));
+            if (!isBlank(rowValue)) {
+                return rowValue;
+            }
+        }
+
+        return null;
+    }
+
+    private String detectGradeLevelName(Sheet sheet, DataFormatter formatter) {
+        int firstRow = sheet.getFirstRowNum();
+        int lastRow = Math.min(sheet.getLastRowNum(), firstRow + GRADE_LEVEL_SCAN_ROW_LIMIT);
+
+        for (int rowIndex = firstRow; rowIndex <= lastRow; rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) {
+                continue;
+            }
+
+            String rowText = readRowText(row, formatter);
+            if (isBlank(rowText)) {
+                continue;
+            }
+
+            Matcher matcher = GRADE_LEVEL_PATTERN.matcher(rowText);
+            if (matcher.find()) {
+                return "Grade " + matcher.group(1);
+            }
+        }
+
+        return null;
+    }
+
+    private String detectSchoolYearFromFileName(String fileName) {
+        String schoolYear = normalizeSchoolYear(fileName);
+        if (!isBlank(schoolYear)) {
+            return schoolYear;
+        }
+
+        String normalizedFileName = normalizeValue(fileName);
+        Matcher matcher = SINGLE_YEAR_PATTERN.matcher(normalizedFileName == null ? "" : normalizedFileName);
+        if (matcher.find()) {
+            int startYear = Integer.parseInt(matcher.group(1));
+            return startYear + "-" + (startYear + 1);
+        }
+
+        return null;
+    }
+
+    private String detectSectionNameFromFileName(String fileName) {
+        return normalizeSectionName(fileName);
+    }
+
+    private String detectGradeLevelNameFromText(String value) {
+        String normalized = normalizeValue(value);
+        if (normalized == null) {
+            return null;
+        }
+
+        Matcher matcher = GRADE_LEVEL_PATTERN.matcher(normalized);
+        if (matcher.find()) {
+            return "Grade " + matcher.group(1);
+        }
+
+        return null;
     }
 
     private Sheet resolveSheet(Workbook workbook) {
@@ -435,6 +658,23 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
         return normalizeValue(formatter.formatCellValue(cell));
     }
 
+    private String readRowText(Row row, DataFormatter formatter) {
+        short lastCellNum = row.getLastCellNum();
+        if (lastCellNum < 0) {
+            return null;
+        }
+
+        List<String> values = new ArrayList<>();
+        for (int cellIndex = 0; cellIndex < lastCellNum; cellIndex++) {
+            String value = readCellValue(row, cellIndex, formatter);
+            if (!isBlank(value)) {
+                values.add(value);
+            }
+        }
+
+        return normalizeValue(String.join(" ", values));
+    }
+
     private boolean isBlankRow(Row row, DataFormatter formatter) {
         short lastCellNum = row.getLastCellNum();
         if (lastCellNum < 0) {
@@ -471,6 +711,79 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
         return normalized.isBlank() ? null : normalized;
     }
 
+    private String normalizeSchoolYear(String value) {
+        String normalized = normalizeValue(value);
+        if (normalized == null) {
+            return null;
+        }
+
+        Matcher matcher = SCHOOL_YEAR_PATTERN.matcher(normalized);
+        if (matcher.find()) {
+            return matcher.group(1) + "-" + matcher.group(2);
+        }
+
+        return null;
+    }
+
+    private String normalizeSectionName(String value) {
+        String normalized = normalizeValue(value);
+        if (normalized == null) {
+            return null;
+        }
+
+        String extracted = extractSectionNameFromText(normalized);
+        if (!isBlank(extracted)) {
+            return extracted;
+        }
+
+        if ("section".equalsIgnoreCase(normalized)) {
+            return null;
+        }
+
+        return cleanSectionName(normalized);
+    }
+
+    private String extractSectionNameFromText(String value) {
+        String normalized = normalizeValue(value);
+        if (normalized == null) {
+            return null;
+        }
+
+        Matcher matcher = SECTION_PATTERN.matcher(normalized.replace('_', ' '));
+        return matcher.find() ? cleanSectionName(matcher.group(1)) : null;
+    }
+
+    private String cleanSectionName(String value) {
+        String normalized = normalizeValue(value);
+        if (normalized == null) {
+            return null;
+        }
+
+        String cleaned = normalized
+                .replaceAll("(?i)^section\\s*[:\\-_]?\\s*", "")
+                .replaceAll("\\.[A-Za-z0-9]+$", "")
+                .replaceAll("(?i)\\b(exact|xlsx|xls)$", "")
+                .replaceAll("^[,;:\\-_\\s]+", "")
+                .replaceAll("[,;:\\-_\\s]+$", "")
+                .trim();
+
+        return cleaned.isBlank() || "section".equalsIgnoreCase(cleaned) ? null : cleaned;
+    }
+
+    private boolean containsLabel(String value, String label) {
+        String normalized = normalizeValue(value);
+        return normalized != null && normalized.toLowerCase(Locale.ROOT).contains(label);
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (!isBlank(value)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
@@ -478,6 +791,7 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
     private record ParsedSf1Data(
             String detectedSchoolYear,
             String detectedSectionName,
+            String detectedGradeLevelName,
             List<Sf1PreviewRowDto> rows
     ) {
     }

@@ -12,6 +12,7 @@ import com.capstone.assessment.schoolsetup.dto.TeacherDto;
 import com.capstone.assessment.schoolsetup.service.SchoolSetupService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,6 +48,21 @@ public class SchoolSetupController {
     public ApiResponse<List<SectionDto>> getSections() {
         List<SectionDto> response = schoolSetupService.getSections();
         return ApiResponse.success("Sections retrieved successfully.", response);
+    }
+
+    // Returns imported sections that still need a teacher assignment for the selected subject and year.
+    @GetMapping("/sections/available")
+    public ApiResponse<List<SectionDto>> getAvailableSectionsForAssignment(
+            @RequestParam Long gradeLevelId,
+            @RequestParam Long academicYearId,
+            @RequestParam Long subjectId
+    ) {
+        List<SectionDto> response = schoolSetupService.getAvailableSectionsForAssignment(
+                gradeLevelId,
+                academicYearId,
+                subjectId
+        );
+        return ApiResponse.success("Available sections retrieved successfully.", response);
     }
 
     // Returns all teacher accounts used for class assignment.

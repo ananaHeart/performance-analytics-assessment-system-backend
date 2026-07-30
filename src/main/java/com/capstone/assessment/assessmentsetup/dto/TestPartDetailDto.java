@@ -11,4 +11,5 @@ public record TestPartDetailDto(
         Integer pointsPerItem,
         String answerKey
 ) {
+        
 }

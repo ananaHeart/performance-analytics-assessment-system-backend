@@ -1,6 +1,6 @@
 # Backend API Documentation
 
-Documentation timeline note: This document began as the backend API reference around late May 2026 and was updated through late June and July 2026 as rule-based LMS, student mastery, export, TiDB Cloud, and Render Docker deployment support were added.
+Documentation timeline note: This document began as the backend API reference around late May 2026 and was updated through late June and July 2026 as rule-based LMS, student mastery, export, TiDB Cloud, Render Docker deployment support, CORS deployment fixes, TiDB SQL compatibility fixes, SF1-based class assignment filtering, July 27 database polishing notes, and the July 29 range-only part-skill mapping cleanup were added.
 
 ## 1. Overview
 The backend is the Spring Boot REST API for the Performance Analytic Assessment System. It serves as the central application layer for authentication, school setup, assessment setup, mobile synchronization, analytics processing, and Excel-based reporting. It stores and exposes the data required by the web dashboard and the mobile checking workflow while keeping the main academic and assessment records in the backend database.
@@ -43,7 +43,7 @@ Stores school year definitions used for class assignment, enrollment, and filter
 Stores grade level references used by sections and competency tagging.
 
 ### `section`
-Stores school sections and links each section to a grade level.
+Stores school sections created from SF1 import. Each section is linked to a grade level and academic year so assignment filtering can distinguish the same section name across different school years.
 
 ### `subject`
 Stores subject references used in class assignment and competency tagging.
@@ -63,6 +63,12 @@ Stores competency references per grade level and subject. Root competencies and 
 ### `grading_period`
 Stores grading period records such as period name, order, date range, academic year, and status.
 
+July 27, 2026 data dictionary note:
+This concept is being reviewed as `term_period`. The backend may still use the current implemented table name until a final migration is approved.
+
+### `curriculum`
+Planned/reference entity for storing the curriculum version used by the school system. It is recommended as the base reference for competency versions, especially when competencies differ across curriculum updates.
+
 ### `test`
 Stores assessment headers such as test name, type, date, status, and the owning `class_id`.
 
@@ -70,16 +76,29 @@ Stores assessment headers such as test name, type, date, status, and the owning 
 Stores competency-linked parts of an assessment. Each row belongs to a `test_id` and a `competency_id`.
 
 ### `part_skill_mapping`
-Maps a test part to branch-level skills for deeper LMS analytics. It supports `RANGE` and `CUSTOM` item mapping modes.
+Maps a test part to branch-level skills for deeper LMS analytics.
+
+July 29, 2026 implementation note:
+The active backend design is range-only. Each mapping uses `item_count`, `start_item`, and `end_item`. The previous `mapping_mode` / `CUSTOM` design was removed from the active backend path.
 
 ### `skill_item`
-Stores exact item numbers for custom skill mapping under `part_skill_mapping`.
+Historical table for exact custom item mapping under `part_skill_mapping`. As of the July 29, 2026 range-only cleanup, this table is no longer required by the active backend design.
+
+### `intervention`
+Planned/reference entity for storing intervention master-list records such as guided review, reteaching, or priority intervention. The current backend can generate intervention recommendation text dynamically, but a master-list entity may strengthen the database design.
+
+### `answer_key`
+Planned normalized table for storing one correct answer per test part item. This was reviewed on July 27, 2026 as a future improvement over storing comma-separated answer keys directly in `test_part`.
 
 ### `test_result`
 Stores checked student assessment results uploaded from mobile, including the total score and raw answer data for one student in one test.
 
 ### `test_item_result`
 Stores item-level correctness data per checked student result. This is the main source for item analysis and least mastered skill computation.
+
+Example analytics meaning:
+
+`Item 1: 12/60 students answered correctly`
 
 ### `sync_log`
 Stores upload sync activity records, including teacher, test, timestamp, and sync status.
@@ -105,6 +124,7 @@ Related authentication endpoints in the current backend include teacher registra
 ## 6. School Setup APIs
 
 Approximate implementation/documentation period: late May 2026.
+Updated on July 13, 2026 to support SF1-based section availability for teacher class assignment.
 The school setup module manages the academic reference data and class assignment structure needed before assessment creation and sync operations can proceed.
 
 Main purposes covered by the current APIs:
@@ -116,11 +136,20 @@ Current school setup endpoint groups include:
 - `GET /api/school-setup/grade-levels`
 - `GET /api/school-setup/subjects`
 - `GET /api/school-setup/sections`
+- `GET /api/school-setup/sections/available?gradeLevelId={gradeLevelId}&academicYearId={academicYearId}&subjectId={subjectId}`
 - `GET /api/school-setup/teachers`
 - `GET /api/school-setup/students`
 - `GET /api/school-setup/class-assignments`
 - `POST /api/school-setup/sections`
 - `POST /api/school-setup/class-assignments`
+
+Important July 13, 2026 workflow update:
+- Sections are no longer intended to be manually pre-seeded for assignment.
+- SF1 import is the source that creates section records.
+- A section must have imported/enrolled students before it appears in the assignment dropdown.
+- Available sections are filtered by grade level, academic year, and subject.
+- A section is hidden from the available list once it is already assigned for the same subject and academic year.
+- `POST /api/school-setup/sections` is retained for compatibility but rejects direct section creation because sections should come from SF1 import.
 
 Teacher approval endpoints include:
 - `GET /api/auth/teachers`
@@ -135,6 +164,7 @@ This combined structure is stored in the `class` table and is used as the owner 
 ## 7. SF1 Import API
 
 Approximate implementation/documentation period: late May 2026.
+Updated on July 13, 2026 so confirmed SF1 import can create the section record using selected grade level, selected academic year, and detected section name.
 The SF1 import API supports structured student intake from official school SF1 files.
 
 Implemented endpoints:
@@ -146,6 +176,7 @@ The SF1 workflow includes:
 - Confirm import for actual persistence
 - Detected school year
 - Detected section
+- Section creation when the detected section does not yet exist for the selected grade level and academic year
 - Student creation or update
 - Student enrollment creation
 
@@ -165,6 +196,12 @@ Conceptually, the import follows this rule:
 - `student_enrollment` stores the school-year placement
 
 This design allows the same student to remain a single master record while yearly placement is recorded separately for a section and academic year.
+
+Updated confirm request pattern:
+
+`POST /api/import/sf1/confirm?gradeLevelId={gradeLevelId}&academicYearId={academicYearId}`
+
+The backend uses the detected SF1 section name together with `gradeLevelId` and `academicYearId` to create or reuse the correct section before enrolling students.
 
 ## 8. Assessment Setup API
 
@@ -189,7 +226,7 @@ Related setup endpoints:
 Design rules:
 - A `test` belongs to `class_id`
 - A `test_part` belongs to `test_id` and one root `competency_id`
-- Branch-level item mapping is stored separately in `part_skill_mapping` and `skill_item`
+- Branch-level item mapping is stored in `part_skill_mapping` using `item_count`, `start_item`, and `end_item`
 
 This means assessment ownership is always class-based, while item grouping and analytics alignment are competency-based through the test part records.
 
@@ -302,6 +339,7 @@ These reports are generated from uploaded test results stored in the backend dat
 ## 13. Deployment Configuration
 
 Approximate implementation/documentation period: July 2026.
+Deployment-related updates were added on July 12, 2026 after Render/TiDB testing.
 
 The backend supports both local development and cloud deployment without changing business logic.
 
@@ -320,10 +358,19 @@ Docker deployment:
 - `.dockerignore` removes local build output, logs, Git metadata, and editor folders from the Docker build context
 - `server.port=${PORT:8080}` allows Render to assign the runtime port
 
+Deployment debugging updates:
+- July 12, 2026: Deployment approach changed from Render Java runtime expectation to Render Docker deployment because the available Render runtime options did not include Java for the account. The backend architecture and API logic were kept unchanged.
+- July 12, 2026: CORS was configured for the deployed React frontend origin.
+- July 12, 2026: SQL queries with subqueries inside `JOIN ON` conditions were rewritten for TiDB compatibility.
+- July 13, 2026: Documentation was updated to include SF1-based section creation and available section filtering.
+
 ## 14. Data Integrity Rules
-- One class is unique by teacher + subject + section + academic year
+- One class assignment is unique by subject + section + academic year
 - One test belongs to one class
 - Student enrollment is separated from student profile
+- Sections are created from SF1 import and linked to grade level + academic year
+- A section must have enrolled students before it can be selected for class assignment
+- A section cannot be assigned twice for the same subject and academic year
 - Uploaded mobile results should not duplicate analytics
 - Download sync uses complete metadata for mobile matching
 - `test_item_result` uses `item_result_id` as primary key
@@ -334,7 +381,9 @@ These rules help keep class ownership, student history, analytics accuracy, and 
 - Login works
 - Teacher approval works
 - Class assignment works
+- Available section filtering for assignment exists
 - SF1 import works
+- SF1 import can create sections for the selected grade level and academic year
 - Assessment setup works
 - Sync download works
 - Sync upload works
@@ -346,6 +395,20 @@ These rules help keep class ownership, student history, analytics accuracy, and 
 - Student skill mastery endpoint exists
 - TiDB Cloud profile is configured
 - Docker deployment support for Render exists
+- CORS configuration for the deployed frontend exists
+- TiDB-compatible analytics SQL fixes exist
+
+## 17. Dated Backend Revision Summary
+
+| Date / Period | Backend Documentation Update | Related Feature |
+| --- | --- | --- |
+| Late May 2026 | Initial backend API documentation | Core backend, sync, analytics, assessment setup, import/export, authentication |
+| Late June 2026 | Rule-based LMS and skill mapping documentation | `parent_competency_id`, `part_skill_mapping`, `skill_item` |
+| Late June to Early July 2026 | Analytics and export documentation expanded | Teacher interventions, student skill mastery, student score export |
+| July 12, 2026 | Deployment approach pivoted to Docker and troubleshooting notes were added | Render Docker deployment, CORS for Render frontend, and TiDB SQL compatibility |
+| July 13, 2026 | School setup and SF1 workflow documentation updated | SF1-created sections and available section filtering for class assignment |
+| July 27, 2026 | Database redesign and polishing notes documented | Curriculum, intervention, answer key normalization, term period review, student enrollment relationship, and item-result analytics meaning |
+| July 29, 2026 | Part-skill mapping simplified to range-only | Removed active backend dependency on `mapping_mode`, `CUSTOM`, and `skill_item` |
 
 ## 16. Known Future Improvements
 - Web correction/resubmission workflow
@@ -354,3 +417,16 @@ These rules help keep class ownership, student history, analytics accuracy, and 
 - Final production security hardening
 - Final deployment runbook after Render deployment succeeds
 - Better error handling/logging
+
+## 18. July 27, 2026 Database Polishing Summary
+
+These notes document database design review items only. They are not automatic code or schema changes until a final migration script is approved.
+
+- `curriculum` is recommended as a reference entity for the curriculum version used by competencies.
+- `intervention` is recommended as a simple master/reference table if the system needs a formal database entity for intervention choices.
+- `student_enrollment` should remain linked to `section_id`, not `class_id`, because enrollment is section/year based while class is teacher/subject/section/year based.
+- `grade_level_id` does not need to be duplicated in `student_enrollment` if `section` already contains `grade_level_id`.
+- `test_result` stores one student's overall result for one test.
+- `test_item_result` stores each student's correctness per item and is aggregated for item analytics such as `Item 1: 12/60 students answered correctly`.
+- `answer_key` can be normalized later into one row per item through `answer_key(test_part_id, item_number, correct_answer, points)`.
+- `status` should control active academic year and active term period workflow; `start_date` and `end_date` should remain supporting fields and may be nullable.

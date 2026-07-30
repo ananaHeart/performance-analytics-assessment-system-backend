@@ -19,6 +19,8 @@ public interface SchoolSetupService {
 
     List<SectionDto> getSections();
 
+    List<SectionDto> getAvailableSectionsForAssignment(Long gradeLevelId, Long academicYearId, Long subjectId);
+
     List<TeacherDto> getTeachers();
 
     List<StudentDto> getStudents();

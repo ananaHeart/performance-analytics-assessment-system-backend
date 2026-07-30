@@ -8,5 +8,10 @@ public interface Sf1ImportService {
 
     Sf1ImportPreviewResponse generatePreview(MultipartFile file);
 
-    Sf1ImportSummaryResponse confirmImport(MultipartFile file, Long sectionId, Long academicYearId);
+    Sf1ImportSummaryResponse confirmImport(
+            MultipartFile file,
+            Long sectionId,
+            Long academicYearId,
+            Long gradeLevelId
+    );
 }

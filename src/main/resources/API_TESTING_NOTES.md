@@ -1,6 +1,18 @@
 # API Testing Notes
 
-Documentation timeline note: Initial API testing notes were written around late May 2026. Deeper LMS, intervention, student skill mastery, selected assessment score export, and deployment notes were added from late June to July 2026.
+Documentation timeline note: Initial API testing notes were written around late May 2026. Deeper LMS, intervention, student skill mastery, selected assessment score export, deployment notes, CORS/TiDB deployment fixes, SF1-based section assignment filtering, July 27 database polishing notes, and the July 29 range-only mapping verification were added from late June to July 2026.
+
+## Dated Testing / Documentation Update Log
+
+| Date / Period | Tested or Documented Area | Status |
+| --- | --- | --- |
+| Late May 2026 | Sync download/upload, core analytics, assessment setup, import/export, authentication | Completed |
+| Late June 2026 | Rule-based LMS mapping, grading period flow, part skill mapping preview/save/retrieve | Completed |
+| Late June to Early July 2026 | Teacher intervention, student skill mastery, selected assessment student score export | Completed |
+| July 12, 2026 | Render deployment pivot to Docker, Render/TiDB deployment debugging, CORS deployed frontend origin, TiDB-compatible SQL rewrite | Completed |
+| July 13, 2026 | SF1-created section workflow and available section filtering for class assignment | Completed |
+| July 27, 2026 | Database design polishing notes for curriculum, intervention, answer key, term period, student enrollment, and item analytics meaning | Documented |
+| July 29, 2026 | Part-skill mapping cleanup to range-only behavior and local API verification | Completed |
 
 ## Sync Endpoints
 
@@ -163,10 +175,63 @@ Approximate documentation period: July 2026.
   - `SPRING_SQL_INIT_MODE=never`
 - Render Docker deployment is supported through `Dockerfile`.
 - Runtime port uses `server.port=${PORT:8080}`.
+- July 12, 2026: Deployment changed from the original Java runtime expectation to Docker because the available Render runtime options did not include Java for the account.
+- July 12, 2026: CORS was updated for the deployed React frontend origin.
+- July 12, 2026: TiDB-incompatible subqueries inside `JOIN ON` conditions were rewritten.
+
+## School Setup / Class Assignment Endpoints
+
+Approximate testing/documentation period: late May 2026 for the original school setup endpoints. Updated on July 13, 2026 for SF1-based section availability.
+
+### `GET /api/school-setup/grade-levels`
+- Purpose: Retrieves grade level reference records.
+- Status: Working.
+
+### `GET /api/school-setup/subjects`
+- Purpose: Retrieves subject reference records.
+- Status: Working.
+
+### `GET /api/school-setup/sections`
+- Purpose: Retrieves imported sections with grade level and academic year context.
+- Status: Working.
+- July 13, 2026 note: Sections are expected to come from SF1 import, not manual pre-seeding.
+
+### `GET /api/school-setup/sections/available?gradeLevelId=1&academicYearId=1&subjectId=1`
+- Purpose: Returns only sections available for class assignment.
+- Status: Added July 13, 2026.
+- Expected filtering:
+  - selected grade level only
+  - selected academic year only
+  - section has enrolled students from SF1 import
+  - section is not already assigned for the selected subject and academic year
+
+### `GET /api/school-setup/class-assignments`
+- Purpose: Lists teacher-subject-section-year class assignments.
+- Status: Working.
+
+### `POST /api/school-setup/class-assignments`
+- Purpose: Creates a class assignment from teacher, subject, grade level, section, and academic year.
+- Status: Updated July 13, 2026.
+- Test body pattern:
+
+```json
+{
+  "academicYearId": 1,
+  "teacherId": 2,
+  "subjectId": 1,
+  "gradeLevelId": 1,
+  "sectionId": 5
+}
+```
+
+- Expected validation:
+  - section must match selected grade level and academic year
+  - section must have imported/enrolled students
+  - section must not already be assigned for the same subject and academic year
 
 ## Import / Student Setup Endpoints
 
-Approximate testing/documentation period: late May 2026.
+Approximate testing/documentation period: late May 2026. Updated on July 13, 2026 so SF1 import creates or reuses the section record before enrolling students.
 
 ### `GET /api/import/manual-students`
 - Purpose: Retrieves manually encoded and imported student records with enrollment details.
@@ -206,8 +271,21 @@ Approximate testing/documentation period: late May 2026.
 
 ### `POST /api/import/sf1/confirm`
 - Purpose: Confirms SF1 import by saving valid preview rows into the student and `student_enrollment` tables.
-- Status: Working.
-- Test result using `SF1_DUMMY_TEST.xls` with `sectionId = 1` and `academicYearId = 1`:
+- Status: Updated July 13, 2026.
+- Current request pattern:
+
+```http
+POST /api/import/sf1/confirm?gradeLevelId=1&academicYearId=1
+```
+
+- Expected behavior:
+  - detects section name from SF1
+  - creates the section if it does not exist for the selected grade level and academic year
+  - reuses the section if it already exists
+  - creates or updates student records
+  - creates student enrollment records
+
+- Earlier test result using `SF1_DUMMY_TEST.xls` with `sectionId = 1` and `academicYearId = 1`:
 
 First upload:
 - `importedStudents: 5`
@@ -223,7 +301,8 @@ Second upload / duplicate test:
 
 Important notes:
 - SF1 Smart Import only extracts fields needed by the system: LRN, first name, last name, gender, section, and academic year.
-- Grade level is determined through the selected section, not guessed from the SF1 filename.
+- Grade level is supplied during SF1 confirm and is not guessed from the SF1 filename.
+- Section records are created from SF1 import and should not be manually pre-seeded for assignment.
 - The system does not import unnecessary sensitive SF1 fields such as birthdate, age, address, parent/guardian data, religion, mother tongue, remarks, 4Ps, or contact numbers.
 - Manual Student Input is maintained as a fallback when SF1 Smart Import fails or when records need correction.
 - Students are not system users. Student records are used only for class lists, assessment recording, analytics, LMS, and teacher remediation planning.
@@ -344,6 +423,8 @@ This is a temporary local token guard for development testing only. It proves th
 10. Student Skill Mastery Endpoint
 11. Student Scores Export Endpoint
 12. TiDB Cloud / Render Docker Deployment Configuration
+13. CORS and TiDB SQL Deployment Fixes
+14. SF1-Based Section Creation and Available Section Filtering
 
 ## Defense Notes
 
@@ -352,3 +433,49 @@ This is a temporary local token guard for development testing only. It proves th
 - Backend prevents duplicate uploads using unique constraints and existence checks.
 - LMS is based on competency tags, not raw score only.
 - Intervention output is for teacher planning, not direct student access.
+
+## July 27, 2026 Database Design Notes
+
+These are documentation notes from the database redesign/polishing discussion. They are not API test results and are not schema migrations yet.
+
+- `test_result` means the overall checked result of one student in one test.
+- `test_item_result` means per-item correctness for a student and is used for item analytics.
+- Item analytics can be explained as: `Item 1: 12/60 students answered correctly`.
+- `student_enrollment` should use `section_id`, not `class_id`, because enrollment is section/year based.
+- `section` carries `grade_level_id`, so `student_enrollment` does not need a duplicate `grade_level_id`.
+- `curriculum` is recommended as the base/reference for curriculum versioning of competencies.
+- `intervention` may be added as a master/reference table for teacher intervention categories.
+- `answer_key` can be normalized later into one row per item, but this requires coordinated backend, frontend, and mobile sync review.
+- `term_period` is the reviewed name for the previous grading period concept. `status` should control active workflow; dates can remain optional support fields.
+
+## July 29, 2026 Range-Only Part-Skill Mapping Test Notes
+
+The final data dictionary direction removed the need for a `RANGE` versus `CUSTOM` mapping choice. The backend was aligned to range-only mapping.
+
+Active mapping behavior:
+
+- `part_skill_mapping` stores `item_count`, `start_item`, and `end_item`.
+- `mapping_mode` is no longer part of the active database design.
+- `skill_item` is no longer required because custom item-number selection was removed.
+- LMS analytics maps item correctness to branch skills by checking whether the item number falls between `start_item` and `end_item`.
+
+Local API verification:
+
+- `POST /api/part-skill-mappings/preview` returned `200 OK`.
+- `POST /api/part-skill-mappings/save` returned `200 OK`.
+- `GET /api/part-skill-mappings/test-parts/1` returned `200 OK`.
+- `GET /api/analytics/lms?testId=1` returned `200 OK`.
+
+Confirmed local test case:
+
+```text
+testPartId: 1
+parent competency: Grammar
+numberOfItems: 15
+mapped ranges:
+1-5   -> Active and Passive Voice
+6-10  -> Past Tense
+11-15 -> Past Perfect Tense
+```
+
+Result: `fullCoverage = true`, and LMS analytics returned branch skill mastery results.

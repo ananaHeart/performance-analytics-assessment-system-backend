@@ -17,6 +17,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Repository
 public class SchoolSetupRepository {
@@ -59,21 +60,64 @@ public class SchoolSetupRepository {
 
     public List<SectionDto> findAllSections() {
         String sql = """
-                SELECT s.section_id,
+                SELECT DISTINCT
+                       s.section_id,
                        s.grade_level_id,
                        gl.grade_level_name,
+                       se.academic_year_id,
+                       ay.year_name AS academic_year,
                        s.section_name
                 FROM section s
                 JOIN grade_level gl ON gl.grade_level_id = s.grade_level_id
-                ORDER BY s.grade_level_id, s.section_name
+                JOIN student_enrollment se ON se.section_id = s.section_id
+                JOIN academic_year ay ON ay.academic_year_id = se.academic_year_id
+                ORDER BY ay.year_name, s.grade_level_id, s.section_name
                 """;
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> new SectionDto(
                 rs.getLong("section_id"),
                 rs.getLong("grade_level_id"),
                 rs.getString("grade_level_name"),
+                rs.getLong("academic_year_id"),
+                rs.getString("academic_year"),
                 rs.getString("section_name")
         ));
+    }
+
+    public List<SectionDto> findAvailableSectionsForAssignment(Long gradeLevelId, Long academicYearId, Long subjectId) {
+        String sql = """
+                SELECT DISTINCT
+                       s.section_id,
+                       s.grade_level_id,
+                       gl.grade_level_name,
+                       se.academic_year_id,
+                       ay.year_name AS academic_year,
+                       s.section_name
+                FROM section s
+                JOIN grade_level gl ON gl.grade_level_id = s.grade_level_id
+                JOIN student_enrollment se
+                  ON se.section_id = s.section_id
+                 AND se.academic_year_id = ?
+                JOIN academic_year ay ON ay.academic_year_id = se.academic_year_id
+                WHERE s.grade_level_id = ?
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM `class` c
+                      WHERE c.section_id = s.section_id
+                        AND c.academic_year_id = se.academic_year_id
+                        AND c.subject_id = ?
+                  )
+                ORDER BY s.section_name
+                """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new SectionDto(
+                rs.getLong("section_id"),
+                rs.getLong("grade_level_id"),
+                rs.getString("grade_level_name"),
+                rs.getLong("academic_year_id"),
+                rs.getString("academic_year"),
+                rs.getString("section_name")
+        ), academicYearId, gradeLevelId, subjectId);
     }
 
     public List<TeacherDto> findAllTeachers() {
@@ -165,8 +209,8 @@ public class SchoolSetupRepository {
 
     public Long createSection(CreateSectionRequest request) {
         String sql = """
-                INSERT INTO section (grade_level_id, section_name)
-                VALUES (?, ?)
+                INSERT INTO section (grade_level_id, academic_year_id, section_name)
+                VALUES (?, ?, ?)
                 """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -174,7 +218,8 @@ public class SchoolSetupRepository {
         jdbcTemplate.update(connection -> {
             PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setLong(1, request.gradeLevelId());
-            preparedStatement.setString(2, request.sectionName());
+            preparedStatement.setLong(2, request.academicYearId());
+            preparedStatement.setString(3, request.sectionName());
             return preparedStatement;
         }, keyHolder);
 
@@ -201,24 +246,51 @@ public class SchoolSetupRepository {
         return Objects.requireNonNull(keyHolder.getKey(), "Failed to retrieve generated class_id").longValue();
     }
 
-    public boolean sectionExists(Long gradeLevelId, String sectionName) {
+    public Optional<Long> findGradeLevelIdBySectionId(Long sectionId) {
         String sql = """
-                SELECT COUNT(*)
+                SELECT grade_level_id
                 FROM section
-                WHERE grade_level_id = ?
-                  AND LOWER(section_name) = LOWER(?)
+                WHERE section_id = ?
                 """;
 
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, gradeLevelId, sectionName);
+        return jdbcTemplate.query(
+                sql,
+                rs -> rs.next() ? Optional.of(rs.getLong("grade_level_id")) : Optional.empty(),
+                sectionId
+        );
+    }
+
+    public boolean sectionMatchesGradeLevelAndAcademicYear(Long sectionId, Long gradeLevelId, Long academicYearId) {
+        String sql = """
+                SELECT COUNT(*)
+                FROM section s
+                JOIN student_enrollment se ON se.section_id = s.section_id
+                WHERE s.section_id = ?
+                  AND s.grade_level_id = ?
+                  AND se.academic_year_id = ?
+                """;
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, sectionId, gradeLevelId, academicYearId);
         return count != null && count > 0;
     }
 
-    public boolean classAssignmentExists(Long academicYearId, Long teacherId, Long subjectId, Long sectionId) {
+    public boolean sectionHasEnrolledStudents(Long sectionId, Long academicYearId) {
+        String sql = """
+                SELECT COUNT(*)
+                FROM student_enrollment
+                WHERE section_id = ?
+                  AND academic_year_id = ?
+                """;
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, sectionId, academicYearId);
+        return count != null && count > 0;
+    }
+
+    public boolean classSectionSubjectAssignmentExists(Long academicYearId, Long subjectId, Long sectionId) {
         String sql = """
                 SELECT COUNT(*)
                 FROM `class`
                 WHERE academic_year_id = ?
-                  AND user_id = ?
                   AND subject_id = ?
                   AND section_id = ?
                 """;
@@ -227,7 +299,6 @@ public class SchoolSetupRepository {
                 sql,
                 Integer.class,
                 academicYearId,
-                teacherId,
                 subjectId,
                 sectionId
         );

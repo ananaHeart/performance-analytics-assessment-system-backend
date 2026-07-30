@@ -40,6 +40,12 @@ public class SchoolSetupServiceImpl implements SchoolSetupService {
     }
 
     @Override
+    public List<SectionDto> getAvailableSectionsForAssignment(Long gradeLevelId, Long academicYearId, Long subjectId) {
+        validateAvailableSectionRequest(gradeLevelId, academicYearId, subjectId);
+        return schoolSetupRepository.findAvailableSectionsForAssignment(gradeLevelId, academicYearId, subjectId);
+    }
+
+    @Override
     public List<TeacherDto> getTeachers() {
         return schoolSetupRepository.findAllTeachers();
     }
@@ -57,46 +63,45 @@ public class SchoolSetupServiceImpl implements SchoolSetupService {
     @Override
     @Transactional
     public Long createSection(CreateSectionRequest request) {
-        validateCreateSectionRequest(request);
-
-        if (schoolSetupRepository.sectionExists(request.gradeLevelId(), request.sectionName().trim())) {
-            throw new BadRequestException("Section already exists for this grade level.");
-        }
-
-        return schoolSetupRepository.createSection(
-                new CreateSectionRequest(request.gradeLevelId(), request.sectionName().trim())
-        );
+        throw new BadRequestException("Sections must be created through SF1 import.");
     }
 
     @Override
     @Transactional
     public Long createClassAssignment(CreateClassAssignmentRequest request) {
         validateCreateClassAssignmentRequest(request);
+        Long resolvedGradeLevelId = resolveGradeLevelId(request);
 
-        if (schoolSetupRepository.classAssignmentExists(
+        if (!schoolSetupRepository.sectionMatchesGradeLevelAndAcademicYear(
+                request.sectionId(),
+                resolvedGradeLevelId,
+                request.academicYearId()
+        )) {
+            throw new BadRequestException("Selected section does not match the selected grade level and academic year.");
+        }
+
+        if (!schoolSetupRepository.sectionHasEnrolledStudents(request.sectionId(), request.academicYearId())) {
+            throw new BadRequestException("Selected section has no imported students for this academic year.");
+        }
+
+        if (schoolSetupRepository.classSectionSubjectAssignmentExists(
                 request.academicYearId(),
-                request.teacherId(),
                 request.subjectId(),
                 request.sectionId()
         )) {
-            throw new BadRequestException("Class assignment already exists.");
+            throw new BadRequestException("Section is already assigned for this subject and academic year.");
         }
 
         return schoolSetupRepository.createClassAssignment(request);
     }
 
-    private void validateCreateSectionRequest(CreateSectionRequest request) {
-        if (request == null) {
-            throw new BadRequestException("Create section request must not be null.");
+    private Long resolveGradeLevelId(CreateClassAssignmentRequest request) {
+        if (request.gradeLevelId() != null) {
+            return request.gradeLevelId();
         }
 
-        if (request.gradeLevelId() == null) {
-            throw new BadRequestException("Grade level ID is required.");
-        }
-
-        if (request.sectionName() == null || request.sectionName().isBlank()) {
-            throw new BadRequestException("Section name is required.");
-        }
+        return schoolSetupRepository.findGradeLevelIdBySectionId(request.sectionId())
+                .orElseThrow(() -> new BadRequestException("Selected section was not found."));
     }
 
     private void validateCreateClassAssignmentRequest(CreateClassAssignmentRequest request) {
@@ -118,6 +123,20 @@ public class SchoolSetupServiceImpl implements SchoolSetupService {
 
         if (request.sectionId() == null) {
             throw new BadRequestException("Section ID is required.");
+        }
+    }
+
+    private void validateAvailableSectionRequest(Long gradeLevelId, Long academicYearId, Long subjectId) {
+        if (gradeLevelId == null) {
+            throw new BadRequestException("Grade level ID is required.");
+        }
+
+        if (academicYearId == null) {
+            throw new BadRequestException("Academic year ID is required.");
+        }
+
+        if (subjectId == null) {
+            throw new BadRequestException("Subject ID is required.");
         }
     }
 }

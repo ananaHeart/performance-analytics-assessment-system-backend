@@ -15,6 +15,16 @@ VALUES ('ENG', 'English'),
        ('MATH', 'Mathematics'),
        ('SCI', 'Science');
 
+INSERT IGNORE INTO curriculum (curriculum_name, version, status)
+VALUES ('K to 12 Basic Education Curriculum', 'Current', 'Active');
+
+INSERT IGNORE INTO intervention (intervention_name, description, status)
+VALUES
+    ('Review', 'Review the competency with affected learners using guided examples and short practice exercises.', 'Active'),
+    ('Reteach', 'Reteach the competency using simple examples and guided practice.', 'Active'),
+    ('Priority Intervention', 'Provide focused support through small-group remediation and follow-up assessment.', 'Active'),
+    ('Maintain', 'Continue monitoring the competency. No immediate intervention is needed.', 'Active');
+
 INSERT IGNORE INTO competency_tags (grade_level_id, subject_id, competency_name)
 VALUES
     (

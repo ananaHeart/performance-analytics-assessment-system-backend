@@ -4,6 +4,7 @@ public record CreateClassAssignmentRequest(
         Long academicYearId,
         Long teacherId,
         Long subjectId,
+        Long gradeLevelId,
         Long sectionId
 ) {
 }

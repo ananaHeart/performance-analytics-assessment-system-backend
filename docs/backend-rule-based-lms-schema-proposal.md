@@ -1,8 +1,12 @@
 # Backend Rule-Based LMS Schema Proposal
 
-Documentation timeline note: This design note was drafted around late June 2026 during the deeper LMS planning work and updated in July 2026 to reflect the implemented database naming and backend behavior.
+Documentation timeline note: This design note was drafted around late June 2026 during the deeper LMS planning work and updated in July 2026 to reflect the implemented database naming, backend behavior, TiDB-compatible SQL adjustments, July 27 database polishing notes, and the July 29 range-only mapping cleanup.
 
-This document records the final database and analytics design decision for deeper rule-based Least Mastered Skills (LMS) analytics. The design has been implemented in the backend using `parent_competency_id`, `part_skill_mapping`, and `skill_item`. Mobile sync remains unchanged because deeper LMS is computed on the backend after uploaded checking results are stored.
+This document records the database and analytics design decision for deeper rule-based Least Mastered Skills (LMS) analytics. The active backend design uses `parent_competency_id` and `part_skill_mapping`. The earlier `skill_item` and `CUSTOM` mapping design is preserved below as historical design context, but it was superseded on July 29, 2026 by a range-only mapping decision. Mobile sync remains unchanged because deeper LMS is computed on the backend after uploaded checking results are stored.
+
+July 12, 2026 deployment note:
+
+During TiDB Cloud deployment testing, LMS-related SQL that used subqueries inside `JOIN ON` conditions was rewritten using normal joins and derived tables. This preserved the same analytics computation while making the deployed backend compatible with TiDB SQL limitations.
 
 ## 1. Scope and Restrictions
 
@@ -31,7 +35,7 @@ The proposed schema changes directly affect only:
 - `competency_tags`
 - `test_part`
 - New table: `part_skill_mapping`
-- New table: `skill_item`
+- Historical proposed table: `skill_item` for custom item mapping. This was later removed from the active design by the July 29, 2026 range-only cleanup.
 
 No direct change is proposed for `test_result`, `test_item_result`, `class`, `student`, `user`, or `sync_log`.
 
@@ -374,3 +378,219 @@ Before implementation, the next approval should explicitly confirm whether to:
 5. Coordinate future mobile sync and SQLite support only if offline mapping data is required.
 
 Until then, no migration or backend behavior change should be made.
+
+## 14. Dated Implementation Status
+
+| Date / Period | Status Update |
+| --- | --- |
+| Late June 2026 | Rule-based LMS schema design was drafted for deeper branch-skill analytics. |
+| Late June 2026 | The selected naming settled on `parent_competency_id`, `part_skill_mapping`, and `skill_item`. |
+| Late June to Early July 2026 | Backend endpoints for previewing, saving, and retrieving part skill mappings were implemented. |
+| July 12, 2026 | TiDB-compatible SQL rewrite was applied for LMS and branch skill analytics queries. |
+| July 13, 2026 | Documentation was updated to align the Gantt, API notes, and backend reference docs with the latest deployed backend workflow. |
+| July 27, 2026 | Database redesign and polishing notes were appended for curriculum, intervention, answer key, term period, enrollment, and item analytics meaning. |
+| July 29, 2026 | Part-skill mapping was simplified to range-only and the active backend dependency on `mapping_mode`, `CUSTOM`, and `skill_item` was removed. |
+
+## 15. July 27, 2026 Database Polishing Notes
+
+This section records the July 27, 2026 database redesign and polishing discussion. These notes are appended as design documentation and do not delete the earlier LMS schema decisions above.
+
+### Academic Year and Term Period
+
+The former `grading_period` concept is being reviewed as `term_period` in the data dictionary. The preferred design is to keep `status` as the main workflow control and make `start_date` and `end_date` supporting information.
+
+Recommended rule:
+
+- `academic_year.status` identifies the active school year.
+- `term_period.status` identifies the active term or grading period.
+- `start_date` and `end_date` should be nullable when the school cannot confidently predict exact dates.
+- Only one academic year should be active at a time.
+- Only one term period under the same academic year should be active at a time.
+
+`period_order` and `period_name` are intentionally kept together:
+
+- `period_order` supports sorting and system logic, such as 1, 2, 3, and 4.
+- `period_name` supports readable UI labels, such as First Grading or Second Grading.
+- A uniqueness rule such as `UNIQUE (academic_year_id, period_order)` should prevent duplicate period numbers in the same academic year.
+
+### Curriculum Entity
+
+A `curriculum` entity is recommended because it identifies the curriculum version used by the school system. This supports future changes in learning competencies without mixing old and new curriculum references.
+
+Suggested table:
+
+```text
+curriculum
+----------
+curriculum_id
+curriculum_name
+curriculum_version
+description
+status
+created_at
+```
+
+Recommended relationship direction:
+
+- Link `curriculum` to `competency_tags` because competencies and skills depend on the curriculum version.
+- Optionally link `academic_year` to `curriculum` if the school year needs to explicitly state which curriculum it follows.
+
+### Intervention Entity
+
+The current backend can generate teacher-facing intervention recommendations dynamically from assessment analytics. For database completeness, an `intervention` master list may be added as reference data.
+
+Suggested table:
+
+```text
+intervention
+------------
+intervention_id
+intervention_name
+intervention_type
+description
+mastery_status
+status
+```
+
+This should remain a master/reference table first. A separate intervention tracking table should only be added later if the system must record whether a teacher actually performed the intervention.
+
+### Student Enrollment Relationship
+
+`student_enrollment` should keep `section_id`, not `class_id`.
+
+Reason:
+
+- Student enrollment means a student belongs to a section for an academic year.
+- A class in this system means teacher + subject + section + academic year.
+- If enrollment used `class_id`, the same student would need duplicate enrollment rows for English, Math, Science, and other subjects.
+
+Recommended relationship:
+
+```text
+student_enrollment -> section -> grade_level
+class -> section
+```
+
+No `grade_level_id` is required in `student_enrollment` if `section` already stores `grade_level_id`.
+
+### Test Result and Item Result Meaning
+
+`test_result` stores the overall checked result for one student in one test.
+
+Example meaning:
+
+```text
+Juan took Test 1 and received a total score.
+```
+
+`test_item_result` stores per-student, per-item correctness.
+
+Example meaning:
+
+```text
+Juan, Part 1, Item 1, correct or wrong.
+```
+
+Analytics aggregates `test_item_result` to produce item-level outputs such as:
+
+```text
+Item 1: 12/60 students answered correctly.
+```
+
+This supports item analytics, LMS computation, affected learner identification, and teacher intervention recommendations.
+
+### Answer Key Design Review
+
+The current system stores answer keys in `test_part.answer_key` as text. A normalized `answer_key` table was reviewed for long-term database quality.
+
+Suggested normalized table:
+
+```text
+answer_key
+----------
+answer_key_id
+test_part_id
+item_number
+correct_answer
+points
+```
+
+Important clarification:
+
+- `item_number` identifies which question inside the test part the answer belongs to.
+- A 30-item test part would have 30 answer key rows, but this is not heavy compared with `test_item_result`.
+- `answer_key` rows are per test item, not per student.
+- `test_item_result` rows are the ones that grow per student and per item.
+
+This design is better for long-term support of multiple choice, true or false, identification, and enumeration item types. It should only be implemented after checking backend, frontend, mobile sync, and existing SQL impact.
+
+## 16. July 29, 2026 Range-Only Mapping Finalization
+
+This section records the approved cleanup after comparing the final data dictionary with the implemented backend and database.
+
+### Final Decision
+
+`part_skill_mapping` is range-only.
+
+The active table design is:
+
+```text
+part_skill_mapping
+------------------
+mapping_id
+test_part_id
+competency_id
+item_count
+start_item
+end_item
+created_at
+updated_at
+```
+
+Removed from the active design:
+
+- `mapping_mode`
+- `CUSTOM` mapping behavior
+- `skill_item`
+
+### Reason
+
+The final data dictionary uses item ranges for mapping a test part to branch skills. This is simpler for teachers, easier to explain during defense, and sufficient for the intended assessment workflow where a test part is organized by skill ranges.
+
+Example:
+
+```text
+Items 1-5   -> Active and Passive Voice
+Items 6-10  -> Past Tense
+Items 11-15 -> Past Perfect Tense
+```
+
+### Backend Update Summary
+
+The backend was updated so:
+
+- Part-skill preview/save accepts range mapping only.
+- Existing compatibility fields such as `mappingMode: "RANGE"` may still appear in API response DTOs for frontend compatibility.
+- Analytics no longer joins `skill_item`.
+- LMS, affected learners, intervention, and student skill mastery now compute branch skill performance using `tir.item_number BETWEEN psm.start_item AND psm.end_item`.
+
+### Database Update Summary
+
+Local MySQL and TiDB cleanup direction:
+
+- Remove `skill_item`.
+- Remove `part_skill_mapping.mapping_mode`.
+- Keep `item_count`, `start_item`, and `end_item`.
+- Do not recreate the database.
+- Do not delete assessment, student, result, or enrollment records.
+
+### Verified Local API Tests
+
+The following local API checks passed after the range-only cleanup:
+
+- `POST /api/part-skill-mappings/preview`
+- `POST /api/part-skill-mappings/save`
+- `GET /api/part-skill-mappings/test-parts/1`
+- `GET /api/analytics/lms?testId=1`
+
+This confirms that the range-only backend path still supports part-skill mapping and LMS analytics.

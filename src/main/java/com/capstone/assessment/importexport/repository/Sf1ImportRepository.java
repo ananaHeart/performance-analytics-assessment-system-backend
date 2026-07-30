@@ -30,6 +30,22 @@ public class Sf1ImportRepository {
         return count != null && count > 0;
     }
 
+    public boolean sectionMatchesAcademicYear(Long sectionId, Long academicYearId) {
+        if (!sectionHasAcademicYearColumn()) {
+            return sectionExists(sectionId);
+        }
+
+        String sql = """
+                SELECT COUNT(*)
+                FROM section
+                WHERE section_id = ?
+                  AND academic_year_id = ?
+                """;
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, sectionId, academicYearId);
+        return count != null && count > 0;
+    }
+
     public boolean academicYearExists(Long academicYearId) {
         String sql = """
                 SELECT COUNT(*)
@@ -39,6 +55,32 @@ public class Sf1ImportRepository {
 
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, academicYearId);
         return count != null && count > 0;
+    }
+
+    public boolean gradeLevelExists(Long gradeLevelId) {
+        String sql = """
+                SELECT COUNT(*)
+                FROM grade_level
+                WHERE grade_level_id = ?
+                """;
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, gradeLevelId);
+        return count != null && count > 0;
+    }
+
+    public Optional<Long> findGradeLevelIdByName(String gradeLevelName) {
+        String sql = """
+                SELECT grade_level_id
+                FROM grade_level
+                WHERE LOWER(grade_level_name) = LOWER(?)
+                ORDER BY grade_level_id
+                """;
+
+        return jdbcTemplate.query(
+                sql,
+                rs -> rs.next() ? Optional.of(rs.getLong("grade_level_id")) : Optional.empty(),
+                gradeLevelName
+        );
     }
 
     public Optional<Long> findAcademicYearIdByName(String academicYear) {
@@ -55,19 +97,81 @@ public class Sf1ImportRepository {
         );
     }
 
-    public Optional<Long> findSectionIdByName(String sectionName) {
-        String sql = """
-                SELECT section_id
-                FROM section
-                WHERE LOWER(section_name) = LOWER(?)
-                ORDER BY section_id
-                """;
+    public Optional<Long> findSectionIdByContext(String sectionName, Long gradeLevelId, Long academicYearId) {
+        String sql = sectionHasAcademicYearColumn()
+                ? """
+                    SELECT section_id
+                    FROM section
+                    WHERE LOWER(section_name) = LOWER(?)
+                      AND grade_level_id = ?
+                      AND academic_year_id = ?
+                    ORDER BY section_id
+                    """
+                : """
+                    SELECT section_id
+                    FROM section
+                    WHERE LOWER(section_name) = LOWER(?)
+                      AND grade_level_id = ?
+                    ORDER BY section_id
+                    """;
+
+        if (sectionHasAcademicYearColumn()) {
+            return jdbcTemplate.query(
+                    sql,
+                    rs -> rs.next() ? Optional.of(rs.getLong("section_id")) : Optional.empty(),
+                    sectionName,
+                    gradeLevelId,
+                    academicYearId
+            );
+        }
 
         return jdbcTemplate.query(
                 sql,
                 rs -> rs.next() ? Optional.of(rs.getLong("section_id")) : Optional.empty(),
-                sectionName
+                sectionName,
+                gradeLevelId
         );
+    }
+
+    public Long createSection(Long gradeLevelId, Long academicYearId, String sectionName) {
+        String sql = sectionHasAcademicYearColumn()
+                ? """
+                    INSERT INTO section (grade_level_id, academic_year_id, section_name)
+                    VALUES (?, ?, ?)
+                    """
+                : """
+                    INSERT INTO section (grade_level_id, section_name)
+                    VALUES (?, ?)
+                    """;
+
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+
+        jdbcTemplate.update(connection -> {
+            PreparedStatement preparedStatement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            preparedStatement.setLong(1, gradeLevelId);
+            if (sectionHasAcademicYearColumn()) {
+                preparedStatement.setLong(2, academicYearId);
+                preparedStatement.setString(3, sectionName);
+            } else {
+                preparedStatement.setString(2, sectionName);
+            }
+            return preparedStatement;
+        }, keyHolder);
+
+        return Objects.requireNonNull(keyHolder.getKey(), "Failed to retrieve generated section_id").longValue();
+    }
+
+    private boolean sectionHasAcademicYearColumn() {
+        String sql = """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'section'
+                  AND column_name = 'academic_year_id'
+                """;
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class);
+        return count != null && count > 0;
     }
 
     public Optional<Long> findStudentIdByLrn(String studentLrn) {

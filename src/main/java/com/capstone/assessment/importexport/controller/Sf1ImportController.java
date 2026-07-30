@@ -30,9 +30,15 @@ public class Sf1ImportController {
     public ApiResponse<Sf1ImportSummaryResponse> confirm(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "sectionId", required = false) Long sectionId,
-            @RequestParam(value = "academicYearId", required = false) Long academicYearId
+            @RequestParam(value = "academicYearId", required = false) Long academicYearId,
+            @RequestParam(value = "gradeLevelId", required = false) Long gradeLevelId
     ) {
-        Sf1ImportSummaryResponse response = sf1ImportService.confirmImport(file, sectionId, academicYearId);
+        Sf1ImportSummaryResponse response = sf1ImportService.confirmImport(
+                file,
+                sectionId,
+                academicYearId,
+                gradeLevelId
+        );
         return ApiResponse.success("SF1 import completed successfully.", response);
     }
 }
