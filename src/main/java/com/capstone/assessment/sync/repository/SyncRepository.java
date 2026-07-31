@@ -270,6 +270,18 @@ public class SyncRepository {
         return Objects.requireNonNull(keyHolder.getKey(), "Failed to retrieve generated test_result_id").longValue();
     }
 
+    public void updateTestResult(Long testResultId, Integer totalScore, String rawAnswers) {
+        String sql = """
+                UPDATE test_result
+                SET total_score = ?,
+                    raw_answers = ?,
+                    checked_at = CURRENT_TIMESTAMP
+                WHERE test_result_id = ?
+                """;
+
+        jdbcTemplate.update(sql, totalScore, rawAnswers, testResultId);
+    }
+
     public boolean itemResultExists(Long testResultId, Long testPartId, Integer itemNumber) {
         String sql = """
                 SELECT COUNT(*)
@@ -290,6 +302,18 @@ public class SyncRepository {
                 """;
 
         jdbcTemplate.update(sql, testPartId, testResultId, itemNumber, isCorrect);
+    }
+
+    public void updateItemResult(Long testResultId, Long testPartId, Integer itemNumber, Boolean isCorrect) {
+        String sql = """
+                UPDATE test_item_result
+                SET is_correct = ?
+                WHERE test_result_id = ?
+                  AND test_part_id = ?
+                  AND item_number = ?
+                """;
+
+        jdbcTemplate.update(sql, isCorrect, testResultId, testPartId, itemNumber);
     }
 
     public void insertSyncLog(Long teacherId, Long testId, String syncStatus) {

@@ -57,6 +57,11 @@ public class SyncServiceImpl implements SyncService {
                 Long serverResultId;
                 if (existingResultId.isPresent()) {
                     serverResultId = existingResultId.get();
+                    syncRepository.updateTestResult(
+                            serverResultId,
+                            testResult.totalScore(),
+                            testResult.rawAnswers()
+                    );
                 } else {
                     serverResultId = syncRepository.insertTestResult(
                             testId,
@@ -64,8 +69,8 @@ public class SyncServiceImpl implements SyncService {
                             testResult.totalScore(),
                             testResult.rawAnswers()
                     );
-                    uploadedResults++;
                 }
+                uploadedResults++;
 
                 if (testResult.localResultId() != null && !testResult.localResultId().isBlank()) {
                     localToServerResultIds.put(testResult.localResultId(), serverResultId);
@@ -87,15 +92,20 @@ public class SyncServiceImpl implements SyncService {
                     );
 
                     if (itemExists) {
-                        continue;
+                        syncRepository.updateItemResult(
+                                serverResultId,
+                                itemResponse.testPartId(),
+                                itemResponse.itemNumber(),
+                                itemResponse.isCorrect()
+                        );
+                    } else {
+                        syncRepository.insertItemResult(
+                                itemResponse.testPartId(),
+                                serverResultId,
+                                itemResponse.itemNumber(),
+                                itemResponse.isCorrect()
+                        );
                     }
-
-                    syncRepository.insertItemResult(
-                            itemResponse.testPartId(),
-                            serverResultId,
-                            itemResponse.itemNumber(),
-                            itemResponse.isCorrect()
-                    );
                     uploadedItems++;
                 }
             }
