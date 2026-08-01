@@ -9,6 +9,7 @@ import com.capstone.assessment.analytics.dto.SchoolLmsDto;
 import com.capstone.assessment.analytics.dto.StudentSkillMasteryDto;
 import com.capstone.assessment.analytics.dto.SyncActivityDto;
 import com.capstone.assessment.analytics.dto.TeacherInterventionRecommendationDto;
+import com.capstone.assessment.analytics.dto.TestPartResultDto;
 
 import java.util.List;
 
@@ -31,4 +32,6 @@ public interface AnalyticsService {
     List<AssessmentTrendDto> getAssessmentTrends(Long classId);
 
     List<SyncActivityDto> getSyncActivity(Long teacherId);
+
+    List<TestPartResultDto> getTestPartResults(Long testId, Long testPartId);
 }

@@ -1,6 +1,6 @@
 # Development Gantt Schedule
 
-Documentation timeline note: This schedule was first prepared around May 2026 and updated through July 29, 2026 to reflect completed integration work, TiDB Cloud preparation, Render Docker deployment preparation, deployment debugging, SF1-based section handling, database redesign/polishing review, range-only part-skill mapping cleanup, and ongoing testing/debugging.
+Documentation timeline note: This schedule was first prepared around May 2026 and updated through July 31, 2026 to reflect completed integration work, TiDB Cloud preparation, Render Docker deployment preparation, deployment debugging, SF1-based section handling, database redesign/polishing review, range-only part-skill mapping cleanup, cloud mobile sync validation, and ongoing testing/debugging.
 
 Project:
 A Mobile and Web Performance Analytic Assessment System
@@ -59,6 +59,8 @@ This section records the major backend functions and deployment-related fixes ad
 | July 27, 2026 | Database redesign and polishing review documented | Database Design / Documentation | Documented |
 | July 27, 2026 | Curriculum, intervention, answer key, term period, student enrollment, and item result analytics meanings reviewed | Database Design | Under Review |
 | July 29, 2026 | Part-skill mapping finalized as range-only; `skill_item` and `mapping_mode` removed from active design | Deeper LMS Mapping / Database Cleanup | Completed |
+| July 31, 2026 | Render and TiDB mobile sync download/upload validated from React Native app | Mobile / Backend / Cloud Integration | Completed |
+| July 31, 2026 | Temporary TiDB `test_result` compatibility alignment documented while final database recreation remains under review | Database Integration / Deployment Debugging | Completed |
 
 ## Current Progress
 
@@ -81,6 +83,8 @@ As of July 13, 2026, the backend has completed the following modules:
 - SF1-Based Section Creation and Available Section Filtering for Class Assignment
 - July 27, 2026 Database Redesign and Polishing Documentation
 - July 29, 2026 Range-Only Part-Skill Mapping Cleanup
+- July 31, 2026 Cloud Mobile Sync Download and Upload Validation
+- July 31, 2026 Temporary TiDB Schema Alignment for Active Backend Sync Contract
 
 Next planned phase:
-Finish Render deployment verification, finalize the July 27 database design decisions, apply any required production database ALTER scripts only after approval, complete final security hardening if required, and prepare final documentation evidence for panel review.
+Finalize the database design decisions, recreate or migrate both local MySQL and TiDB only after adviser approval, complete final security hardening if required, and prepare final documentation evidence for panel review.

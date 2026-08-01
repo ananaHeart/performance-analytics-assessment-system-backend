@@ -1,6 +1,6 @@
 # API Testing Notes
 
-Documentation timeline note: Initial API testing notes were written around late May 2026. Deeper LMS, intervention, student skill mastery, selected assessment score export, deployment notes, CORS/TiDB deployment fixes, SF1-based section assignment filtering, July 27 database polishing notes, and the July 29 range-only mapping verification were added from late June to July 2026.
+Documentation timeline note: Initial API testing notes were written around late May 2026. Deeper LMS, intervention, student skill mastery, selected assessment student score export, deployment notes, CORS/TiDB deployment fixes, SF1-based section assignment filtering, July 27 database polishing notes, the July 29 range-only mapping verification, and the July 31 cloud mobile sync validation were added from late June to July 2026.
 
 ## Dated Testing / Documentation Update Log
 
@@ -13,6 +13,7 @@ Documentation timeline note: Initial API testing notes were written around late 
 | July 13, 2026 | SF1-created section workflow and available section filtering for class assignment | Completed |
 | July 27, 2026 | Database design polishing notes for curriculum, intervention, answer key, term period, student enrollment, and item analytics meaning | Documented |
 | July 29, 2026 | Part-skill mapping cleanup to range-only behavior and local API verification | Completed |
+| July 31, 2026 | Mobile cloud sync download/upload testing with Render and TiDB temporary schema alignment | Completed |
 
 ## Sync Endpoints
 
@@ -22,12 +23,14 @@ Approximate testing/documentation period: late May 2026, with restore behavior c
 - Purpose: Downloads assigned classes, students, tests, test parts, answer keys, and competency tags for teacher mobile SQLite.
 - Status: Working.
 - Expected: Returns `classes`, `students`, `tests`, `testParts`, `competencies`.
+- July 31, 2026 cloud test: Render + TiDB download succeeded and returned 1 class, 5 students, 1 test, 2 test parts, and 2 competencies to the React Native mobile app.
 
 ### `POST /api/sync/upload`
 - Purpose: Uploads offline mobile test results and item responses to backend.
 - Status: Working.
 - Expected: Inserts `test_result`, `test_item_result`, and `sync_log`.
 - Duplicate prevention: Sending the same payload again returns `uploadedResults = 0` and `uploadedItems = 0`.
+- July 31, 2026 cloud test: React Native upload succeeded after phone checking. Result shown by mobile: `Results: 5`, `items: 50`, `duplicate results: 0`, `duplicate items: 0`, and pending upload returned to 0.
 
 ## Analytics Endpoints
 
@@ -178,6 +181,8 @@ Approximate documentation period: July 2026.
 - July 12, 2026: Deployment changed from the original Java runtime expectation to Docker because the available Render runtime options did not include Java for the account.
 - July 12, 2026: CORS was updated for the deployed React frontend origin.
 - July 12, 2026: TiDB-incompatible subqueries inside `JOIN ON` conditions were rewritten.
+- July 31, 2026: Backend generic exception logging was used to reveal the real Render stack trace for a cloud sync failure.
+- July 31, 2026: TiDB `test_result` was temporarily aligned with the active backend sync contract. Added/aligned fields included `total_score`, `raw_answers`, and `checked_at`; legacy/non-final fields such as `score`, `total_items`, and `percentage_score` were given safe defaults for the working deployed build.
 
 ## School Setup / Class Assignment Endpoints
 
@@ -479,3 +484,38 @@ mapped ranges:
 ```
 
 Result: `fullCoverage = true`, and LMS analytics returned branch skill mastery results.
+
+## July 31, 2026 Cloud Mobile Sync Validation Notes
+
+These notes are for integration evidence and database-change tracking. They do not finalize the redesigned database.
+
+Scenario tested:
+
+```text
+Mobile login
+-> cloud sync download
+-> select Grade 7 - Mabini / English
+-> check students offline
+-> upload checked results
+-> backend stores summary results and item responses in TiDB
+```
+
+Observed results:
+
+- Download succeeded from Render backend to mobile SQLite.
+- Upload succeeded from mobile to Render backend and TiDB.
+- Uploaded results: 5.
+- Uploaded item responses: 50.
+- Pending upload after sync: 0.
+
+Issue found and resolved:
+
+- Render logs showed `Unknown column 'tr.total_score' in 'field list'` during sync download.
+- TiDB `test_result` still used a non-final column set: `score`, `total_items`, `percentage_score`, `performance_level`, and `submitted_at`.
+- The active backend sync module expects `total_score`, `raw_answers`, and `checked_at`.
+- Temporary TiDB compatibility changes were applied so the deployed build can keep working while the final database recreation/migration is still under review.
+
+Important database note:
+
+- The current cloud compatibility changes are not the final ERD decision.
+- Both local MySQL and TiDB may still be recreated or migrated later after the final data dictionary, table naming, and column naming are approved.

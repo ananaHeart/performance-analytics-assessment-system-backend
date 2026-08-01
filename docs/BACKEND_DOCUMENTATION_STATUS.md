@@ -1,6 +1,6 @@
 # Backend Documentation Status
 
-Last reviewed: July 29, 2026, Asia/Manila
+Last reviewed: July 31, 2026, Asia/Manila
 
 Date basis: Dates in this document are approximate project timeline dates based on the development schedule and implementation history. They are written by month or week where exact creation dates were not recorded.
 
@@ -22,6 +22,7 @@ Approximate documentation period:
 - July 12, 2026 deployment pivot: Render deployment was changed from the expected Java runtime approach to Docker deployment because the available Render runtime options did not include Java for the account
 - CORS, TiDB SQL compatibility, SF1-created sections, and available section filtering documented on July 13, 2026
 - Database redesign and polishing notes documented on July 27, 2026, covering curriculum, intervention, answer key normalization, term period naming, student enrollment relationships, and item result analytics meaning
+- Cloud mobile sync validation and temporary TiDB schema compatibility notes documented on July 31, 2026
 
 Coverage:
 - Backend overview and responsibilities
@@ -41,6 +42,8 @@ Coverage:
 - Excel export APIs
 - Local and cloud deployment configuration
 - Confirmed working features and remaining improvements
+- July 31 cloud mobile sync download/upload validation against Render and TiDB
+- Temporary database compatibility notes while the final schema recreation is still under review
 
 Use this document as the main backend explanation for the panel.
 
@@ -77,6 +80,7 @@ Approximate documentation period:
 - Student skill mastery, teacher intervention, student score export, and deployment notes: July 2026
 - CORS/TiDB deployment fixes and SF1-based class assignment filtering notes: July 13, 2026
 - Database redesign/polishing documentation notes: July 27, 2026
+- Cloud mobile sync and TiDB compatibility testing notes: July 31, 2026
 
 Coverage:
 - Sync download and upload testing
@@ -146,6 +150,7 @@ This is not a panel-facing system document. It can stay as a developer reference
 - Docker deployment support for Render
 - July 12, 2026 Render Docker deployment pivot from Java runtime expectation to Docker runtime preparation
 - Mobile sync download/upload workflow
+- Cloud mobile sync download/upload validation using the deployed Render backend and TiDB Cloud database
 - Restore of uploaded mobile results
 - Rule-based LMS computation
 - Branch skill mapping through range-only `part_skill_mapping`
@@ -164,6 +169,11 @@ This is not a panel-facing system document. It can stay as a developer reference
   - `test_result` and `test_item_result` meanings clarified
   - `student_enrollment` confirmed as section-based, not class-based
   - `term_period` reviewed as the renamed grading period concept
+- July 31, 2026 deployed mobile sync validation:
+  - React Native mobile app downloaded data from Render and TiDB
+  - Mobile upload stored 5 result rows and 50 item response rows
+  - Temporary TiDB `test_result` compatibility fields were aligned with the active backend sync contract
+  - Final local and TiDB database recreation/migration remains pending until adviser approval
 
 ## Still Missing or Needs Final Polish
 
@@ -214,7 +224,17 @@ The database tables are documented in text, but the panel may still expect an ER
 
 ### Final migration decision for July 27 database polishing
 
-The July 27 notes are documented, but final database migration scripts are still needed only after approval. The backend code should not be changed until the final table and column names are confirmed.
+The July 27 notes are documented, and the July 31 cloud compatibility adjustments are also documented. However, the final database migration or recreation scripts are still needed only after approval. The backend code and final local/TiDB schema should not be broadly changed until the final table and column names are confirmed.
+
+### July 31, 2026 cloud mobile sync validation
+
+The deployed mobile sync flow has been validated against Render and TiDB:
+- `GET /api/sync/download/{teacherId}` succeeded from the mobile app.
+- `POST /api/sync/upload` succeeded after checking students on the phone.
+- Mobile reported 5 uploaded result records and 50 uploaded item response records.
+- A temporary TiDB schema mismatch was documented and aligned for the working build.
+
+This confirms the current deployed system works for mobile cloud sync, but it does not finalize the redesigned database. The planned final direction is still to recreate or migrate both local MySQL and TiDB after adviser approval.
 
 ### July 29, 2026 range-only mapping update
 
@@ -238,4 +258,4 @@ The backend docs should clearly state what is intentionally not included:
 
 ## Short Answer for Panel
 
-The backend is documented through the main API documentation, rule-based LMS schema proposal, API testing notes, and development Gantt documents. The backend documentation already covers the implemented API modules, database structure, synchronization flow, analytics computation, exports, and deployment configuration. Remaining documentation work is mainly final polish: security runbook, deployment proof, ERD, screenshots, and final limitations.
+The backend is documented through the main API documentation, rule-based LMS schema proposal, API testing notes, and development Gantt documents. The backend documentation already covers the implemented API modules, database structure, synchronization flow, analytics computation, exports, deployment configuration, and July 31 cloud mobile sync validation. Remaining documentation work is mainly final polish: security runbook, final ERD, screenshots, final database migration/recreation decision, and final limitations.

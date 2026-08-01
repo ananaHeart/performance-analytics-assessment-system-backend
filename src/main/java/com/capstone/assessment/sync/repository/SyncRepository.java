@@ -16,6 +16,10 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.sql.Types;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -124,7 +128,7 @@ public class SyncRepository {
                 rs.getLong("class_id"),
                 rs.getString("test_name"),
                 rs.getString("test_type"),
-                rs.getObject("test_date", Date.class).toLocalDate(),
+                toLocalDate(rs.getDate("test_date")),
                 rs.getString("test_status")
         ), teacherId);
     }
@@ -204,7 +208,7 @@ public class SyncRepository {
                 rs.getLong("studentId"),
                 rs.getInt("totalScore"),
                 rs.getString("rawAnswers"),
-                rs.getObject("checkedAt", Timestamp.class).toLocalDateTime()
+                toLocalDateTime(rs.getTimestamp("checkedAt"))
         ), teacherId);
     }
 
@@ -250,10 +254,16 @@ public class SyncRepository {
         return resultIds.stream().findFirst();
     }
 
-    public Long insertTestResult(Long testId, Long studentId, Integer totalScore, String rawAnswers) {
+    public Long insertTestResult(
+            Long testId,
+            Long studentId,
+            Integer totalScore,
+            String rawAnswers,
+            OffsetDateTime checkedAt
+    ) {
         String sql = """
-                INSERT INTO test_result (test_id, student_id, total_score, raw_answers)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO test_result (test_id, student_id, total_score, raw_answers, checked_at)
+                VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
                 """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -264,22 +274,30 @@ public class SyncRepository {
             preparedStatement.setLong(2, studentId);
             preparedStatement.setInt(3, totalScore);
             preparedStatement.setString(4, rawAnswers);
+            setNullableTimestamp(preparedStatement, 5, checkedAt);
             return preparedStatement;
         }, keyHolder);
 
         return Objects.requireNonNull(keyHolder.getKey(), "Failed to retrieve generated test_result_id").longValue();
     }
 
-    public void updateTestResult(Long testResultId, Integer totalScore, String rawAnswers) {
+    public void updateTestResult(Long testResultId, Integer totalScore, String rawAnswers, OffsetDateTime checkedAt) {
         String sql = """
                 UPDATE test_result
                 SET total_score = ?,
                     raw_answers = ?,
-                    checked_at = CURRENT_TIMESTAMP
+                    checked_at = COALESCE(?, CURRENT_TIMESTAMP)
                 WHERE test_result_id = ?
                 """;
 
-        jdbcTemplate.update(sql, totalScore, rawAnswers, testResultId);
+        jdbcTemplate.update(connection -> {
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setInt(1, totalScore);
+            preparedStatement.setString(2, rawAnswers);
+            setNullableTimestamp(preparedStatement, 3, checkedAt);
+            preparedStatement.setLong(4, testResultId);
+            return preparedStatement;
+        });
     }
 
     public boolean itemResultExists(Long testResultId, Long testPartId, Integer itemNumber) {
@@ -316,12 +334,40 @@ public class SyncRepository {
         jdbcTemplate.update(sql, isCorrect, testResultId, testPartId, itemNumber);
     }
 
-    public void insertSyncLog(Long teacherId, Long testId, String syncStatus) {
+    public void insertSyncLog(Long teacherId, Long testId, OffsetDateTime uploadedAt, String syncStatus) {
         String sql = """
-                INSERT INTO sync_log (user_id, test_id, sync_status)
-                VALUES (?, ?, ?)
+                INSERT INTO sync_log (user_id, test_id, sync_timestamp, sync_status)
+                VALUES (?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)
                 """;
 
-        jdbcTemplate.update(sql, teacherId, testId, syncStatus);
+        jdbcTemplate.update(connection -> {
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.setLong(1, teacherId);
+            preparedStatement.setLong(2, testId);
+            setNullableTimestamp(preparedStatement, 3, uploadedAt);
+            preparedStatement.setString(4, syncStatus);
+            return preparedStatement;
+        });
+    }
+
+    private LocalDate toLocalDate(Date value) {
+        return value == null ? null : value.toLocalDate();
+    }
+
+    private LocalDateTime toLocalDateTime(Timestamp value) {
+        return value == null ? null : value.toLocalDateTime();
+    }
+
+    private void setNullableTimestamp(
+            PreparedStatement preparedStatement,
+            int parameterIndex,
+            OffsetDateTime value
+    ) throws java.sql.SQLException {
+        if (value == null) {
+            preparedStatement.setNull(parameterIndex, Types.TIMESTAMP);
+            return;
+        }
+
+        preparedStatement.setTimestamp(parameterIndex, Timestamp.from(value.toInstant()));
     }
 }

@@ -9,6 +9,7 @@ import com.capstone.assessment.analytics.dto.SchoolLmsDto;
 import com.capstone.assessment.analytics.dto.StudentSkillMasteryDto;
 import com.capstone.assessment.analytics.dto.SyncActivityDto;
 import com.capstone.assessment.analytics.dto.TeacherInterventionRecommendationDto;
+import com.capstone.assessment.analytics.dto.TestPartResultDto;
 import com.capstone.assessment.analytics.service.AnalyticsService;
 import com.capstone.assessment.common.response.ApiResponse;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -108,5 +109,15 @@ public class AnalyticsController {
     public ApiResponse<List<SyncActivityDto>> getSyncActivity(@RequestParam Long teacherId) {
         List<SyncActivityDto> response = analyticsService.getSyncActivity(teacherId);
         return ApiResponse.success("Teacher sync activity retrieved successfully.", response);
+    }
+
+    // Returns actual per-student scores for one assessment part.
+    @GetMapping("/test-part-results")
+    public ApiResponse<List<TestPartResultDto>> getTestPartResults(
+            @RequestParam Long testId,
+            @RequestParam Long testPartId
+    ) {
+        List<TestPartResultDto> response = analyticsService.getTestPartResults(testId, testPartId);
+        return ApiResponse.success("Test part results retrieved successfully.", response);
     }
 }

@@ -1,11 +1,11 @@
 package com.capstone.assessment.analytics.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record SyncActivityDto(
         Long testId,
         String testName,
-        LocalDateTime syncTimestamp,
+        Instant syncTimestamp,
         String syncStatus
 ) {
 }

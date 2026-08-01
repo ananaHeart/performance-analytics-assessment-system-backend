@@ -10,6 +10,7 @@ import com.capstone.assessment.sync.repository.SyncRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,7 @@ public class SyncServiceImpl implements SyncService {
 
         Long teacherId = request.teacherId();
         Long testId = request.testId();
+        OffsetDateTime uploadedAt = request.uploadedAt();
         int uploadedResults = 0;
         int uploadedItems = 0;
         Map<String, Long> localToServerResultIds = new HashMap<>();
@@ -60,14 +62,16 @@ public class SyncServiceImpl implements SyncService {
                     syncRepository.updateTestResult(
                             serverResultId,
                             testResult.totalScore(),
-                            testResult.rawAnswers()
+                            testResult.rawAnswers(),
+                            testResult.checkedAt()
                     );
                 } else {
                     serverResultId = syncRepository.insertTestResult(
                             testId,
                             testResult.studentId(),
                             testResult.totalScore(),
-                            testResult.rawAnswers()
+                            testResult.rawAnswers(),
+                            testResult.checkedAt()
                     );
                 }
                 uploadedResults++;
@@ -110,7 +114,7 @@ public class SyncServiceImpl implements SyncService {
                 }
             }
 
-            syncRepository.insertSyncLog(teacherId, testId, "Success");
+            syncRepository.insertSyncLog(teacherId, testId, uploadedAt, "Success");
 
             return new UploadSyncResponse(
                     "Success",
@@ -119,7 +123,7 @@ public class SyncServiceImpl implements SyncService {
                     "Sync upload completed successfully."
             );
         } catch (Exception exception) {
-            syncRepository.insertSyncLog(teacherId, testId, "Failed");
+            syncRepository.insertSyncLog(teacherId, testId, uploadedAt, "Failed");
             throw exception;
         }
     }

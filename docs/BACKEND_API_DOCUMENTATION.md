@@ -1,6 +1,6 @@
 # Backend API Documentation
 
-Documentation timeline note: This document began as the backend API reference around late May 2026 and was updated through late June and July 2026 as rule-based LMS, student mastery, export, TiDB Cloud, Render Docker deployment support, CORS deployment fixes, TiDB SQL compatibility fixes, SF1-based class assignment filtering, July 27 database polishing notes, and the July 29 range-only part-skill mapping cleanup were added.
+Documentation timeline note: This document began as the backend API reference around late May 2026 and was updated through late June and July 2026 as rule-based LMS, student mastery, export, TiDB Cloud, Render Docker deployment support, CORS deployment fixes, TiDB SQL compatibility fixes, SF1-based class assignment filtering, July 27 database polishing notes, the July 29 range-only part-skill mapping cleanup, and the July 31 cloud mobile sync validation were added.
 
 ## 1. Overview
 The backend is the Spring Boot REST API for the Performance Analytic Assessment System. It serves as the central application layer for authentication, school setup, assessment setup, mobile synchronization, analytics processing, and Excel-based reporting. It stores and exposes the data required by the web dashboard and the mobile checking workflow while keeping the main academic and assessment records in the backend database.
@@ -233,6 +233,7 @@ This means assessment ownership is always class-based, while item grouping and a
 ## 9. Mobile Sync Download API
 
 Approximate implementation/documentation period: late May 2026, with restore support documented in late May to early June 2026.
+Cloud validation update: July 31, 2026.
 
 ### `GET /api/sync/download/{teacherId}`
 Purpose: Downloads teacher-scoped setup data and previously uploaded checked results for the mobile application.
@@ -253,9 +254,13 @@ Important behavior:
 
 The current backend implementation returns both setup metadata and uploaded checked-result data in a single download response so the mobile app can restore state without changing the upload contract.
 
+July 31, 2026 cloud validation note:
+The deployed Render backend and TiDB Cloud database were tested with the React Native mobile app using the deployed backend URL. The download flow succeeded and returned teacher-scoped class, student, test, test part, and competency data. During cloud testing, the TiDB `test_result` table was temporarily aligned with the active backend contract by adding compatibility columns used by the current sync queries: `total_score`, `raw_answers`, and `checked_at`.
+
 ## 10. Mobile Sync Upload API
 
 Approximate implementation/documentation period: late May 2026.
+Cloud validation update: July 31, 2026.
 
 ### `POST /api/sync/upload`
 Purpose: Uploads checked student results from the mobile application to the backend.
@@ -273,6 +278,9 @@ Upload behavior:
 - Uploaded results are used by analytics
 
 The upload path stores both summary-level result rows and item-level correctness rows so that later analytics and export endpoints can compute report data from synchronized mobile checking output.
+
+July 31, 2026 cloud validation note:
+Mobile upload was tested from the phone after successful cloud download and offline checking. The upload returned success with 5 uploaded result rows and 50 uploaded item response rows. A temporary TiDB compatibility issue was found because the cloud `test_result` table still contained non-final columns such as `score`, `total_items`, and `percentage_score` without defaults. These columns were given safe default values for the working deployed build. This is a compatibility adjustment only; the final local and TiDB database structure is still planned for recreation or migration after the final data dictionary is approved.
 
 ## 11. Analytics APIs
 
@@ -363,6 +371,8 @@ Deployment debugging updates:
 - July 12, 2026: CORS was configured for the deployed React frontend origin.
 - July 12, 2026: SQL queries with subqueries inside `JOIN ON` conditions were rewritten for TiDB compatibility.
 - July 13, 2026: Documentation was updated to include SF1-based section creation and available section filtering.
+- July 31, 2026: Generic backend exception logging was added so Render logs can show the real stack trace during deployed API failures.
+- July 31, 2026: Cloud mobile sync was validated against Render and TiDB. Temporary TiDB schema alignment was applied to support the active backend sync contract while the final database redesign remains under review.
 
 ## 14. Data Integrity Rules
 - One class assignment is unique by subject + section + academic year
@@ -387,6 +397,7 @@ These rules help keep class ownership, student history, analytics accuracy, and 
 - Assessment setup works
 - Sync download works
 - Sync upload works
+- Cloud mobile sync download and upload were validated on July 31, 2026 using Render and TiDB
 - Restore uploaded results works
 - Analytics reflects uploaded mobile results
 - Export endpoints exist
@@ -409,6 +420,7 @@ These rules help keep class ownership, student history, analytics accuracy, and 
 | July 13, 2026 | School setup and SF1 workflow documentation updated | SF1-created sections and available section filtering for class assignment |
 | July 27, 2026 | Database redesign and polishing notes documented | Curriculum, intervention, answer key normalization, term period review, student enrollment relationship, and item-result analytics meaning |
 | July 29, 2026 | Part-skill mapping simplified to range-only | Removed active backend dependency on `mapping_mode`, `CUSTOM`, and `skill_item` |
+| July 31, 2026 | Cloud mobile sync validation documented | Render + TiDB download/upload test, temporary `test_result` compatibility alignment, and logging support for deployed stack traces |
 
 ## 16. Known Future Improvements
 - Web correction/resubmission workflow
@@ -430,3 +442,17 @@ These notes document database design review items only. They are not automatic c
 - `test_item_result` stores each student's correctness per item and is aggregated for item analytics such as `Item 1: 12/60 students answered correctly`.
 - `answer_key` can be normalized later into one row per item through `answer_key(test_part_id, item_number, correct_answer, points)`.
 - `status` should control active academic year and active term period workflow; `start_date` and `end_date` should remain supporting fields and may be nullable.
+
+## 19. July 31, 2026 Cloud Mobile Sync and Temporary Database Alignment
+
+These notes document the working deployed build used for integration testing. They are not the final database redesign.
+
+- React Native mobile app was pointed to the deployed Render backend URL.
+- `GET /api/sync/download/{teacherId}` was validated successfully against the cloud backend and TiDB database.
+- `POST /api/sync/upload` was validated successfully after checking students on the phone.
+- Confirmed upload result: 5 result records and 50 item response records were uploaded.
+- A deployed 500 error was traced using Render logs after adding backend exception logging.
+- Root cause was a schema mismatch between the active backend sync contract and the TiDB `test_result` table.
+- Temporary TiDB compatibility columns added or aligned: `total_score`, `raw_answers`, and `checked_at`.
+- Temporary default values were applied to legacy/non-final TiDB fields such as `score`, `total_items`, and `percentage_score` so inserts from the active backend can succeed.
+- Final direction: both local MySQL and TiDB schemas may be recreated or migrated later after the final data dictionary and naming convention are approved by the adviser.

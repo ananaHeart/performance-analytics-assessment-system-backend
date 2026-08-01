@@ -9,6 +9,7 @@ import com.capstone.assessment.analytics.dto.SchoolLmsDto;
 import com.capstone.assessment.analytics.dto.StudentSkillMasteryDto;
 import com.capstone.assessment.analytics.dto.SyncActivityDto;
 import com.capstone.assessment.analytics.dto.TeacherInterventionRecommendationDto;
+import com.capstone.assessment.analytics.dto.TestPartResultDto;
 import com.capstone.assessment.analytics.repository.AnalyticsRepository;
 import com.capstone.assessment.common.exception.BadRequestException;
 import org.springframework.stereotype.Service;
@@ -114,6 +115,17 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         }
 
         return analyticsRepository.getSyncActivity(teacherId);
+    }
+
+    @Override
+    public List<TestPartResultDto> getTestPartResults(Long testId, Long testPartId) {
+        validateTestId(testId);
+
+        if (testPartId == null) {
+            throw new BadRequestException("Test part ID is required.");
+        }
+
+        return analyticsRepository.getTestPartResults(testId, testPartId);
     }
 
     private TeacherInterventionRecommendationDto buildTeacherRecommendation(

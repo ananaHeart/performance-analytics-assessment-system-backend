@@ -1,6 +1,6 @@
 # Development Gantt Plan
 
-Documentation timeline note: This plan was prepared around May 2026 as the phase-level development guide and remained the project planning reference through July 2026. It was updated on July 13, 2026 to include dated notes for deployment debugging, SF1-based section handling, and final documentation preparation. It was updated again on July 27, 2026 to record database redesign and polishing review items, then on July 29, 2026 to record the range-only part-skill mapping cleanup.
+Documentation timeline note: This plan was prepared around May 2026 as the phase-level development guide and remained the project planning reference through July 2026. It was updated on July 13, 2026 to include dated notes for deployment debugging, SF1-based section handling, and final documentation preparation. It was updated again on July 27, 2026 to record database redesign and polishing review items, on July 29, 2026 to record the range-only part-skill mapping cleanup, and on July 31, 2026 to record cloud mobile sync validation and temporary TiDB schema alignment.
 
 ## Project Title
 
@@ -253,6 +253,7 @@ Finalize project documents, review outputs, and prepare for capstone presentatio
 - Update Gantt chart and schedule with dated backend function timeline.
 - Prepare panel-ready evidence for deployment, API testing, database schema, and module completion.
 - Document July 27 database redesign and polishing decisions before applying any schema migration.
+- Document July 31 cloud mobile sync validation and the temporary TiDB compatibility changes needed for the active backend sync contract.
 
 **Expected output**  
 Complete capstone documentation set and final reviewed system build.
@@ -265,3 +266,4 @@ Complete capstone documentation set and final reviewed system build.
 | July 13, 2026 | Updated Gantt plan and schedule timeline | SF1 section creation, available section filtering, teacher class assignment validation |
 | July 27, 2026 | Documented database redesign and polishing discussion | Curriculum, intervention, answer key, term period, student enrollment, and item analytics meaning |
 | July 29, 2026 | Finalized range-only part-skill mapping cleanup | Removed active backend dependency on `mapping_mode`, `CUSTOM`, and `skill_item`; verified local mapping and LMS APIs |
+| July 31, 2026 | Documented deployed mobile sync validation and temporary cloud schema alignment | Render + TiDB mobile download/upload, `test_result` compatibility fields, and future local/TiDB database recreation after approval |

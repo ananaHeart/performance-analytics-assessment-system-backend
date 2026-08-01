@@ -8,11 +8,13 @@ import com.capstone.assessment.analytics.dto.LmsDto;
 import com.capstone.assessment.analytics.dto.SchoolLmsDto;
 import com.capstone.assessment.analytics.dto.StudentSkillMasteryDto;
 import com.capstone.assessment.analytics.dto.SyncActivityDto;
+import com.capstone.assessment.analytics.dto.TestPartResultDto;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -332,9 +334,73 @@ public class AnalyticsRepository {
         return jdbcTemplate.query(sql, (rs, rowNum) -> new SyncActivityDto(
                 rs.getLong("test_id"),
                 rs.getString("test_name"),
-                rs.getObject("sync_timestamp", Timestamp.class).toLocalDateTime(),
+                toInstant(rs.getTimestamp("sync_timestamp")),
                 rs.getString("sync_status")
         ), teacherId);
+    }
+
+    public List<TestPartResultDto> getTestPartResults(Long testId, Long testPartId) {
+        String sql = """
+                SELECT s.student_id,
+                       CONCAT(s.first_name, ' ', s.last_name) AS student_name,
+                       s.student_lrn,
+                       tr.test_id,
+                       tp.test_part_id,
+                       COALESCE(SUM(CASE WHEN tir.is_correct = 1 THEN tp.points_per_item ELSE 0 END), 0) AS part_score,
+                       (tp.number_of_items * tp.points_per_item) AS max_score,
+                       CASE
+                           WHEN (tp.number_of_items * tp.points_per_item) = 0 THEN 0
+                           ELSE ROUND(
+                               COALESCE(SUM(CASE WHEN tir.is_correct = 1 THEN tp.points_per_item ELSE 0 END), 0)
+                               * 100.0 / (tp.number_of_items * tp.points_per_item),
+                               2
+                           )
+                       END AS percentage,
+                       tr.checked_at,
+                       MAX(sl.sync_timestamp) AS synced_at
+                FROM test_result tr
+                JOIN `test` t ON t.test_id = tr.test_id
+                JOIN `class` c ON c.class_id = t.class_id
+                JOIN student s ON s.student_id = tr.student_id
+                JOIN test_part tp
+                  ON tp.test_id = tr.test_id
+                 AND tp.test_part_id = ?
+                LEFT JOIN test_item_result tir
+                  ON tir.test_result_id = tr.test_result_id
+                 AND tir.test_part_id = tp.test_part_id
+                LEFT JOIN sync_log sl
+                  ON sl.test_id = t.test_id
+                 AND sl.user_id = c.user_id
+                 AND sl.sync_status = 'Success'
+                WHERE tr.test_id = ?
+                GROUP BY s.student_id,
+                         s.student_lrn,
+                         s.first_name,
+                         s.last_name,
+                         tr.test_id,
+                         tp.test_part_id,
+                         tp.number_of_items,
+                         tp.points_per_item,
+                         tr.checked_at
+                ORDER BY s.last_name ASC, s.first_name ASC
+                """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            double percentage = rs.getDouble("percentage");
+            return new TestPartResultDto(
+                    rs.getLong("student_id"),
+                    rs.getString("student_name"),
+                    rs.getString("student_lrn"),
+                    rs.getLong("test_id"),
+                    rs.getLong("test_part_id"),
+                    rs.getInt("part_score"),
+                    rs.getInt("max_score"),
+                    percentage,
+                    getStudentMasteryStatus(percentage),
+                    toInstant(rs.getTimestamp("checked_at")),
+                    toInstant(rs.getTimestamp("synced_at"))
+            );
+        }, testPartId, testId);
     }
 
     private boolean hasBranchMappingsByTest(Long testId) {
@@ -388,5 +454,9 @@ public class AnalyticsRepository {
         }
 
         return "Needs Support";
+    }
+
+    private Instant toInstant(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toInstant();
     }
 }
