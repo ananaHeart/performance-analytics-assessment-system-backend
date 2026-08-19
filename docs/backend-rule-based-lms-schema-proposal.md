@@ -390,6 +390,8 @@ Until then, no migration or backend behavior change should be made.
 | July 13, 2026 | Documentation was updated to align the Gantt, API notes, and backend reference docs with the latest deployed backend workflow. |
 | July 27, 2026 | Database redesign and polishing notes were appended for curriculum, intervention, answer key, term period, enrollment, and item analytics meaning. |
 | July 29, 2026 | Part-skill mapping was simplified to range-only and the active backend dependency on `mapping_mode`, `CUSTOM`, and `skill_item` was removed. |
+| August 8, 2026 | A separate 37-table local V2 database was created, seeded, and transactionally validated with 54 foreign keys. The test covered OMR verification, results, intervention, batch sync, authentication, and audit flow; V1 local/TiDB and current client contracts remained unchanged. |
+| August 9, 2026 | The V9 OMR recapture-retention correction added `test_result_scans` to the isolated local V2 database. The current verified state is 38 tables and 56 foreign keys; multiple retained scans and exactly one selected scan per result were transactionally validated without changing V1 or TiDB. |
 
 ## 15. July 27, 2026 Database Polishing Notes
 

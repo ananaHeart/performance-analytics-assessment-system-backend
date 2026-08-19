@@ -173,7 +173,7 @@ This is not a panel-facing system document. It can stay as a developer reference
   - React Native mobile app downloaded data from Render and TiDB
   - Mobile upload stored 5 result rows and 50 item response rows
   - Temporary TiDB `test_result` compatibility fields were aligned with the active backend sync contract
-  - Final local and TiDB database recreation/migration remains pending until adviser approval
+  - Final local and TiDB database recreation/migration remained pending at that time
 
 ## Still Missing or Needs Final Polish
 
@@ -224,7 +224,7 @@ The database tables are documented in text, but the panel may still expect an ER
 
 ### Final migration decision for July 27 database polishing
 
-The July 27 notes are documented, and the July 31 cloud compatibility adjustments are also documented. However, the final database migration or recreation scripts are still needed only after approval. The backend code and final local/TiDB schema should not be broadly changed until the final table and column names are confirmed.
+The July 27 notes and July 31 cloud compatibility adjustments are documented. On August 8, 2026, a separate V2 local schema was created and validated without replacing the working database. Backend/client compatibility work and TiDB migration are still pending.
 
 ### July 31, 2026 cloud mobile sync validation
 
@@ -234,7 +234,7 @@ The deployed mobile sync flow has been validated against Render and TiDB:
 - Mobile reported 5 uploaded result records and 50 uploaded item response records.
 - A temporary TiDB schema mismatch was documented and aligned for the working build.
 
-This confirms the current deployed system works for mobile cloud sync, but it does not finalize the redesigned database. The planned final direction is still to recreate or migrate both local MySQL and TiDB after adviser approval.
+This confirms the current deployed system works for mobile cloud sync. A separate local V2 schema was later created on August 8, 2026, but the deployed backend and TiDB still use the working V1 contract until coordinated migration testing is complete.
 
 ### July 29, 2026 range-only mapping update
 
@@ -252,10 +252,54 @@ The backend docs should clearly state what is intentionally not included:
 - No online exam feature
 - No student portal
 - No AI-generated lesson plans
-- No OCR checking
+- Current V1 has no OMR scanner implementation; V2 has a validated fixed-template OMR data model, while mobile scanner and backend integration remain pending
 - Mobile does not compute deeper LMS offline
 - Analytics are computed from uploaded checked results
 
 ## Short Answer for Panel
 
-The backend is documented through the main API documentation, rule-based LMS schema proposal, API testing notes, and development Gantt documents. The backend documentation already covers the implemented API modules, database structure, synchronization flow, analytics computation, exports, deployment configuration, and July 31 cloud mobile sync validation. Remaining documentation work is mainly final polish: security runbook, final ERD, screenshots, final database migration/recreation decision, and final limitations.
+The backend is documented through the main API documentation, rule-based LMS schema proposal, API testing notes, development Gantt documents, and the August 8-9 V2 database validation report. Documentation now includes the executable V2 schema, reference seed, rollback-based integration evidence, V9 recapture-retention addendum, V2 API/sync freeze candidate, V1-to-V2 migration and rollback runbook, and backend impact audit. Remaining work includes adviser approval of the complete ERD, backend/mobile/frontend implementation, TiDB staging validation, screenshots, and final acceptance evidence.
+
+## August 8, 2026 V2 Database Status
+
+### August 9, 2026 validation and migration rehearsal
+
+- Created a dated SQL backup of `performance_assessment_v2_db` and proved that it restores into a disposable verification database.
+- Reverified the V2 target as 38 tables and 56 foreign keys after the local-only recapture-lineage migration, with reference data present and operational tables empty.
+- Added the V2 API/mobile sync freeze candidate in `docs/V2_API_SYNC_CONTRACT.md`.
+- Added read-only preflight, rollback-only migration rehearsal, and rollback guidance under `docs/migrations/` and `docs/V1_TO_V2_MIGRATION_PLAN.md`.
+- Added `docs/V2_BACKEND_IMPACT_AUDIT.md` to identify every backend module affected by the normalized V2 schema.
+- The current Spring Boot runtime, working local V1 database, and deployed TiDB database remain unchanged.
+
+- Created separate local database `performance_assessment_v2_db`; the working `performance_assessment_db` remains intact.
+- Initial August 8 creation verified 37 V2 tables and 54 foreign-key constraints.
+- August 9 added `test_result_scans`, removed direct `test_results.scan_session_id`, and verified the current local V2 state as 38 tables and 56 foreign keys.
+- Created `docs/Data Dictionary CAP2_v9.docx` as the authoritative recapture-retention correction while preserving V8.
+- Backed up local V2 before applying `docs/migrations/V2_002_test_result_scans.sql`.
+- Re-ran the rollback-based workflow test with retained scans, exactly one selected scan, duplicate-selected rejection, intervention, sync, authentication, and audit assertions.
+- Applied idempotent reference data for genders, majors, educational attainments, roles, statuses, curriculum, grade levels, and subjects.
+- Passed a rollback-based end-to-end relational test covering OMR capture, teacher verification, results, per-question answers, intervention, batch sync, authentication, login monitoring, and audit logging.
+- Confirmed zero remaining operational smoke-test rows after rollback.
+- Current Spring Boot runtime, mobile SQLite, React frontend, and TiDB Cloud have not yet migrated to V2.
+- Validation evidence: `docs/V2_DATABASE_VALIDATION.md`.
+
+## August 10, 2026 V2 Backend Runtime Checkpoint
+
+- Added an isolated `v2` Spring profile and separate V2 datasource configuration without changing the default V1 datasource or deployed TiDB configuration.
+- Implemented V2 login, current-user, and logout endpoints backed by `users`, `roles`, `statuses`, `auth_sessions`, `login_attempts`, and `audit_logs`.
+- Added opaque hashed server-side sessions, BCrypt password verification, account-status and email-verification checks, rate limiting, lockout persistence, logout revocation, and audit events.
+- Added deny-by-default V2 HTTP security. Endpoint-specific principal/teacher authorization and ownership rules remain pending because no protected business modules have been migrated yet.
+- Verified compilation and six focused authentication service tests. The existing V1 application-context test still requires a reachable local MySQL service.
+- No V2 database migration, TiDB change, frontend change, mobile SQLite change, or production sync change was performed in this checkpoint.
+
+## August 10, 2026 V2 School Setup and Class Assignment Checkpoint
+
+- Implemented principal-only V2 reference-data, available-class, class-assignment listing, and class-assignment creation APIs under the explicit `v2` Spring profile.
+- Enforced principal role and school ownership in Spring Security and again in the service layer.
+- Required active same-school classes and teachers, a valid subject, and at least one enrolled same-school learner before an assignment can be created.
+- Rejected exact active duplicates and prevented more than one active primary teacher for the same class and subject while allowing a co-teacher assignment.
+- Recorded successful class assignments in `audit_logs`.
+- Added seven focused service tests covering authorization, cross-school access, enrollment, duplicate protection, primary-teacher uniqueness, and co-teacher behavior.
+- The complete Maven test suite passed 19 tests with 0 failures and 0 errors while local MySQL was running.
+- V2 assessment creation, OMR verification, synchronization, analytics, intervention, exports, client migration, and TiDB staging migration remain pending.
+- The default V1 runtime, deployed TiDB database, React frontend, and mobile SQLite database were not changed by this checkpoint.

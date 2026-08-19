@@ -28,6 +28,8 @@ The development schedule follows a module-based approach. Core backend modules s
 | 17 | TiDB Cloud and Render Deployment | Jul 06, 2026 | Jul 12, 2026 | 7 days | Partially Completed |
 | 18 | System Testing and Debugging | Jul 11, 2026 | Jul 20, 2026 | 10 days | In Progress |
 | 19 | Documentation and Final Revision | Jul 13, 2026 | Jul 31, 2026 | 19 days | In Progress |
+| 20 | V2 Data Dictionary and Schema Validation | Aug 01, 2026 | Aug 08, 2026 | 8 days | Completed |
+| 21 | V2 Backend, Mobile, Frontend, and TiDB Migration | Aug 09, 2026 | To be finalized | Pending | Planned |
 
 ## Dated Backend Update Timeline
 
@@ -61,6 +63,8 @@ This section records the major backend functions and deployment-related fixes ad
 | July 29, 2026 | Part-skill mapping finalized as range-only; `skill_item` and `mapping_mode` removed from active design | Deeper LMS Mapping / Database Cleanup | Completed |
 | July 31, 2026 | Render and TiDB mobile sync download/upload validated from React Native app | Mobile / Backend / Cloud Integration | Completed |
 | July 31, 2026 | Temporary TiDB `test_result` compatibility alignment documented while final database recreation remains under review | Database Integration / Deployment Debugging | Completed |
+| August 8, 2026 | Separate local V2 schema created, seeded, and transactionally smoke-tested | Database V2 / Validation | Completed |
+| August 9, 2026 | V9 OMR recapture-retention addendum and local V2 migration validated | Database V2 / OMR Audit Lineage | Completed |
 
 ## Current Progress
 
@@ -85,6 +89,8 @@ As of July 13, 2026, the backend has completed the following modules:
 - July 29, 2026 Range-Only Part-Skill Mapping Cleanup
 - July 31, 2026 Cloud Mobile Sync Download and Upload Validation
 - July 31, 2026 Temporary TiDB Schema Alignment for Active Backend Sync Contract
+- August 8, 2026 Separate Local V2 Database Validation
+- August 9, 2026 V9 OMR Recapture Retention and Local V2 Validation
 
 Next planned phase:
-Finalize the database design decisions, recreate or migrate both local MySQL and TiDB only after adviser approval, complete final security hardening if required, and prepare final documentation evidence for panel review.
+Freeze the V2 API and synchronization contract, prepare reversible V1-to-V2 migration scripts, update the backend first, then update mobile SQLite and frontend consumers, validate on TiDB staging, and perform a controlled production cutover only after full acceptance testing.

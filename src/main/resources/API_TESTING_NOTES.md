@@ -519,3 +519,39 @@ Important database note:
 
 - The current cloud compatibility changes are not the final ERD decision.
 - Both local MySQL and TiDB may still be recreated or migrated later after the final data dictionary, table naming, and column naming are approved.
+
+## August 8, 2026 V2 Database Integration Test
+
+This is database-level evidence only; current APIs are not yet connected to V2.
+
+Validated against local `performance_assessment_v2_db`:
+
+- Schema creation: 37 tables and 54 foreign keys.
+- Idempotent master-data seed: passed without duplicate rows.
+- Full transactional test: school, users, class membership, test, questions, answer keys, mappings, OMR detections, teacher-verified answers, result score, intervention, sync batch/item, auth session, login attempt, and audit log.
+- Result assertion: `1.00 / 2.00`, 2 evaluated answers, 1 correct answer.
+- OMR/intervention/sync assertion: 2 detections, 1 intervention, 1 sync item.
+- Security assertion: 1 auth session, 1 login attempt, 1 audit event.
+- Rollback assertion: zero operational smoke-test records remained.
+
+Scripts:
+
+- `docs/performance_assessment_v2_schema.sql`
+- `docs/performance_assessment_v2_reference_seed.sql`
+- `docs/performance_assessment_v2_smoke_test.sql`
+- `docs/V2_DATABASE_VALIDATION.md`
+
+## August 9, 2026 V2 OMR Recapture-Lineage Test
+
+Validated only against local `performance_assessment_v2_db` after creating the pre-migration backup.
+
+- Applied `docs/migrations/V2_002_test_result_scans.sql` successfully.
+- Current schema count: 38 tables and 56 foreign keys.
+- Confirmed `test_results.scan_session_id` no longer exists.
+- Confirmed `test_result_scans` supports `selected`, `superseded`, and `rejected` links.
+- Confirmed the generated unique guard prevents more than one selected scan for a result.
+- Smoke assertion: two retained scan links, one selected link, and zero accepted duplicate-selected rows.
+- Analytics assertion: the selected scan exposed two raw OMR detections.
+- Rollback assertion: zero operational result, result-scan, scan-session, and sync rows remained.
+
+No API endpoint was tested against V2 because the current backend runtime still uses V1. TiDB and mobile SQLite were not changed.

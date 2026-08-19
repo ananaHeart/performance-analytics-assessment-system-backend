@@ -421,6 +421,8 @@ These rules help keep class ownership, student history, analytics accuracy, and 
 | July 27, 2026 | Database redesign and polishing notes documented | Curriculum, intervention, answer key normalization, term period review, student enrollment relationship, and item-result analytics meaning |
 | July 29, 2026 | Part-skill mapping simplified to range-only | Removed active backend dependency on `mapping_mode`, `CUSTOM`, and `skill_item` |
 | July 31, 2026 | Cloud mobile sync validation documented | Render + TiDB download/upload test, temporary `test_result` compatibility alignment, and logging support for deployed stack traces |
+| August 8, 2026 | Separate local V2 database created and transactionally validated | 37-table V2 schema, 54 foreign keys, reference seed, OMR verification, intervention, batch sync, security, and audit workflow |
+| August 9, 2026 | V9 OMR recapture retention model validated in local V2 | Added `test_result_scans`, removed direct result-to-scan linkage, retained scan history, and enforced one selected scan per result |
 
 ## 16. Known Future Improvements
 - Web correction/resubmission workflow
@@ -456,3 +458,338 @@ These notes document the working deployed build used for integration testing. Th
 - Temporary TiDB compatibility columns added or aligned: `total_score`, `raw_answers`, and `checked_at`.
 - Temporary default values were applied to legacy/non-final TiDB fields such as `score`, `total_items`, and `percentage_score` so inserts from the active backend can succeed.
 - Final direction: both local MySQL and TiDB schemas may be recreated or migrated later after the final data dictionary and naming convention are approved by the adviser.
+
+## 20. August 8, 2026 Local V2 Database Validation
+
+A separate local database named `performance_assessment_v2_db` was created from the V8 data-dictionary design. This did not replace `performance_assessment_db`, and it did not change the deployed TiDB database or the current API runtime connection.
+
+Verified initial V2 state on August 8 (before the August 9 recapture migration):
+
+- 37 tables and 54 foreign-key constraints were created.
+- Stable reference data was seeded idempotently.
+- `subjects.subject_name` uses `VARCHAR(100)` to support full official subject names.
+- A rollback-based workflow test covered school setup, users, class membership, assessment questions and normalized answer keys, mappings, OMR detections, teacher-verified answers, calculated result totals, intervention results, batch synchronization, authentication sessions, login attempts, and audit logs.
+- The workflow produced `1.00 / 2.00`, two answers, one correct answer, two OMR detections, one intervention, and one sync item.
+- All operational smoke-test records were rolled back; only reference data remains.
+
+The detailed evidence is in `docs/V2_DATABASE_VALIDATION.md`. V2 is schema-validated only. Backend repositories/DTOs/services, REST contracts, mobile SQLite, frontend consumers, and TiDB migration remain pending and must be handled as a coordinated versioned migration.
+
+## 21. August 9, 2026 OMR Recapture Retention Validation
+
+The approved V9 correction preserves every relevant OMR recapture for audit and teacher review. `test_results` no longer stores one direct `scan_session_id`. The new `test_result_scans` junction records whether each linked capture is `selected`, `superseded`, or `rejected`.
+
+Verified local V2 state after `docs/migrations/V2_002_test_result_scans.sql`:
+
+- 38 tables and 56 foreign-key constraints.
+- One scan session can belong to only one verified result.
+- One result can retain multiple historical scans but can have at most one selected scan.
+- Manual results may have zero scan links.
+- The smoke test retained two scan links, selected one, rejected a second, and rejected an attempted duplicate selected link.
+- All smoke-test operational rows were rolled back.
+
+This is database and contract evidence only. No V1, TiDB, Spring Boot runtime, React frontend, or mobile SQLite migration was performed.
+
+## August 10, 2026: Isolated V2 Authentication APIs
+
+These endpoints exist only when the Spring profile `v2` is active. They use the separate V2 datasource configuration. The normal/default profile continues to expose the existing V1 APIs.
+
+### `POST /api/v2/auth/login`
+
+Authenticates an active, email-verified V2 user and creates a server-side session.
+
+Request body:
+
+```json
+{
+  "email": "teacher@example.com",
+  "password": "user-supplied-password",
+  "deviceIdentifier": "optional-device-identifier"
+}
+```
+
+Successful `data` fields:
+
+- `tokenType`: `Bearer`
+- `accessToken`: one-time returned opaque session token; only its SHA-256 hash is stored
+- `expiresAt`: UTC session expiration instant
+- `user`: authenticated user identity, role, and status
+
+Security behavior includes generic invalid-credential errors, failed-attempt persistence, temporary lockout, rate limiting, inactive-account rejection, email-verification enforcement, and login auditing.
+
+### `GET /api/v2/auth/me`
+
+Requires `Authorization: Bearer <accessToken>`. Returns the current V2 user and updates the session's last-used timestamp.
+
+### `POST /api/v2/auth/logout`
+
+Requires `Authorization: Bearer <accessToken>`. Revokes only the current server-side session and writes a logout audit event.
+
+### `GET /api/v2/auth/teacher-registration/reference-data`
+
+Public endpoint. No Bearer token is required. Returns the active lookup values needed by the public teacher self-registration form.
+
+Response body:
+
+```json
+{
+  "success": true,
+  "message": "Teacher registration reference data retrieved successfully.",
+  "data": {
+    "genders": [
+      {
+        "genderId": 1,
+        "genderName": "Male"
+      }
+    ],
+    "majors": [
+      {
+        "majorId": 1,
+        "majorName": "English"
+      }
+    ],
+    "educationalAttainments": [
+      {
+        "educationalAttainmentId": 1,
+        "educationalAttainmentName": "Bachelor's Degree"
+      }
+    ],
+    "schools": [
+      {
+        "schoolCode": "SCHOOL-001",
+        "schoolName": "Test National High School"
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-08-15T00:00:00Z"
+}
+```
+
+`educationalAttainments` is filtered by `is_active = TRUE`. The current `genders`, `majors`, and `school_profiles` tables do not have an `is_active` column, so all rows from those current tables are returned.
+
+### `POST /api/v2/auth/register-teacher`
+
+Public endpoint. No Bearer token is required. Submits a teacher self-registration request. The backend creates a `teacher` account with `pending` status, hashes the submitted password with BCrypt, validates duplicate email/contact values, stores the address and user in one transaction, and records `REGISTER_TEACHER_ACCOUNT` in `audit_logs`.
+
+School association rule: the request must include `schoolCode`. For the current schema, `schoolCode` maps to `school_profiles.school_id`, which is the approved school identifier used to scope the principal teacher list. Registration fails when the submitted school code is not found.
+
+Request body:
+
+```json
+{
+  "schoolCode": "SCHOOL-001",
+  "firstName": "Maria",
+  "middleName": "A",
+  "lastName": "Santos",
+  "suffix": null,
+  "birthDate": "1990-01-01",
+  "teachingStartDate": "2015-06-01",
+  "email": "teacher@example.com",
+  "contactNumber": "+639171234567",
+  "password": "TempPass@2026",
+  "genderId": 2,
+  "majorId": 1,
+  "educationalAttainmentId": 1,
+  "address": {
+    "countryCode": "PH",
+    "regionCode": "06",
+    "regionName": "Western Visayas",
+    "provinceCode": "0604",
+    "provinceName": "Iloilo",
+    "cityMunicipalityCode": "063022",
+    "cityMunicipalityName": "Iloilo City",
+    "barangayCode": "063022001",
+    "barangayName": "City Proper",
+    "addressLine": "123 Test Street",
+    "postalCode": "5000"
+  }
+}
+```
+
+Success response:
+
+```json
+{
+  "success": true,
+  "message": "Teacher registration submitted for principal approval.",
+  "data": {
+    "userId": 20,
+    "schoolId": "SCHOOL-001",
+    "role": "teacher",
+    "status": "pending",
+    "emailVerified": false,
+    "contactVerified": false
+  },
+  "errors": null,
+  "timestamp": "2026-08-15T00:00:00Z"
+}
+```
+
+Validation errors use field keys:
+
+```json
+{
+  "success": false,
+  "message": "A user with this email or contact number already exists.",
+  "data": null,
+  "errors": {
+    "code": "DUPLICATE_ACCOUNT_DATA",
+    "email": "A user with this email already exists.",
+    "contactNumber": "A user with this contact number already exists."
+  },
+  "timestamp": "2026-08-15T00:00:00Z"
+}
+```
+
+The registration endpoint does not automatically activate the account. The teacher remains pending until the principal approves or rejects the request. Approval still does not bypass the separate email/contact verification requirement documented for V2 login.
+
+Teacher date validation:
+
+- `birthDate` is required.
+- `birthDate` must be before the current backend date.
+- The teacher must be at least 20 years old on the current backend date.
+- `teachingStartDate`, when supplied, must be before the current backend date.
+- `teachingStartDate` cannot be earlier than the teacher's 20th birthday.
+
+Date validation errors use field keys:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed.",
+  "data": null,
+  "errors": {
+    "code": "INVALID_TEACHER_DATES",
+    "birthDate": "Teacher must be at least 20 years old.",
+    "teachingStartDate": "Teaching start date must be before today."
+  },
+  "timestamp": "2026-08-15T00:00:00Z"
+}
+```
+
+### Current boundary
+
+Other unimplemented `/api/v2/**` routes remain denied until their role and ownership rules are implemented. Password reset, verification delivery, V2 sync/OMR, analytics, intervention, exports, and client integration remain pending.
+
+## August 10, 2026: V2 Principal-Managed Teacher Accounts
+
+These endpoints are available only when the `v2` Spring profile is active. Every endpoint requires an authenticated principal. The backend derives `school_id` from the principal's session rather than accepting it from the request body.
+
+### `POST /api/v2/users/teachers`
+
+Creates a teacher account with `pending` status. The request contains the teacher profile, validated reference identifiers, contact details, temporary password, and address. The backend validates duplicate email/contact values, hashes the password using BCrypt, stores the address and user transactionally, and writes an audit event.
+
+### `GET /api/v2/users/teachers?status={status}`
+
+Returns teacher accounts belonging only to the authenticated principal's school. The optional `status` query parameter can filter records such as `pending`, `active`, or `rejected`.
+
+### `POST /api/v2/users/teachers/{userId}/approve`
+
+Changes a same-school teacher account from `pending` to `active`. Accounts in another state cannot be approved through this transition.
+
+### `POST /api/v2/users/teachers/{userId}/reject`
+
+Changes a same-school teacher account from `pending` to `rejected`. Accounts in another state cannot be rejected through this transition.
+
+### Validation and authorization behavior
+
+- Principal role is enforced by Spring Security and checked again in the service.
+- Cross-school teacher access is rejected.
+- Newly created teachers are not automatically email/contact verified.
+- Approval alone does not bypass the V2 login requirement for verified contact data.
+- Teacher creation, approval, and rejection are recorded in `audit_logs`.
+
+### Current V2 boundary
+
+V2 assessment creation is not implemented yet. V2 school setup reference reads and class assignment are now implemented as the direct prerequisite. The next slice is tests, test parts, questions, answer keys, and normalized skill mappings. V1 assessment APIs remain unchanged.
+
+## August 10, 2026: V2 School Setup and Class Assignment
+
+These principal-only endpoints are available only when the `v2` Spring profile is active and use the separate local V2 database.
+
+### `GET /api/v2/school-setup/reference-data`
+
+Returns the active academic years, grade levels, and subjects needed by the V2 class-assignment form.
+
+### `GET /api/v2/school-setup/available-classes`
+
+Required query parameters are `academicYearId`, `gradeLevelId`, and `subjectId`. The response includes only active classes from the authenticated principal's school that contain enrolled students and remain available for the selected subject.
+
+### `GET /api/v2/school-setup/class-assignments`
+
+Lists assignments from the authenticated principal's school. The optional `academicYearId` query parameter limits the result to one school year.
+
+### `POST /api/v2/school-setup/class-assignments`
+
+Creates a primary-teacher or co-teacher assignment.
+
+Request body:
+
+```json
+{
+  "classId": 100,
+  "teacherUserId": 20,
+  "subjectId": 3,
+  "assignmentRole": "primary"
+}
+```
+
+`assignmentRole` accepts `primary` or `co_teacher` and defaults to `primary` when omitted.
+
+Validation and integrity behavior:
+
+- Spring Security and the service both require an authenticated principal.
+- The class and teacher must belong to the principal's school.
+- The class and teacher must be active, and the selected subject must exist.
+- The class must have at least one enrolled learner from the same school.
+- Exact active duplicate assignments are rejected.
+- Only one active primary teacher is allowed for the same class and subject; an additional co-teacher is allowed.
+- Successful assignment creation is written to `audit_logs`.
+
+Verification completed:
+
+- Seven focused service tests passed for authorization, ownership, enrollment, duplicate protection, primary-teacher uniqueness, and co-teacher behavior.
+- The complete Maven test suite passed 19 tests with 0 failures and 0 errors while local MySQL was running.
+
+### Current V2 boundary after this checkpoint
+
+Reference reads and class assignment are implemented. Direct section/class creation, class-list mutation, V2 assessment creation, OMR verification, sync, analytics, intervention, exports, client integration, and TiDB migration remain pending.
+
+## August 10, 2026: Isolated V2 Authentication APIs
+
+These endpoints exist only when the Spring profile `v2` is active. They use the separate V2 datasource configuration. The normal/default profile continues to expose the existing V1 APIs.
+
+### `POST /api/v2/auth/login`
+
+Authenticates an active, email-verified V2 user and creates a server-side session.
+
+Request body:
+
+```json
+{
+  "email": "teacher@example.com",
+  "password": "user-supplied-password",
+  "deviceIdentifier": "optional-device-identifier"
+}
+```
+
+Successful `data` fields:
+
+- `tokenType`: `Bearer`
+- `accessToken`: one-time returned opaque session token; only its SHA-256 hash is stored
+- `expiresAt`: UTC session expiration instant
+- `user`: authenticated user identity, role, and status
+
+Security behavior includes generic invalid-credential errors, failed-attempt persistence, temporary lockout, rate limiting, inactive-account rejection, email-verification enforcement, and login auditing.
+
+### `GET /api/v2/auth/me`
+
+Requires `Authorization: Bearer <accessToken>`. Returns the current V2 user and updates the session's last-used timestamp.
+
+### `POST /api/v2/auth/logout`
+
+Requires `Authorization: Bearer <accessToken>`. Revokes only the current server-side session and writes a logout audit event.
+
+### Current boundary
+
+Other unimplemented `/api/v2/**` routes remain denied until their role and ownership rules are implemented. Registration, password reset, V2 assessment creation, sync/OMR, analytics, intervention, exports, and client integration remain pending.

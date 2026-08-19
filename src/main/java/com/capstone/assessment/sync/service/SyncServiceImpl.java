@@ -51,17 +51,24 @@ public class SyncServiceImpl implements SyncService {
         int uploadedResults = 0;
         int uploadedItems = 0;
         Map<String, Long> localToServerResultIds = new HashMap<>();
+        List<ItemResponseUploadDto> itemResponses = request.itemResponses();
+        Map<Long, Integer> pointsPerItemByPart = syncRepository.findPointsPerItemByTestId(testId);
+        Map<String, Integer> verifiedScoresByLocalResultId = calculateVerifiedScores(
+                itemResponses,
+                pointsPerItemByPart
+        );
 
         try {
             for (TestResultUploadDto testResult : request.testResults()) {
                 Optional<Long> existingResultId = syncRepository.findExistingTestResultId(testId, testResult.studentId());
+                int verifiedTotalScore = resolveTotalScore(testResult, verifiedScoresByLocalResultId);
 
                 Long serverResultId;
                 if (existingResultId.isPresent()) {
                     serverResultId = existingResultId.get();
                     syncRepository.updateTestResult(
                             serverResultId,
-                            testResult.totalScore(),
+                            verifiedTotalScore,
                             testResult.rawAnswers(),
                             testResult.checkedAt()
                     );
@@ -69,7 +76,7 @@ public class SyncServiceImpl implements SyncService {
                     serverResultId = syncRepository.insertTestResult(
                             testId,
                             testResult.studentId(),
-                            testResult.totalScore(),
+                            verifiedTotalScore,
                             testResult.rawAnswers(),
                             testResult.checkedAt()
                     );
@@ -81,7 +88,6 @@ public class SyncServiceImpl implements SyncService {
                 }
             }
 
-            List<ItemResponseUploadDto> itemResponses = request.itemResponses();
             if (itemResponses != null) {
                 for (ItemResponseUploadDto itemResponse : itemResponses) {
                     Long serverResultId = localToServerResultIds.get(itemResponse.localResultId());
@@ -148,5 +154,47 @@ public class SyncServiceImpl implements SyncService {
         if (teacherId == null) {
             throw new BadRequestException("Teacher ID is required.");
         }
+    }
+
+    private Map<String, Integer> calculateVerifiedScores(
+            List<ItemResponseUploadDto> itemResponses,
+            Map<Long, Integer> pointsPerItemByPart
+    ) {
+        Map<String, Integer> verifiedScores = new HashMap<>();
+
+        if (itemResponses == null || itemResponses.isEmpty()) {
+            return verifiedScores;
+        }
+
+        for (ItemResponseUploadDto itemResponse : itemResponses) {
+            if (itemResponse.localResultId() == null || itemResponse.localResultId().isBlank()) {
+                continue;
+            }
+
+            Integer pointsPerItem = pointsPerItemByPart.get(itemResponse.testPartId());
+            if (pointsPerItem == null) {
+                throw new BadRequestException("Item response test part does not belong to the uploaded assessment.");
+            }
+
+            if (Boolean.TRUE.equals(itemResponse.isCorrect())) {
+                verifiedScores.merge(itemResponse.localResultId(), pointsPerItem, Integer::sum);
+            } else {
+                verifiedScores.putIfAbsent(itemResponse.localResultId(), 0);
+            }
+        }
+
+        return verifiedScores;
+    }
+
+    private int resolveTotalScore(
+            TestResultUploadDto testResult,
+            Map<String, Integer> verifiedScoresByLocalResultId
+    ) {
+        if (testResult.localResultId() != null
+                && verifiedScoresByLocalResultId.containsKey(testResult.localResultId())) {
+            return verifiedScoresByLocalResultId.get(testResult.localResultId());
+        }
+
+        return testResult.totalScore() == null ? 0 : testResult.totalScore();
     }
 }

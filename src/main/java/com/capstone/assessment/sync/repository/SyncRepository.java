@@ -20,7 +20,9 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -252,6 +254,23 @@ public class SyncRepository {
         );
 
         return resultIds.stream().findFirst();
+    }
+
+    public Map<Long, Integer> findPointsPerItemByTestId(Long testId) {
+        String sql = """
+                SELECT test_part_id,
+                       points_per_item
+                FROM test_part
+                WHERE test_id = ?
+                """;
+
+        return jdbcTemplate.query(sql, rs -> {
+            Map<Long, Integer> pointsPerItemByPart = new HashMap<>();
+            while (rs.next()) {
+                pointsPerItemByPart.put(rs.getLong("test_part_id"), rs.getInt("points_per_item"));
+            }
+            return pointsPerItemByPart;
+        }, testId);
     }
 
     public Long insertTestResult(

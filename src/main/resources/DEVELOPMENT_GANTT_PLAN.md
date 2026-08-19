@@ -96,10 +96,10 @@ Working analytics module with teacher and principal reporting endpoints.
 
 ## Phase 7. School Setup Module Development
 
-**Approximate development period**  
+**Approximate development period**
 May 21, 2026 to May 22, 2026. Updated on July 13, 2026 for SF1-based available section filtering.
 
-**Objective**  
+**Objective**
 Build backend support for grade levels, subjects, sections, teachers, students, and class assignments.
 
 **Main tasks**
@@ -110,7 +110,7 @@ Build backend support for grade levels, subjects, sections, teachers, students, 
 - Exclude sections already assigned for the selected subject and academic year.
 - Validate duplicate and invalid setup records.
 
-**Expected output**  
+**Expected output**
 Working school setup module for academic structure management and SF1-based teacher assignment.
 
 ## Phase 8. Assessment Setup Module Development
@@ -267,3 +267,28 @@ Complete capstone documentation set and final reviewed system build.
 | July 27, 2026 | Documented database redesign and polishing discussion | Curriculum, intervention, answer key, term period, student enrollment, and item analytics meaning |
 | July 29, 2026 | Finalized range-only part-skill mapping cleanup | Removed active backend dependency on `mapping_mode`, `CUSTOM`, and `skill_item`; verified local mapping and LMS APIs |
 | July 31, 2026 | Documented deployed mobile sync validation and temporary cloud schema alignment | Render + TiDB mobile download/upload, `test_result` compatibility fields, and future local/TiDB database recreation after approval |
+| August 8, 2026 | Created and validated a separate local V2 database | 37 tables, 54 foreign keys, idempotent master seed, rollback-based OMR/result/intervention/sync/security workflow |
+| August 9, 2026 | Finalized and validated the V9 OMR recapture-retention correction in local V2 | Versioned backup/migration, `test_result_scans`, 38 tables, 56 foreign keys, duplicate-selected guard, and rollback smoke evidence |
+
+## Phase 17. V2 Coordinated Migration
+
+**Approximate development period**
+
+August 8, 2026 onward.
+
+**Objective**
+
+Move from the working V1 contract to the approved V2 model without breaking the deployed system.
+
+**Main tasks**
+- Keep the current local database and TiDB deployment intact while V2 is tested separately.
+- Freeze the V2 ERD, field rules, role/ownership matrix, and API/sync contract.
+- Prepare repeatable V1-to-V2 migration and rollback scripts.
+- Update backend repositories, DTOs, services, validation, RBAC, OMR, analytics, intervention, sync, and audit behavior.
+- Update the mobile SQLite subset and synchronization payload only after the backend contract is approved.
+- Update frontend API consumers after backend responses stabilize.
+- Validate V2 locally, on TiDB staging, and through complete web/mobile acceptance scenarios.
+
+**Expected output**
+
+A versioned and reversible V2 migration with complete integration evidence before production cutover.
