@@ -1,6 +1,7 @@
 package com.capstone.assessment.v2.account.service;
 
 import com.capstone.assessment.v2.account.dto.V2CreateTeacherRequest;
+import com.capstone.assessment.v2.account.dto.V2RegistrationVerificationMethodOption;
 import com.capstone.assessment.v2.account.dto.V2TeacherAccountResponse;
 import com.capstone.assessment.v2.account.dto.V2TeacherReferenceDataResponse;
 import com.capstone.assessment.v2.account.dto.V2TeacherRegistrationReferenceDataResponse;
@@ -12,6 +13,8 @@ import com.capstone.assessment.v2.auth.exception.V2FieldValidationException;
 import com.capstone.assessment.v2.auth.model.V2AuthenticatedUser;
 import com.capstone.assessment.v2.auth.repository.V2AuthRepository;
 import com.capstone.assessment.v2.auth.service.V2RequestMetadata;
+import com.capstone.assessment.v2.auth.service.V2EmailVerificationService;
+import com.capstone.assessment.v2.notification.service.V2NotificationService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +34,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Profile("v2")
 @Service
@@ -39,7 +43,13 @@ public class V2TeacherAccountService {
     private static final String TEACHER_ROLE = "teacher";
     private static final String PRINCIPAL_ROLE = "principal";
     private static final String PENDING_STATUS = "pending";
-    private static final int MIN_TEACHER_AGE_YEARS = 20;
+    private static final String EMAIL_VERIFICATION_METHOD = "email";
+    private static final int MIN_TEACHER_AGE_YEARS = 18;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\\.[A-Za-z]{2,}$"
+    );
+    private static final Pattern PH_MOBILE_LOCAL_PATTERN = Pattern.compile("^09\\d{9}$");
+    private static final Pattern PH_MOBILE_INTERNATIONAL_PATTERN = Pattern.compile("^\\+639\\d{9}$");
     private static final Set<String> LISTABLE_STATUSES = Set.of(
             "pending", "active", "rejected", "inactive", "locked"
     );
@@ -48,6 +58,8 @@ public class V2TeacherAccountService {
     private final V2AuthRepository authRepository;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
+    private final V2NotificationService notificationService;
+    private final V2EmailVerificationService emailVerificationService;
     private final Clock clock;
 
     @Autowired
@@ -55,9 +67,12 @@ public class V2TeacherAccountService {
             V2TeacherAccountRepository accountRepository,
             V2AuthRepository authRepository,
             PasswordEncoder passwordEncoder,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            V2NotificationService notificationService,
+            V2EmailVerificationService emailVerificationService
     ) {
-        this(accountRepository, authRepository, passwordEncoder, objectMapper, Clock.systemUTC());
+        this(accountRepository, authRepository, passwordEncoder, objectMapper,
+                notificationService, emailVerificationService, Clock.systemUTC());
     }
 
     V2TeacherAccountService(
@@ -67,10 +82,36 @@ public class V2TeacherAccountService {
             ObjectMapper objectMapper,
             Clock clock
     ) {
+        this(accountRepository, authRepository, passwordEncoder, objectMapper, null, null, clock);
+    }
+
+    V2TeacherAccountService(
+            V2TeacherAccountRepository accountRepository,
+            V2AuthRepository authRepository,
+            PasswordEncoder passwordEncoder,
+            ObjectMapper objectMapper,
+            V2NotificationService notificationService,
+            Clock clock
+    ) {
+        this(accountRepository, authRepository, passwordEncoder, objectMapper,
+                notificationService, null, clock);
+    }
+
+    V2TeacherAccountService(
+            V2TeacherAccountRepository accountRepository,
+            V2AuthRepository authRepository,
+            PasswordEncoder passwordEncoder,
+            ObjectMapper objectMapper,
+            V2NotificationService notificationService,
+            V2EmailVerificationService emailVerificationService,
+            Clock clock
+    ) {
         this.accountRepository = accountRepository;
         this.authRepository = authRepository;
         this.passwordEncoder = passwordEncoder;
         this.objectMapper = objectMapper;
+        this.notificationService = notificationService;
+        this.emailVerificationService = emailVerificationService;
         this.clock = clock;
     }
 
@@ -81,11 +122,12 @@ public class V2TeacherAccountService {
             V2RequestMetadata metadata
     ) {
         requirePrincipal(principal);
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
-        String contact = normalizeContact(request.contactNumber());
+        String email = normalizeEmail(request.email(), false);
+        String contact = normalizeContact(request.contactNumber(), false);
         validateTeacherDates(request);
         validatePassword(request.temporaryPassword());
         validateReferences(request);
+        V2CreateTeacherRequest normalizedRequest = requestWithResolvedSuffix(request);
 
         if (accountRepository.emailExists(email)) {
             throw conflict("DUPLICATE_EMAIL", "A user with this email already exists.");
@@ -102,7 +144,7 @@ public class V2TeacherAccountService {
                     addressId,
                     accountRepository.findRoleId(TEACHER_ROLE),
                     accountRepository.findStatusId(PENDING_STATUS),
-                    request,
+                    normalizedRequest,
                     email,
                     contact,
                     passwordEncoder.encode(request.temporaryPassword()),
@@ -116,6 +158,11 @@ public class V2TeacherAccountService {
                     "success",
                     Map.of("status", PENDING_STATUS)
             );
+            if (emailVerificationService != null) {
+                emailVerificationService.issueInitialCode(userId, email, metadata);
+            } else {
+                notifyPendingTeacher(principal.schoolId(), userId, normalizedRequest, now);
+            }
             return toResponse(requiredTeacher(principal.schoolId(), userId));
         } catch (DataIntegrityViolationException exception) {
             throw conflict("DUPLICATE_ACCOUNT_DATA", "The teacher email or contact number is already registered.");
@@ -127,6 +174,7 @@ public class V2TeacherAccountService {
         requirePrincipal(principal);
         return new V2TeacherReferenceDataResponse(
                 accountRepository.listGenders(),
+                accountRepository.listActiveSuffixes(),
                 accountRepository.listMajors(),
                 accountRepository.listActiveEducationalAttainments()
         );
@@ -136,9 +184,24 @@ public class V2TeacherAccountService {
     public V2TeacherRegistrationReferenceDataResponse getPublicRegistrationReferenceData() {
         return new V2TeacherRegistrationReferenceDataResponse(
                 accountRepository.listGenders(),
+                accountRepository.listActiveSuffixes(),
                 accountRepository.listMajors(),
                 accountRepository.listActiveEducationalAttainments(),
-                accountRepository.listSchools()
+                accountRepository.listSchools(),
+                List.of(
+                        new V2RegistrationVerificationMethodOption(
+                                EMAIL_VERIFICATION_METHOD,
+                                "Email",
+                                true,
+                                null
+                        ),
+                        new V2RegistrationVerificationMethodOption(
+                                "sms",
+                                "Text message (SMS)",
+                                false,
+                                "SMS verification is not available yet."
+                        )
+                )
         );
     }
 
@@ -147,8 +210,9 @@ public class V2TeacherAccountService {
             V2TeacherRegistrationRequest request,
             V2RequestMetadata metadata
     ) {
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
-        String contact = normalizeContact(request.contactNumber());
+        String verificationMethod = normalizeVerificationMethod(request.verificationMethod());
+        String email = normalizeEmail(request.email(), true);
+        String contact = normalizeContact(request.contactNumber(), true);
         String schoolCode = normalizeSchoolCode(request.schoolCode());
         V2CreateTeacherRequest teacherRequest = toCreateTeacherRequest(request);
         validateTeacherDates(teacherRequest);
@@ -164,6 +228,7 @@ public class V2TeacherAccountService {
 
         validatePublicPassword(request.password());
         validateReferences(teacherRequest, true);
+        V2CreateTeacherRequest normalizedTeacherRequest = requestWithResolvedSuffix(teacherRequest);
         validatePublicUniqueness(email, contact);
 
         Instant now = clock.instant();
@@ -174,13 +239,16 @@ public class V2TeacherAccountService {
                     addressId,
                     accountRepository.findRoleId(TEACHER_ROLE),
                     accountRepository.findStatusId(PENDING_STATUS),
-                    teacherRequest,
+                    normalizedTeacherRequest,
                     email,
                     contact,
                     passwordEncoder.encode(request.password()),
                     now
             );
-            recordPublicRegistrationAudit(metadata, userId, schoolId);
+            recordPublicRegistrationAudit(metadata, userId, schoolId, verificationMethod);
+            if (emailVerificationService != null) {
+                emailVerificationService.issueInitialCode(userId, email, metadata);
+            }
             return toResponse(requiredTeacher(schoolId, userId));
         } catch (DataIntegrityViolationException exception) {
             throw fieldValidation(
@@ -237,6 +305,12 @@ public class V2TeacherAccountService {
                     "Only pending teacher accounts can be approved or rejected."
             );
         }
+        if (!existing.emailVerified()) {
+            throw conflict(
+                    "EMAIL_VERIFICATION_REQUIRED",
+                    "The teacher must verify their email before principal approval."
+            );
+        }
 
         int updated = accountRepository.transitionStatus(
                 principal.schoolId(),
@@ -288,6 +362,18 @@ public class V2TeacherAccountService {
             }
             throw badRequest("INVALID_MAJOR", "The selected teacher major does not exist.");
         }
+        if (request.suffixId() != null && !accountRepository.suffixExists(request.suffixId())) {
+            if (fieldErrors) {
+                throw fieldValidation(
+                        HttpStatus.BAD_REQUEST,
+                        "INVALID_SUFFIX",
+                        "Validation failed.",
+                        "suffixId",
+                        "The selected suffix is unavailable."
+                );
+            }
+            throw badRequest("INVALID_SUFFIX", "The selected suffix is unavailable.");
+        }
         if (!accountRepository.educationalAttainmentExists(request.educationalAttainmentId())) {
             if (fieldErrors) {
                 throw fieldValidation(
@@ -302,19 +388,56 @@ public class V2TeacherAccountService {
         }
     }
 
-    private String normalizeContact(String value) {
-        String normalized = value.trim().replaceAll("[\\s()-]", "");
-        if (!normalized.matches("\\+?[0-9]{10,15}")) {
-            throw badRequest(
+    private String normalizeContact(String value, boolean fieldErrors) {
+        String normalized = value == null ? "" : value.trim();
+        if (PH_MOBILE_LOCAL_PATTERN.matcher(normalized).matches()) {
+            return "+63" + normalized.substring(1);
+        }
+        if (PH_MOBILE_INTERNATIONAL_PATTERN.matcher(normalized).matches()) {
+            return normalized;
+        }
+        if (fieldErrors) {
+            throw fieldValidation(
+                    HttpStatus.BAD_REQUEST,
                     "INVALID_CONTACT_NUMBER",
-                    "Contact number must contain 10 to 15 digits and may start with +."
+                    "Validation failed.",
+                    "contactNumber",
+                    "Contact number must use 09XXXXXXXXX or +639XXXXXXXXX format."
+            );
+        }
+        throw badRequest(
+                "INVALID_CONTACT_NUMBER",
+                "Contact number must use 09XXXXXXXXX or +639XXXXXXXXX format."
+        );
+    }
+
+    private String normalizeEmail(String value, boolean fieldErrors) {
+        String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        if (!EMAIL_PATTERN.matcher(normalized).matches()
+                || normalized.contains("..")
+                || normalized.startsWith(".")
+                || normalized.endsWith(".")) {
+            if (fieldErrors) {
+                throw fieldValidation(
+                        HttpStatus.BAD_REQUEST,
+                        "INVALID_EMAIL",
+                        "Validation failed.",
+                        "email",
+                        "Email must be a complete address such as teachername123@gmail.com."
+                );
+            }
+            throw badRequest(
+                    "INVALID_EMAIL",
+                    "Email must be a complete address such as teachername123@gmail.com."
             );
         }
         return normalized;
     }
 
     private void validatePassword(String password) {
-        boolean strong = password.chars().anyMatch(Character::isUpperCase)
+        boolean strong = password != null
+                && password.length() >= 10
+                && password.chars().anyMatch(Character::isUpperCase)
                 && password.chars().anyMatch(Character::isLowerCase)
                 && password.chars().anyMatch(Character::isDigit)
                 && password.chars().anyMatch(character -> !Character.isLetterOrDigit(character));
@@ -327,7 +450,9 @@ public class V2TeacherAccountService {
     }
 
     private void validatePublicPassword(String password) {
-        boolean strong = password.chars().anyMatch(Character::isUpperCase)
+        boolean strong = password != null
+                && password.length() >= 10
+                && password.chars().anyMatch(Character::isUpperCase)
                 && password.chars().anyMatch(Character::isLowerCase)
                 && password.chars().anyMatch(Character::isDigit)
                 && password.chars().anyMatch(character -> !Character.isLetterOrDigit(character));
@@ -337,7 +462,7 @@ public class V2TeacherAccountService {
                     "WEAK_PASSWORD",
                     "Validation failed.",
                     "password",
-                    "Password must include uppercase, lowercase, number, and special characters."
+                    "Password must be at least 10 characters and include uppercase, lowercase, number, and special characters."
             );
         }
     }
@@ -353,7 +478,7 @@ public class V2TeacherAccountService {
         } else if (!birthDate.isBefore(today)) {
             errors.put("birthDate", "Birth date must be before today.");
         } else if (birthDate.plusYears(MIN_TEACHER_AGE_YEARS).isAfter(today)) {
-            errors.put("birthDate", "Teacher must be at least 20 years old.");
+            errors.put("birthDate", "Teacher must be at least 18 years old.");
         }
 
         LocalDate teachingStartDate = request.teachingStartDate();
@@ -365,7 +490,7 @@ public class V2TeacherAccountService {
                     && teachingStartDate.isBefore(birthDate.plusYears(MIN_TEACHER_AGE_YEARS))) {
                 errors.put(
                         "teachingStartDate",
-                        "Teaching start date cannot be earlier than the teacher's 20th birthday."
+                        "Teaching start date cannot be earlier than the teacher's 18th birthday."
                 );
             }
         }
@@ -455,7 +580,8 @@ public class V2TeacherAccountService {
     private void recordPublicRegistrationAudit(
             V2RequestMetadata metadata,
             long teacherUserId,
-            String schoolId
+            String schoolId,
+            String verificationMethod
     ) {
         authRepository.recordAudit(
                 UUID.randomUUID().toString(),
@@ -470,7 +596,8 @@ public class V2TeacherAccountService {
                 writeJson(Map.of(
                         "status", PENDING_STATUS,
                         "schoolId", schoolId,
-                        "source", "public_self_registration"
+                        "source", "public_self_registration",
+                        "verificationMethod", verificationMethod
                 )),
                 clock.instant()
         );
@@ -482,11 +609,59 @@ public class V2TeacherAccountService {
                 request.middleName(),
                 request.lastName(),
                 request.suffix(),
+                request.suffixId(),
                 request.birthDate(),
                 request.teachingStartDate(),
                 request.email(),
                 request.contactNumber(),
                 request.password(),
+                request.genderId(),
+                request.majorId(),
+                request.educationalAttainmentId(),
+                request.address()
+        );
+    }
+
+    private String normalizeVerificationMethod(String value) {
+        String method = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        if (EMAIL_VERIFICATION_METHOD.equals(method)) {
+            return method;
+        }
+        if ("sms".equals(method)) {
+            throw fieldValidation(
+                    HttpStatus.BAD_REQUEST,
+                    "VERIFICATION_METHOD_UNAVAILABLE",
+                    "The selected verification method is not available.",
+                    "verificationMethod",
+                    "SMS verification is not available yet. Select email verification."
+            );
+        }
+        throw fieldValidation(
+                HttpStatus.BAD_REQUEST,
+                "INVALID_VERIFICATION_METHOD",
+                "Validation failed.",
+                "verificationMethod",
+                "Select an available verification method."
+        );
+    }
+
+    private V2CreateTeacherRequest requestWithResolvedSuffix(V2CreateTeacherRequest request) {
+        String suffix = null;
+        if (request.suffixId() != null) {
+            suffix = accountRepository.findSuffixName(request.suffixId())
+                    .orElseThrow(() -> badRequest("INVALID_SUFFIX", "The selected suffix is unavailable."));
+        }
+        return new V2CreateTeacherRequest(
+                request.firstName(),
+                request.middleName(),
+                request.lastName(),
+                suffix,
+                request.suffixId(),
+                request.birthDate(),
+                request.teachingStartDate(),
+                request.email(),
+                request.contactNumber(),
+                request.temporaryPassword(),
                 request.genderId(),
                 request.majorId(),
                 request.educationalAttainmentId(),
@@ -562,5 +737,28 @@ public class V2TeacherAccountService {
 
     private V2AuthException conflict(String code, String message) {
         return new V2AuthException(code, message, HttpStatus.CONFLICT);
+    }
+
+    private void notifyPendingTeacher(
+            String schoolId,
+            long teacherUserId,
+            V2CreateTeacherRequest request,
+            Instant createdAt
+    ) {
+        if (notificationService == null) {
+            return;
+        }
+        String teacherName = (request.firstName().trim() + " " + request.lastName().trim())
+                .replaceAll("\\s+", " ");
+        notificationService.notifySchoolPrincipals(
+                schoolId,
+                "teacher_registration_pending",
+                "Teacher approval pending",
+                teacherName + " submitted a teacher account for approval.",
+                "users",
+                Long.toString(teacherUserId),
+                "teacher-registration:" + teacherUserId,
+                createdAt
+        );
     }
 }

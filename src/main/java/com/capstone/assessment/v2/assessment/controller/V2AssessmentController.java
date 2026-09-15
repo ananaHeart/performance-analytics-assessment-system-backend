@@ -7,6 +7,7 @@ import com.capstone.assessment.v2.assessment.dto.V2AssessmentResponse;
 import com.capstone.assessment.v2.assessment.dto.V2AssessmentSummaryResponse;
 import com.capstone.assessment.v2.assessment.service.V2OmrSheetPrintService;
 import com.capstone.assessment.v2.assessment.service.V2AssessmentService;
+import com.capstone.assessment.v2.assessment.service.V2QuestionnairePdfService;
 import com.capstone.assessment.v2.auth.model.V2AuthenticatedUser;
 import com.capstone.assessment.v2.auth.service.V2RequestMetadata;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ContentDisposition;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,13 +37,16 @@ public class V2AssessmentController {
 
     private final V2AssessmentService assessmentService;
     private final V2OmrSheetPrintService omrSheetPrintService;
+    private final V2QuestionnairePdfService questionnairePdfService;
 
     public V2AssessmentController(
             V2AssessmentService assessmentService,
-            V2OmrSheetPrintService omrSheetPrintService
+            V2OmrSheetPrintService omrSheetPrintService,
+            V2QuestionnairePdfService questionnairePdfService
     ) {
         this.assessmentService = assessmentService;
         this.omrSheetPrintService = omrSheetPrintService;
+        this.questionnairePdfService = questionnairePdfService;
     }
 
     @GetMapping("/reference-data")
@@ -90,16 +95,32 @@ public class V2AssessmentController {
         ));
     }
 
-    @GetMapping(value = "/{testId}/omr-sheet", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> printOmrSheet(
+    @GetMapping(value = "/{testId}/omr-sheet", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> printOmrSheet(
             @AuthenticationPrincipal V2AuthenticatedUser principal,
-            @PathVariable long testId,
-            @RequestParam(required = false) Long classListId
+            @PathVariable long testId
     ) {
         V2AssessmentResponse assessment = assessmentService.getAssessment(principal, testId);
         return ResponseEntity.ok()
-                .contentType(MediaType.TEXT_HTML)
-                .body(omrSheetPrintService.renderSheet(assessment, classListId));
+                .contentType(MediaType.APPLICATION_PDF)
+                .headers(headers -> headers.setContentDisposition(ContentDisposition.inline()
+                        .filename("bubble-answer-sheet-%d.pdf".formatted(testId))
+                        .build()))
+                .body(omrSheetPrintService.renderSheet(assessment));
+    }
+
+    @GetMapping(value = "/{testId}/questionnaire", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> downloadQuestionnaire(
+            @AuthenticationPrincipal V2AuthenticatedUser principal,
+            @PathVariable long testId
+    ) {
+        V2AssessmentResponse assessment = assessmentService.getAssessment(principal, testId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .headers(headers -> headers.setContentDisposition(ContentDisposition.attachment()
+                        .filename("test-questionnaire-%d.pdf".formatted(testId))
+                        .build()))
+                .body(questionnairePdfService.renderQuestionnaire(assessment));
     }
 
     @PutMapping("/{testId}")

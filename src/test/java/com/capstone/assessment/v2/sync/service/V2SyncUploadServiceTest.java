@@ -2,6 +2,7 @@ package com.capstone.assessment.v2.sync.service;
 
 import com.capstone.assessment.v2.auth.exception.V2AuthException;
 import com.capstone.assessment.v2.auth.model.V2AuthenticatedUser;
+import com.capstone.assessment.v2.notification.service.V2NotificationService;
 import com.capstone.assessment.v2.sync.dto.V2SyncAnswerUploadRequest;
 import com.capstone.assessment.v2.sync.dto.V2SyncResultUploadRequest;
 import com.capstone.assessment.v2.sync.dto.V2SyncUploadRequest;
@@ -48,6 +49,9 @@ class V2SyncUploadServiceTest {
     @Mock
     private V2SyncUploadRepository uploadRepository;
 
+    @Mock
+    private V2NotificationService notificationService;
+
     private V2SyncUploadService uploadService;
 
     @BeforeEach
@@ -55,6 +59,7 @@ class V2SyncUploadServiceTest {
         uploadService = new V2SyncUploadService(
                 uploadRepository,
                 new ObjectMapper(),
+                notificationService,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -101,6 +106,16 @@ class V2SyncUploadServiceTest {
         assertEquals(7001L, response.items().get(0).testResultId());
         verify(uploadRepository).updateSyncItem(9001L, 7001L, "create", "success", null, null, NOW);
         verify(uploadRepository).updateSyncStatus(8001L, "success", NOW, null);
+        verify(notificationService).notifyUser(
+                20L,
+                "sync_success",
+                "Assessment sync completed",
+                "1 of 1 student result(s) synchronized for assessment 101.",
+                "syncs",
+                "8001",
+                "sync:" + request.syncUuid() + ":success",
+                NOW
+        );
     }
 
     @Test

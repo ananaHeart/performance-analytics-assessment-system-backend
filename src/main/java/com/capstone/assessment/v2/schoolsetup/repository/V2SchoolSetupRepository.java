@@ -221,6 +221,44 @@ public class V2SchoolSetupRepository {
         );
     }
 
+    public boolean activeAssignmentExistsExcluding(
+            long assignmentId,
+            long classId,
+            long teacherUserId,
+            int subjectId
+    ) {
+        return exists(
+                """
+                SELECT COUNT(*) FROM class_assignments
+                 WHERE class_assignment_id <> ?
+                   AND class_id = ?
+                   AND user_id = ?
+                   AND subject_id = ?
+                   AND status = 'active'
+                """,
+                assignmentId,
+                classId,
+                teacherUserId,
+                subjectId
+        );
+    }
+
+    public Optional<Long> findAssignmentId(long classId, long teacherUserId, int subjectId) {
+        return jdbcTemplate.query(
+                """
+                SELECT class_assignment_id
+                  FROM class_assignments
+                 WHERE class_id = ?
+                   AND user_id = ?
+                   AND subject_id = ?
+                """,
+                (rs, rowNum) -> rs.getLong("class_assignment_id"),
+                classId,
+                teacherUserId,
+                subjectId
+        ).stream().findFirst();
+    }
+
     public boolean activePrimaryAssignmentExists(long classId, int subjectId) {
         return exists(
                 """
@@ -230,6 +268,33 @@ public class V2SchoolSetupRepository {
                 """,
                 classId,
                 subjectId
+        );
+    }
+
+    public boolean activePrimaryAssignmentExistsExcluding(
+            long assignmentId,
+            long classId,
+            int subjectId
+    ) {
+        return exists(
+                """
+                SELECT COUNT(*) FROM class_assignments
+                 WHERE class_assignment_id <> ?
+                   AND class_id = ?
+                   AND subject_id = ?
+                   AND assignment_role = 'primary'
+                   AND status = 'active'
+                """,
+                assignmentId,
+                classId,
+                subjectId
+        );
+    }
+
+    public boolean assignmentHasAssessments(long assignmentId) {
+        return exists(
+                "SELECT COUNT(*) FROM tests WHERE class_assignment_id = ?",
+                assignmentId
         );
     }
 
@@ -264,6 +329,61 @@ public class V2SchoolSetupRepository {
         return key.longValue();
     }
 
+    public int reactivateArchivedAssignment(
+            long assignmentId,
+            String schoolId,
+            String assignmentRole,
+            Instant assignedAt
+    ) {
+        return jdbcTemplate.update(
+                """
+                UPDATE class_assignments ca
+                JOIN users u ON u.user_id = ca.user_id
+                   SET ca.assignment_role = ?,
+                       ca.assigned_at = ?,
+                       ca.status = 'active',
+                       ca.updated_at = CURRENT_TIMESTAMP
+                 WHERE ca.class_assignment_id = ?
+                   AND u.school_id = ?
+                   AND ca.status = 'archived'
+                """,
+                assignmentRole,
+                Timestamp.from(assignedAt),
+                assignmentId,
+                schoolId
+        );
+    }
+
+    public int updateActiveAssignment(
+            long assignmentId,
+            String schoolId,
+            long classId,
+            long teacherUserId,
+            int subjectId,
+            String assignmentRole
+    ) {
+        return jdbcTemplate.update(
+                """
+                UPDATE class_assignments ca
+                JOIN users current_teacher ON current_teacher.user_id = ca.user_id
+                   SET ca.class_id = ?,
+                       ca.user_id = ?,
+                       ca.subject_id = ?,
+                       ca.assignment_role = ?,
+                       ca.updated_at = CURRENT_TIMESTAMP
+                 WHERE ca.class_assignment_id = ?
+                   AND current_teacher.school_id = ?
+                   AND ca.status = 'active'
+                """,
+                classId,
+                teacherUserId,
+                subjectId,
+                assignmentRole,
+                assignmentId,
+                schoolId
+        );
+    }
+
     public Optional<V2ClassAssignmentResponse> findAssignment(long assignmentId, String schoolId) {
         List<V2ClassAssignmentResponse> rows = jdbcTemplate.query(
                 ASSIGNMENT_SELECT + " WHERE ca.class_assignment_id = ? AND u.school_id = ?",
@@ -272,6 +392,22 @@ public class V2SchoolSetupRepository {
                 schoolId
         );
         return rows.stream().findFirst();
+    }
+
+    public int archiveActiveAssignment(long assignmentId, String schoolId) {
+        return jdbcTemplate.update(
+                """
+                UPDATE class_assignments ca
+                JOIN users u ON u.user_id = ca.user_id
+                   SET ca.status = 'archived',
+                       ca.updated_at = CURRENT_TIMESTAMP
+                 WHERE ca.class_assignment_id = ?
+                   AND u.school_id = ?
+                   AND ca.status = 'active'
+                """,
+                assignmentId,
+                schoolId
+        );
     }
 
     public List<V2ClassAssignmentResponse> listAssignments(String schoolId, Integer academicYearId) {

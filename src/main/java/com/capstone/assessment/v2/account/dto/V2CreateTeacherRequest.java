@@ -15,6 +15,7 @@ public record V2CreateTeacherRequest(
         @Size(max = 50) String middleName,
         @NotBlank @Size(max = 50) String lastName,
         @Size(max = 10) String suffix,
+        @Positive Integer suffixId,
         @NotNull @Past(message = "Birth date must be before today.") LocalDate birthDate,
         @Past(message = "Teaching start date must be before today.") LocalDate teachingStartDate,
         @NotBlank @Email @Size(max = 120) String email,

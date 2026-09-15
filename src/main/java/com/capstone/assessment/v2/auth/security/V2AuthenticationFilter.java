@@ -44,6 +44,8 @@ public class V2AuthenticationFilter extends OncePerRequestFilter {
                 || "/api/v2/auth/login".equals(requestUri)
                 || "/api/v2/auth/teacher-registration/reference-data".equals(requestUri)
                 || "/api/v2/auth/register-teacher".equals(requestUri)
+                || "/api/v2/auth/verify-teacher-email".equals(requestUri)
+                || "/api/v2/auth/resend-teacher-verification".equals(requestUri)
                 || !requestUri.startsWith("/api/v2/");
     }
 

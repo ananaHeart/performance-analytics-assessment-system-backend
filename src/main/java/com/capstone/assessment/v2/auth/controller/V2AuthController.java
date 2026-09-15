@@ -8,8 +8,12 @@ import com.capstone.assessment.v2.account.service.V2TeacherAccountService;
 import com.capstone.assessment.v2.auth.dto.V2CurrentUserResponse;
 import com.capstone.assessment.v2.auth.dto.V2LoginRequest;
 import com.capstone.assessment.v2.auth.dto.V2LoginResponse;
+import com.capstone.assessment.v2.auth.dto.V2EmailVerificationResponse;
+import com.capstone.assessment.v2.auth.dto.V2ResendTeacherVerificationRequest;
+import com.capstone.assessment.v2.auth.dto.V2VerifyTeacherEmailRequest;
 import com.capstone.assessment.v2.auth.model.V2AuthenticatedUser;
 import com.capstone.assessment.v2.auth.service.V2AuthService;
+import com.capstone.assessment.v2.auth.service.V2EmailVerificationService;
 import com.capstone.assessment.v2.auth.service.V2RequestMetadata;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -32,10 +36,16 @@ public class V2AuthController {
 
     private final V2AuthService authService;
     private final V2TeacherAccountService accountService;
+    private final V2EmailVerificationService emailVerificationService;
 
-    public V2AuthController(V2AuthService authService, V2TeacherAccountService accountService) {
+    public V2AuthController(
+            V2AuthService authService,
+            V2TeacherAccountService accountService,
+            V2EmailVerificationService emailVerificationService
+    ) {
         this.authService = authService;
         this.accountService = accountService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @PostMapping("/login")
@@ -68,7 +78,35 @@ public class V2AuthController {
                 requestMetadata(httpRequest, httpRequest.getHeader(DEVICE_IDENTIFIER_HEADER))
         );
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Teacher registration submitted for principal approval.", response));
+                .body(ApiResponse.success("Teacher account created. Verify the registered email before principal approval.", response));
+    }
+
+    @PostMapping("/verify-teacher-email")
+    public ResponseEntity<ApiResponse<V2EmailVerificationResponse>> verifyTeacherEmail(
+            @Valid @RequestBody V2VerifyTeacherEmailRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Email verified successfully. The teacher account is now pending principal approval.",
+                emailVerificationService.verify(
+                        request.email(), request.otp(),
+                        requestMetadata(httpRequest, httpRequest.getHeader(DEVICE_IDENTIFIER_HEADER))
+                )
+        ));
+    }
+
+    @PostMapping("/resend-teacher-verification")
+    public ResponseEntity<ApiResponse<V2EmailVerificationResponse>> resendTeacherVerification(
+            @Valid @RequestBody V2ResendTeacherVerificationRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "A new verification code was issued.",
+                emailVerificationService.resendCode(
+                        request.email(),
+                        requestMetadata(httpRequest, httpRequest.getHeader(DEVICE_IDENTIFIER_HEADER))
+                )
+        ));
     }
 
     @GetMapping("/me")

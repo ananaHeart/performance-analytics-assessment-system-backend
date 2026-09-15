@@ -5,6 +5,7 @@ import java.util.List;
 public record Sf1ImportPreviewResponse(
         String detectedSchoolYear,
         String detectedSectionName,
+        String detectedGradeLevelName,
         Integer totalRows,
         Integer validRows,
         Integer invalidRows,

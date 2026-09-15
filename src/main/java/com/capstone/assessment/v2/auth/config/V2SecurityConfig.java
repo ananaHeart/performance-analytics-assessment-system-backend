@@ -18,7 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Profile("v2")
 @Configuration
-@EnableConfigurationProperties(V2AuthProperties.class)
+@EnableConfigurationProperties({V2AuthProperties.class, V2EmailVerificationProperties.class})
 public class V2SecurityConfig {
 
     @Bean
@@ -45,10 +45,12 @@ public class V2SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v2/auth/teacher-registration/reference-data").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v2/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v2/auth/register-teacher").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/import/sf1/preview").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/import/sf1/confirm").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v2/auth/verify-teacher-email").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v2/auth/resend-teacher-verification").permitAll()
                         .requestMatchers("/api/v2/users/**").hasRole("PRINCIPAL")
+                        .requestMatchers("/api/v2/import/**").hasRole("PRINCIPAL")
                         .requestMatchers("/api/v2/school-setup/**").hasRole("PRINCIPAL")
+                        .requestMatchers("/api/v2/teacher/**").hasRole("TEACHER")
                         .requestMatchers("/api/v2/**").authenticated()
                         .anyRequest().denyAll())
                 .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class);

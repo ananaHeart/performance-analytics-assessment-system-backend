@@ -6,6 +6,7 @@ import com.capstone.assessment.v2.account.dto.V2EducationalAttainmentOption;
 import com.capstone.assessment.v2.account.dto.V2GenderOption;
 import com.capstone.assessment.v2.account.dto.V2MajorOption;
 import com.capstone.assessment.v2.account.dto.V2SchoolOption;
+import com.capstone.assessment.v2.account.dto.V2SuffixOption;
 import com.capstone.assessment.v2.account.model.V2TeacherAccount;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -74,6 +75,23 @@ public class V2TeacherAccountRepository {
         return exists("SELECT COUNT(*) FROM majors WHERE major_id = ?", majorId);
     }
 
+    public boolean suffixExists(Integer suffixId) {
+        return exists("SELECT COUNT(*) FROM suffixes WHERE suffix_id = ? AND is_active = TRUE", suffixId);
+    }
+
+    public Optional<String> findSuffixName(Integer suffixId) {
+        return jdbcTemplate.query(
+                """
+                SELECT suffix_name
+                  FROM suffixes
+                 WHERE suffix_id = ?
+                   AND is_active = TRUE
+                """,
+                (resultSet, rowNumber) -> resultSet.getString("suffix_name"),
+                suffixId
+        ).stream().findFirst();
+    }
+
     public boolean educationalAttainmentExists(Integer attainmentId) {
         return exists(
                 "SELECT COUNT(*) FROM educational_attainments WHERE educational_attainment_id = ? AND is_active = TRUE",
@@ -119,6 +137,22 @@ public class V2TeacherAccountRepository {
                 (resultSet, rowNumber) -> new V2MajorOption(
                         resultSet.getInt("major_id"),
                         resultSet.getString("major_name")
+                )
+        );
+    }
+
+    public List<V2SuffixOption> listActiveSuffixes() {
+        return jdbcTemplate.query(
+                """
+                SELECT suffix_id,
+                       suffix_name
+                  FROM suffixes
+                 WHERE is_active = TRUE
+                 ORDER BY display_order, suffix_name
+                """,
+                (resultSet, rowNumber) -> new V2SuffixOption(
+                        resultSet.getInt("suffix_id"),
+                        resultSet.getString("suffix_name")
                 )
         );
     }
@@ -174,7 +208,7 @@ public class V2TeacherAccountRepository {
                         country_code, region_code, region_name, province_code, province_name,
                         city_municipality_code, city_municipality_name, barangay_code,
                         barangay_name, address_line, postal_code, address_source
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     Statement.RETURN_GENERATED_KEYS
             );
@@ -189,6 +223,7 @@ public class V2TeacherAccountRepository {
             statement.setString(9, address.barangayName().trim());
             statement.setString(10, address.addressLine().trim());
             statement.setString(11, trimToNull(address.postalCode()));
+            statement.setString(12, addressSource(address));
             return statement;
         }, keyHolder);
         return requiredGeneratedKey(keyHolder, "address");
@@ -254,13 +289,13 @@ public class V2TeacherAccountRepository {
     public List<V2TeacherAccount> findTeachers(String schoolId, String status) {
         if (status == null) {
             return jdbcTemplate.query(
-                    TEACHER_SELECT + " AND u.school_id = ? ORDER BY u.last_name, u.first_name, u.user_id",
+                    TEACHER_SELECT + " AND u.school_id = ? AND u.email_verified_at IS NOT NULL ORDER BY u.last_name, u.first_name, u.user_id",
                     this::mapTeacher,
                     schoolId
             );
         }
         return jdbcTemplate.query(
-                TEACHER_SELECT + " AND u.school_id = ? AND s.status_name = ? ORDER BY u.last_name, u.first_name, u.user_id",
+                TEACHER_SELECT + " AND u.school_id = ? AND s.status_name = ? AND u.email_verified_at IS NOT NULL ORDER BY u.last_name, u.first_name, u.user_id",
                 this::mapTeacher,
                 schoolId,
                 status
@@ -282,6 +317,7 @@ public class V2TeacherAccountRepository {
                    AND school_id = ?
                    AND role_id = ?
                    AND status_id = ?
+                   AND email_verified_at IS NOT NULL
                 """,
                 targetStatusId,
                 userId,
@@ -351,5 +387,13 @@ public class V2TeacherAccountRepository {
 
     private static String valueOrDefault(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value.trim();
+    }
+
+    private static String addressSource(V2AddressRequest address) {
+        boolean hasApiCodes = trimToNull(address.regionCode()) != null
+                && trimToNull(address.provinceCode()) != null
+                && trimToNull(address.cityMunicipalityCode()) != null
+                && trimToNull(address.barangayCode()) != null;
+        return hasApiCodes ? "api" : "manual";
     }
 }

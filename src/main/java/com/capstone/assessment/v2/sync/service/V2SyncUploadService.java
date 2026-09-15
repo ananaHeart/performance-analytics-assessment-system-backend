@@ -2,6 +2,7 @@ package com.capstone.assessment.v2.sync.service;
 
 import com.capstone.assessment.v2.auth.exception.V2AuthException;
 import com.capstone.assessment.v2.auth.model.V2AuthenticatedUser;
+import com.capstone.assessment.v2.notification.service.V2NotificationService;
 import com.capstone.assessment.v2.sync.dto.V2SyncAnswerUploadRequest;
 import com.capstone.assessment.v2.sync.dto.V2SyncDetectionUploadRequest;
 import com.capstone.assessment.v2.sync.dto.V2SyncResultUploadRequest;
@@ -48,16 +49,31 @@ public class V2SyncUploadService {
 
     private final V2SyncUploadRepository uploadRepository;
     private final ObjectMapper objectMapper;
+    private final V2NotificationService notificationService;
     private final Clock clock;
 
     @Autowired
-    public V2SyncUploadService(V2SyncUploadRepository uploadRepository, ObjectMapper objectMapper) {
-        this(uploadRepository, objectMapper, Clock.systemUTC());
+    public V2SyncUploadService(
+            V2SyncUploadRepository uploadRepository,
+            ObjectMapper objectMapper,
+            V2NotificationService notificationService
+    ) {
+        this(uploadRepository, objectMapper, notificationService, Clock.systemUTC());
     }
 
     V2SyncUploadService(V2SyncUploadRepository uploadRepository, ObjectMapper objectMapper, Clock clock) {
+        this(uploadRepository, objectMapper, null, clock);
+    }
+
+    V2SyncUploadService(
+            V2SyncUploadRepository uploadRepository,
+            ObjectMapper objectMapper,
+            V2NotificationService notificationService,
+            Clock clock
+    ) {
         this.uploadRepository = uploadRepository;
         this.objectMapper = objectMapper;
+        this.notificationService = notificationService;
         this.clock = clock;
     }
 
@@ -94,6 +110,7 @@ public class V2SyncUploadService {
         String status = overallStatus(items);
         Instant completedAt = now();
         uploadRepository.updateSyncStatus(syncId, status, completedAt, null);
+        notifySyncCompleted(principal, request, syncId, status, items, completedAt);
         return new V2SyncUploadResponse(
                 request.syncUuid(),
                 syncId,
@@ -449,6 +466,38 @@ public class V2SyncUploadService {
             return "failed";
         }
         return "partial_success";
+    }
+
+    private void notifySyncCompleted(
+            V2AuthenticatedUser principal,
+            V2SyncUploadRequest request,
+            long syncId,
+            String status,
+            List<V2SyncUploadItemResponse> items,
+            Instant completedAt
+    ) {
+        if (notificationService == null) {
+            return;
+        }
+        long successfulItems = items.stream().filter(item -> "success".equals(item.status())).count();
+        String notificationType = "sync_" + status;
+        String title = switch (status) {
+            case "success" -> "Assessment sync completed";
+            case "partial_success" -> "Assessment sync partially completed";
+            default -> "Assessment sync failed";
+        };
+        String message = successfulItems + " of " + items.size()
+                + " student result(s) synchronized for assessment " + request.testId() + ".";
+        notificationService.notifyUser(
+                principal.userId(),
+                notificationType,
+                title,
+                message,
+                "syncs",
+                Long.toString(syncId),
+                "sync:" + request.syncUuid() + ":" + status,
+                completedAt
+        );
     }
 
     private List<V2SyncDetectionUploadRequest> safeDetections(V2SyncScanSessionUploadRequest scan) {

@@ -6,7 +6,9 @@ import com.capstone.assessment.v2.auth.service.V2RequestMetadata;
 import com.capstone.assessment.v2.schoolsetup.dto.V2AvailableClassResponse;
 import com.capstone.assessment.v2.schoolsetup.dto.V2ClassAssignmentResponse;
 import com.capstone.assessment.v2.schoolsetup.dto.V2CreateClassAssignmentRequest;
+import com.capstone.assessment.v2.schoolsetup.dto.V2ReactivateClassAssignmentRequest;
 import com.capstone.assessment.v2.schoolsetup.dto.V2SchoolSetupReferenceResponse;
+import com.capstone.assessment.v2.schoolsetup.dto.V2UpdateClassAssignmentRequest;
 import com.capstone.assessment.v2.schoolsetup.service.V2SchoolSetupService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -14,9 +16,11 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -78,6 +82,67 @@ public class V2SchoolSetupController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Teacher assigned to class successfully.",
                 schoolSetupService.createAssignment(principal, request, requestMetadata(httpRequest))
+        ));
+    }
+
+    @RequestMapping(
+            value = "/class-assignments/{classAssignmentId}",
+            method = RequestMethod.PATCH
+    )
+    public ResponseEntity<ApiResponse<V2ClassAssignmentResponse>> updateClassAssignment(
+            @AuthenticationPrincipal V2AuthenticatedUser principal,
+            @PathVariable long classAssignmentId,
+            @Valid @RequestBody V2UpdateClassAssignmentRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Teacher class assignment updated successfully.",
+                schoolSetupService.updateAssignment(
+                        principal,
+                        classAssignmentId,
+                        request,
+                        requestMetadata(httpRequest)
+                )
+        ));
+    }
+
+    @RequestMapping(
+            value = "/class-assignments/{classAssignmentId}/deactivate",
+            method = {RequestMethod.PATCH, RequestMethod.POST}
+    )
+    public ResponseEntity<ApiResponse<V2ClassAssignmentResponse>> deactivateClassAssignment(
+            @AuthenticationPrincipal V2AuthenticatedUser principal,
+            @PathVariable long classAssignmentId,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Teacher class assignment removed successfully.",
+                schoolSetupService.deactivateAssignment(
+                        principal,
+                        classAssignmentId,
+                        requestMetadata(httpRequest)
+                )
+        ));
+    }
+
+    @RequestMapping(
+            value = "/class-assignments/{classAssignmentId}/reactivate",
+            method = {RequestMethod.PATCH, RequestMethod.POST}
+    )
+    public ResponseEntity<ApiResponse<V2ClassAssignmentResponse>> reactivateClassAssignment(
+            @AuthenticationPrincipal V2AuthenticatedUser principal,
+            @PathVariable long classAssignmentId,
+            @Valid @RequestBody V2ReactivateClassAssignmentRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Teacher class assignment restored successfully.",
+                schoolSetupService.reactivateAssignment(
+                        principal,
+                        classAssignmentId,
+                        request.reason(),
+                        requestMetadata(httpRequest)
+                )
         ));
     }
 

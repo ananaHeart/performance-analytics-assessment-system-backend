@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Private V3 scan evidence ###
+/output/v3-scan-evidence/
+/output/local-mobile-staging/
+/output/local-dynamic-staging-*/

@@ -9,6 +9,7 @@ import com.capstone.assessment.importexport.repository.Sf1ImportRepository;
 import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.EmptyFileException;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -20,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -180,8 +182,7 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
                             SECTION_END_COLUMN,
                             formatter
                     )),
-                    detectSectionName(sheet, formatter),
-                    detectSectionNameFromFileName(file.getOriginalFilename())
+                    detectSectionName(sheet, formatter)
             );
             String detectedGradeLevelName = firstNonBlank(
                     detectGradeLevelName(sheet, formatter),
@@ -211,6 +212,7 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
         return new Sf1ImportPreviewResponse(
                 parsedSf1Data.detectedSchoolYear(),
                 parsedSf1Data.detectedSectionName(),
+                parsedSf1Data.detectedGradeLevelName(),
                 parsedSf1Data.rows().size(),
                 validRows,
                 parsedSf1Data.rows().size() - validRows,
@@ -425,10 +427,6 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
         return null;
     }
 
-    private String detectSectionNameFromFileName(String fileName) {
-        return normalizeSectionName(fileName);
-    }
-
     private String detectGradeLevelNameFromText(String value) {
         String normalized = normalizeValue(value);
         if (normalized == null) {
@@ -453,7 +451,7 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
 
         for (int rowIndex = STUDENT_ROW_START_INDEX; rowIndex <= STUDENT_ROW_END_INDEX; rowIndex++) {
             Row row = sheet.getRow(rowIndex);
-            String lrn = readRangeValue(row, LRN_START_COLUMN, LRN_END_COLUMN, formatter);
+            String lrn = readLrnRangeValue(row, LRN_START_COLUMN, LRN_END_COLUMN, formatter);
             String combinedName = readRangeValue(row, NAME_START_COLUMN, NAME_END_COLUMN, formatter);
             String genderValue = readCellValue(row, GENDER_COLUMN, formatter);
 
@@ -537,7 +535,7 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
         }
 
         for (int cellIndex = 0; cellIndex < lastCellNum; cellIndex++) {
-            String cellValue = readCellValue(row, cellIndex, formatter);
+            String cellValue = readLrnCellValue(row, cellIndex, formatter);
             if (isBlank(cellValue)) {
                 continue;
             }
@@ -623,6 +621,58 @@ public class Sf1ImportServiceImpl implements Sf1ImportService {
 
     private String readRangeValue(Sheet sheet, int rowIndex, int startColumn, int endColumn, DataFormatter formatter) {
         return readRangeValue(sheet.getRow(rowIndex), startColumn, endColumn, formatter);
+    }
+
+    private String readLrnRangeValue(
+            Row row,
+            int startColumn,
+            int endColumn,
+            DataFormatter formatter
+    ) {
+        if (row == null) {
+            return null;
+        }
+
+        Set<String> values = new LinkedHashSet<>();
+        for (int columnIndex = startColumn; columnIndex <= endColumn; columnIndex++) {
+            String value = readLrnCellValue(row, columnIndex, formatter);
+            if (!isBlank(value)) {
+                values.add(value);
+            }
+        }
+
+        if (values.isEmpty()) {
+            return null;
+        }
+
+        return normalizeValue(String.join("", values));
+    }
+
+    private String readLrnCellValue(Row row, int columnIndex, DataFormatter formatter) {
+        if (row == null) {
+            return null;
+        }
+
+        Cell cell = row.getCell(columnIndex, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        if (cell == null) {
+            return null;
+        }
+
+        CellType cellType = cell.getCellType();
+        boolean numericCell = cellType == CellType.NUMERIC
+                || (cellType == CellType.FORMULA
+                && cell.getCachedFormulaResultType() == CellType.NUMERIC);
+
+        if (numericCell) {
+            double numericValue = cell.getNumericCellValue();
+            if (Double.isFinite(numericValue)) {
+                return BigDecimal.valueOf(numericValue)
+                        .stripTrailingZeros()
+                        .toPlainString();
+            }
+        }
+
+        return normalizeValue(formatter.formatCellValue(cell));
     }
 
     private String readRangeValue(Row row, int startColumn, int endColumn, DataFormatter formatter) {

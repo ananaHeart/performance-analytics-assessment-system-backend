@@ -9,7 +9,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@Profile("!v2")
+@Profile("!v2 & !v3")
 public class SecurityConfig {
 
     @Bean

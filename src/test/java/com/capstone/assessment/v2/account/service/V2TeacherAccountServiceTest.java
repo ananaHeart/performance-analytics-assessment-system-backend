@@ -6,6 +6,7 @@ import com.capstone.assessment.v2.account.dto.V2EducationalAttainmentOption;
 import com.capstone.assessment.v2.account.dto.V2GenderOption;
 import com.capstone.assessment.v2.account.dto.V2MajorOption;
 import com.capstone.assessment.v2.account.dto.V2SchoolOption;
+import com.capstone.assessment.v2.account.dto.V2SuffixOption;
 import com.capstone.assessment.v2.account.dto.V2TeacherAccountResponse;
 import com.capstone.assessment.v2.account.dto.V2TeacherReferenceDataResponse;
 import com.capstone.assessment.v2.account.dto.V2TeacherRegistrationReferenceDataResponse;
@@ -17,6 +18,7 @@ import com.capstone.assessment.v2.auth.exception.V2FieldValidationException;
 import com.capstone.assessment.v2.auth.model.V2AuthenticatedUser;
 import com.capstone.assessment.v2.auth.repository.V2AuthRepository;
 import com.capstone.assessment.v2.auth.service.V2RequestMetadata;
+import com.capstone.assessment.v2.notification.service.V2NotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,6 +70,9 @@ class V2TeacherAccountServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private V2NotificationService notificationService;
+
     private V2TeacherAccountService accountService;
 
     @BeforeEach
@@ -77,6 +82,7 @@ class V2TeacherAccountServiceTest {
                 authRepository,
                 passwordEncoder,
                 new ObjectMapper(),
+                notificationService,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -123,6 +129,16 @@ class V2TeacherAccountServiceTest {
                 eq("{\"status\":\"pending\"}"),
                 eq(NOW)
         );
+        verify(notificationService).notifySchoolPrincipals(
+                "SCHOOL-001",
+                "teacher_registration_pending",
+                "Teacher approval pending",
+                "Maria Santos submitted a teacher account for approval.",
+                "users",
+                "20",
+                "teacher-registration:20",
+                NOW
+        );
     }
 
     @Test
@@ -151,6 +167,9 @@ class V2TeacherAccountServiceTest {
                 new V2GenderOption(1, "Male"),
                 new V2GenderOption(2, "Female")
         ));
+        when(accountRepository.listActiveSuffixes()).thenReturn(List.of(
+                new V2SuffixOption(1, "Jr.")
+        ));
         when(accountRepository.listMajors()).thenReturn(List.of(
                 new V2MajorOption(1, "English")
         ));
@@ -161,6 +180,7 @@ class V2TeacherAccountServiceTest {
         V2TeacherReferenceDataResponse response = accountService.getReferenceData(PRINCIPAL);
 
         assertEquals(2, response.genders().size());
+        assertEquals("Jr.", response.suffixes().get(0).suffixName());
         assertEquals("English", response.majors().get(0).majorName());
         assertEquals("Bachelor's Degree", response.educationalAttainments().get(0).educationalAttainmentName());
     }
@@ -183,6 +203,7 @@ class V2TeacherAccountServiceTest {
 
         assertEquals("FORBIDDEN", exception.getCode());
         verify(accountRepository, never()).listGenders();
+        verify(accountRepository, never()).listActiveSuffixes();
         verify(accountRepository, never()).listMajors();
         verify(accountRepository, never()).listActiveEducationalAttainments();
     }
@@ -191,6 +212,9 @@ class V2TeacherAccountServiceTest {
     void publicRegistrationReferenceDataIncludesSchoolChoices() {
         when(accountRepository.listGenders()).thenReturn(List.of(
                 new V2GenderOption(1, "Male")
+        ));
+        when(accountRepository.listActiveSuffixes()).thenReturn(List.of(
+                new V2SuffixOption(1, "Jr.")
         ));
         when(accountRepository.listMajors()).thenReturn(List.of(
                 new V2MajorOption(1, "English")
@@ -206,8 +230,13 @@ class V2TeacherAccountServiceTest {
 
         assertEquals("SCHOOL-001", response.schools().get(0).schoolCode());
         assertEquals("Male", response.genders().get(0).genderName());
+        assertEquals("Jr.", response.suffixes().get(0).suffixName());
         assertEquals("English", response.majors().get(0).majorName());
         assertEquals("Bachelor's Degree", response.educationalAttainments().get(0).educationalAttainmentName());
+        assertEquals("email", response.verificationMethods().get(0).method());
+        assertEquals(true, response.verificationMethods().get(0).available());
+        assertEquals("sms", response.verificationMethods().get(1).method());
+        assertEquals(false, response.verificationMethods().get(1).available());
     }
 
     @Test
@@ -256,16 +285,21 @@ class V2TeacherAccountServiceTest {
                         && details.contains("\"source\":\"public_self_registration\"")),
                 eq(NOW)
         );
+        verify(notificationService, never()).notifySchoolPrincipals(
+                any(), any(), any(), any(), any(), any(), any(), any()
+        );
     }
 
     @Test
     void publicRegistrationRejectsUnknownSchoolCodeBeforeAnyInsert() {
         V2TeacherRegistrationRequest request = new V2TeacherRegistrationRequest(
                 "missing-school",
+                "email",
                 validRequest().firstName(),
                 validRequest().middleName(),
                 validRequest().lastName(),
                 validRequest().suffix(),
+                validRequest().suffixId(),
                 validRequest().birthDate(),
                 validRequest().teachingStartDate(),
                 validRequest().email(),
@@ -285,6 +319,41 @@ class V2TeacherAccountServiceTest {
 
         assertEquals("INVALID_SCHOOL_CODE", exception.getErrors().get("code"));
         assertEquals("The selected school code is not registered.", exception.getErrors().get("schoolCode"));
+        verify(accountRepository, never()).insertAddress(any());
+    }
+
+    @Test
+    void publicRegistrationRejectsUnavailableSmsVerificationBeforeAnyInsert() {
+        V2TeacherRegistrationRequest valid = validRegistrationRequest();
+        V2TeacherRegistrationRequest request = new V2TeacherRegistrationRequest(
+                valid.schoolCode(),
+                "sms",
+                valid.firstName(),
+                valid.middleName(),
+                valid.lastName(),
+                valid.suffix(),
+                valid.suffixId(),
+                valid.birthDate(),
+                valid.teachingStartDate(),
+                valid.email(),
+                valid.contactNumber(),
+                valid.password(),
+                valid.genderId(),
+                valid.majorId(),
+                valid.educationalAttainmentId(),
+                valid.address()
+        );
+
+        V2FieldValidationException exception = assertThrows(
+                V2FieldValidationException.class,
+                () -> accountService.registerTeacher(request, METADATA)
+        );
+
+        assertEquals("VERIFICATION_METHOD_UNAVAILABLE", exception.getErrors().get("code"));
+        assertEquals(
+                "SMS verification is not available yet. Select email verification.",
+                exception.getErrors().get("verificationMethod")
+        );
         verify(accountRepository, never()).insertAddress(any());
     }
 
@@ -331,7 +400,7 @@ class V2TeacherAccountServiceTest {
     }
 
     @Test
-    void teacherYoungerThanTwentyIsRejectedBeforeAnyInsert() {
+    void teacherYoungerThanEighteenIsRejectedBeforeAnyInsert() {
         V2CreateTeacherRequest request = requestWithDates(
                 LocalDate.of(2010, 1, 1),
                 null
@@ -343,7 +412,7 @@ class V2TeacherAccountServiceTest {
         );
 
         assertEquals("INVALID_TEACHER_DATES", exception.getErrors().get("code"));
-        assertEquals("Teacher must be at least 20 years old.", exception.getErrors().get("birthDate"));
+        assertEquals("Teacher must be at least 18 years old.", exception.getErrors().get("birthDate"));
         verify(accountRepository, never()).insertAddress(any());
     }
 
@@ -368,10 +437,10 @@ class V2TeacherAccountServiceTest {
     }
 
     @Test
-    void publicRegistrationRejectsTeachingStartBeforeTeacherTurnsTwenty() {
+    void publicRegistrationRejectsTeachingStartBeforeTeacherTurnsEighteen() {
         V2TeacherRegistrationRequest request = registrationRequestWithDates(
                 LocalDate.of(2000, 1, 1),
-                LocalDate.of(2018, 6, 1)
+                LocalDate.of(2017, 6, 1)
         );
 
         V2FieldValidationException exception = assertThrows(
@@ -381,7 +450,7 @@ class V2TeacherAccountServiceTest {
 
         assertEquals("INVALID_TEACHER_DATES", exception.getErrors().get("code"));
         assertEquals(
-                "Teaching start date cannot be earlier than the teacher's 20th birthday.",
+                "Teaching start date cannot be earlier than the teacher's 18th birthday.",
                 exception.getErrors().get("teachingStartDate")
         );
         verify(accountRepository, never()).insertAddress(any());
@@ -389,8 +458,8 @@ class V2TeacherAccountServiceTest {
 
     @Test
     void principalApprovesPendingTeacherWithinOwnSchool() {
-        V2TeacherAccount pending = teacher(20L, "SCHOOL-001", "pending");
-        V2TeacherAccount active = teacher(20L, "SCHOOL-001", "active");
+        V2TeacherAccount pending = teacher(20L, "SCHOOL-001", "pending", true);
+        V2TeacherAccount active = teacher(20L, "SCHOOL-001", "active", true);
         when(accountRepository.findTeacher("SCHOOL-001", 20L))
                 .thenReturn(Optional.of(pending))
                 .thenReturn(Optional.of(active));
@@ -421,6 +490,22 @@ class V2TeacherAccountServiceTest {
     }
 
     @Test
+    void principalCannotApproveTeacherBeforeEmailVerification() {
+        when(accountRepository.findTeacher("SCHOOL-001", 20L))
+                .thenReturn(Optional.of(teacher(20L, "SCHOOL-001", "pending", false)));
+
+        V2AuthException exception = assertThrows(
+                V2AuthException.class,
+                () -> accountService.approveTeacher(PRINCIPAL, 20L, METADATA)
+        );
+
+        assertEquals("EMAIL_VERIFICATION_REQUIRED", exception.getCode());
+        verify(accountRepository, never()).transitionStatus(
+                any(), any(Long.class), any(Integer.class), any(Integer.class), any(Integer.class)
+        );
+    }
+
+    @Test
     void principalCannotManageTeacherFromAnotherSchool() {
         when(accountRepository.findTeacher("SCHOOL-001", 99L)).thenReturn(Optional.empty());
 
@@ -441,10 +526,11 @@ class V2TeacherAccountServiceTest {
                 "A",
                 " Santos ",
                 null,
+                null,
                 LocalDate.of(1990, 1, 1),
                 LocalDate.of(2015, 6, 1),
                 " Teacher@Example.com ",
-                "+63 917 123 4567",
+                "+639171234567",
                 "TempPass@2026",
                 2,
                 3,
@@ -469,10 +555,12 @@ class V2TeacherAccountServiceTest {
         V2CreateTeacherRequest request = validRequest();
         return new V2TeacherRegistrationRequest(
                 " school-001 ",
+                "email",
                 request.firstName(),
                 request.middleName(),
                 request.lastName(),
                 request.suffix(),
+                request.suffixId(),
                 request.birthDate(),
                 request.teachingStartDate(),
                 request.email(),
@@ -492,6 +580,7 @@ class V2TeacherAccountServiceTest {
                 request.middleName(),
                 request.lastName(),
                 request.suffix(),
+                request.suffixId(),
                 birthDate,
                 teachingStartDate,
                 request.email(),
@@ -511,10 +600,12 @@ class V2TeacherAccountServiceTest {
         V2CreateTeacherRequest request = requestWithDates(birthDate, teachingStartDate);
         return new V2TeacherRegistrationRequest(
                 " school-001 ",
+                "email",
                 request.firstName(),
                 request.middleName(),
                 request.lastName(),
                 request.suffix(),
+                request.suffixId(),
                 request.birthDate(),
                 request.teachingStartDate(),
                 request.email(),
@@ -528,6 +619,10 @@ class V2TeacherAccountServiceTest {
     }
 
     private V2TeacherAccount teacher(long userId, String schoolId, String status) {
+        return teacher(userId, schoolId, status, false);
+    }
+
+    private V2TeacherAccount teacher(long userId, String schoolId, String status, boolean emailVerified) {
         return new V2TeacherAccount(
                 userId,
                 schoolId,
@@ -545,7 +640,7 @@ class V2TeacherAccountServiceTest {
                 "+639171234567",
                 "teacher",
                 status,
-                false,
+                emailVerified,
                 false,
                 NOW,
                 NOW
