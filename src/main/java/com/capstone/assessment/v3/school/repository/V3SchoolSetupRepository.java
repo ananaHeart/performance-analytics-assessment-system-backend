@@ -397,7 +397,8 @@ public class V3SchoolSetupRepository {
             Integer academicYearId,
             Integer gradeLevelId
     ) {
-        StringBuilder sql = new StringBuilder(CLASS_SELECT).append(" WHERE section_row.school_id = ? ");
+        StringBuilder sql = new StringBuilder(CLASS_SELECT)
+                .append(" WHERE section_row.school_id = ? AND class_row.status <> 'archived' ");
         List<Object> parameters = new java.util.ArrayList<>();
         parameters.add(schoolId);
         if (academicYearId != null) {
@@ -499,6 +500,7 @@ public class V3SchoolSetupRepository {
     public List<V3ClassAssignmentResponse> listAssignments(String schoolId, Integer academicYearId) {
         String sql = ASSIGNMENT_SELECT + """
                  WHERE section_row.school_id = ?
+                   AND class_row.status <> 'archived'
                 """ + (academicYearId == null ? "" : " AND class_row.academic_year_id = ? ") + """
                  ORDER BY academic_year.start_date DESC, grade_level.grade_level_name,
                           section_row.section_name, subject.subject_name, teacher.last_name,

@@ -1,0 +1,17 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "48e2bd2b-3480-4415-ae49-93a2ad47efca",
+  "resultUuid": "42fafd60-2bdf-4ae9-a78a-594763053f51",
+  "scanUuid": "4ef32799-9f84-4e4b-992c-855343d90f76",
+  "scanPageUuid": "db7a7e6f-4448-4ed4-a937-4296128e1411",
+  "answerSheetUuid": "e1af6a18-7bfa-400d-bff1-34567cca8d30",
+  "pageUuid": "a5bb5934-07ee-470e-8deb-e91889fc8bb3",
+  "assignmentUuid": "9d4ec527-6347-42ab-b2ac-0f40e9446ba5",
+  "classListId": 1133,
+  "pageNumber": 1,
+  "captureNumber": 2,
+  "scannerVersion": "3.0.0",
+  "qrPayloadHash": "5b4cdbf5e5e08bf2ddd2b91a1811eab6e913193c1063858dd31293b58488a01c",
+  "imageHash": "93f6203328d988985874bde966f826a1dab9765e0e5aa6def16242634aa03cec",
+  "capturedAt": "2026-09-12T16:00:56.502428900Z"
+}

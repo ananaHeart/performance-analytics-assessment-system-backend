@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "message": "Illustrative contract response.",
+  "data": {
+    "syncUuid": "00000000-0000-4000-8000-000000000110",
+    "operationUuid": "00000000-0000-4000-8000-000000010110",
+    "disposition": "replayed",
+    "revision": 2,
+    "idMappings": [
+      {
+        "entityType": "omr_detection",
+        "uuid": "00000000-0000-4000-8000-000000001001",
+        "centralId": 89001
+      }
+    ],
+    "acknowledgedAt": "2026-09-12T02:00:00Z"
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

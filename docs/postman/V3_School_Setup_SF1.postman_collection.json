@@ -1,0 +1,346 @@
+{
+  "info": {
+    "name": "SMART V3 School Setup and Duplicate-Safe SF1",
+    "description": "Controlled local acceptance flow for principal school setup, school-scoped classes, assignments, rosters, and duplicate-safe SF1 import.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8082" },
+    { "key": "principalEmail", "value": "" },
+    { "key": "principalPassword", "value": "" },
+    { "key": "principalToken", "value": "" },
+    { "key": "teacherToken", "value": "" },
+    { "key": "academicYearId", "value": "910003" },
+    { "key": "gradeLevelId", "value": "2" },
+    { "key": "sectionName", "value": "Narra" },
+    { "key": "classId", "value": "" },
+    { "key": "teacherUserId", "value": "910002" },
+    { "key": "subjectId", "value": "1" },
+    { "key": "classAssignmentId", "value": "" },
+    { "key": "sf1FilePath", "value": "" },
+    { "key": "importUuid", "value": "" },
+    { "key": "sourceFileHash", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Response uses the SMART ApiResponse envelope', function () {",
+          "  const json = pm.response.json();",
+          "  pm.expect(json).to.have.property('success');",
+          "  pm.expect(json).to.have.property('message');",
+          "  pm.expect(json).to.have.property('timestamp');",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Authentication",
+      "item": [
+        {
+          "name": "Login Principal and Capture Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('principalToken', json.data.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{principalEmail}}\",\n  \"password\": \"{{principalPassword}}\",\n  \"deviceIdentifier\": \"postman-v3-school-sf1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v3/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - School Profile and Reference Data",
+      "item": [
+        {
+          "name": "Get School Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/api/v3/school-setup/profile"
+          }
+        },
+        {
+          "name": "Get School Setup Reference Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/api/v3/school-setup/reference-data"
+          }
+        },
+        {
+          "name": "Update School Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schoolName\": \"SMART Demonstration School\",\n  \"contactNumber\": \"09171234567\",\n  \"email\": \"school@example.edu.ph\",\n  \"address\": {\n    \"regionCode\": \"1200000000\",\n    \"regionName\": \"SOCCSKSARGEN\",\n    \"provinceCode\": \"1280000000\",\n    \"provinceName\": \"Sarangani\",\n    \"cityMunicipalityCode\": \"1280040000\",\n    \"cityMunicipalityName\": \"Malungon\",\n    \"barangayCode\": \"1280040070\",\n    \"barangayName\": \"San Roque\",\n    \"addressLine\": \"Building 1, Campus Road\",\n    \"postalCode\": \"9503\",\n    \"addressSource\": \"api\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v3/school-setup/profile"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Classes",
+      "item": [
+        {
+          "name": "Create or Reuse Active Class",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('classId', pm.response.json().data.classId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"academicYearId\": {{academicYearId}},\n  \"gradeLevelId\": {{gradeLevelId}},\n  \"sectionName\": \"{{sectionName}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v3/school-setup/classes"
+          }
+        },
+        {
+          "name": "List School Classes",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/api/v3/school-setup/classes?academicYearId={{academicYearId}}&gradeLevelId={{gradeLevelId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Teacher Assignments",
+      "item": [
+        {
+          "name": "Assign Teacher to Class and Subject",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('classAssignmentId', pm.response.json().data.classAssignmentId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"classId\": {{classId}},\n  \"teacherUserId\": {{teacherUserId}},\n  \"subjectId\": {{subjectId}},\n  \"assignmentRole\": \"primary\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v3/school-setup/class-assignments"
+          }
+        },
+        {
+          "name": "List School Class Assignments",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/api/v3/school-setup/class-assignments?academicYearId={{academicYearId}}"
+          }
+        },
+        {
+          "name": "Archive Assignment (Soft Delete)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Teacher reassigned for acceptance testing.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v3/school-setup/class-assignments/{{classAssignmentId}}/archive"
+          }
+        },
+        {
+          "name": "Reactivate Assignment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Teacher assignment restored after acceptance testing.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/v3/school-setup/class-assignments/{{classAssignmentId}}/reactivate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Rosters",
+      "item": [
+        {
+          "name": "Principal Reads Same-School Class Roster",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/api/v3/school-setup/classes/{{classId}}/students?enrollmentStatus=enrolled"
+          }
+        },
+        {
+          "name": "Teacher Reads Owned Active Class Roster",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{teacherToken}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/api/v3/teacher/classes/{{classId}}/students?enrollmentStatus=enrolled"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Duplicate-Safe SF1",
+      "item": [
+        {
+          "name": "Preview SF1 Without Saving",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.collectionVariables.set('importUuid', data.importUuid);",
+                  "  pm.collectionVariables.set('sourceFileHash', data.sourceFileHash);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "{{sf1FilePath}}" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v3/import/sf1/preview?academicYearId={{academicYearId}}&gradeLevelId={{gradeLevelId}}&sectionName={{sectionName}}"
+          }
+        },
+        {
+          "name": "Confirm SF1 Transactionally",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "{{sf1FilePath}}" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v3/import/sf1/confirm?importUuid={{importUuid}}&academicYearId={{academicYearId}}&gradeLevelId={{gradeLevelId}}&sectionName={{sectionName}}&expectedFileHash={{sourceFileHash}}&acceptContextMismatch=false"
+          }
+        },
+        {
+          "name": "Retry Same Confirm UUID (Expect replayed true)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "{{sf1FilePath}}" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v3/import/sf1/confirm?importUuid={{importUuid}}&academicYearId={{academicYearId}}&gradeLevelId={{gradeLevelId}}&sectionName={{sectionName}}&expectedFileHash={{sourceFileHash}}&acceptContextMismatch=false"
+          }
+        },
+        {
+          "name": "Preview Same File Again (Expect duplicate warning, no duplicate learners)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{principalToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "{{sf1FilePath}}" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v3/import/sf1/preview?academicYearId={{academicYearId}}&gradeLevelId={{gradeLevelId}}&sectionName={{sectionName}}"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "message": "Authentication is required.",
+  "data": null,
+  "errors": {
+    "code": "AUTHENTICATION_REQUIRED"
+  },
+  "timestamp": "2026-09-12T02:00:00Z"
+}

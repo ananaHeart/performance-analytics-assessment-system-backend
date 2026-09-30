@@ -31,11 +31,24 @@ This phase does **not** implement OMR upload, mobile SQLite, synchronization, sc
 | `POST` | `/api/v2/assessments` | Creates a complete draft assessment with parts, questions, answer keys, and mappings. |
 | `GET` | `/api/v2/assessments?classAssignmentId={id}` | Lists assessments owned by the authenticated teacher, optionally filtered by assignment. |
 | `GET` | `/api/v2/assessments/{testId}` | Gets one complete assessment detail. |
+| `GET` | `/api/v2/assessments/{testId}/omr-sheet` | Returns the validated fixed-layout Bubble Answer Sheet as an inline `application/pdf` response. |
 | `PUT` | `/api/v2/assessments/{testId}` | Replaces a draft assessment's header, parts, questions, answer keys, and mappings. |
 | `POST` | `/api/v2/assessments/{testId}/activate` | Activates a complete draft assessment after validation. |
 | `POST` | `/api/v2/assessments/{testId}/archive` | Archives an owned assessment. |
 
 All endpoints require an authenticated V2 bearer session. The service layer still checks teacher role and ownership; frontend hiding is not treated as authorization.
+
+### Bubble Answer Sheet Contract
+
+`GET /api/v2/assessments/{testId}/omr-sheet` is printable only when the owned assessment is active and contains exactly 10 questions across all parts. Every part must be `multiple_choice`, and every question must use exactly options A, B, C, and D. The response is a one-page A4 PDF using immutable template `OMR-A4-10-MC-CTX-V2`.
+
+The QR contains only the template and test identity:
+
+```json
+{"v":2,"tv":"OMR-A4-10-MC-CTX-V2","t":1006,"q":"MC","n":10}
+```
+
+Student and class-list identity are supplied by the selected authenticated mobile context and are not printed or encoded in this reusable sheet. Clients must treat the response as binary PDF data and open an object URL; they must not parse it as JSON or HTML.
 
 ## Create / Update Request
 
@@ -177,6 +190,49 @@ Notes:
 - Skill IDs must match the assessment term, class grade level, assignment subject, and active root tag.
 - `total_items` and `number_of_items` are computed snapshots based on actual questions.
 - Activation fails when there are no questions, missing answer keys, missing skill mappings, invalid True/False keys, or item-count snapshot mismatches.
+
+## Test Questionnaire PDF
+
+### Download endpoint
+
+```http
+GET /api/v2/assessments/{testId}/questionnaire
+Authorization: Bearer <teacher-token>
+Accept: application/pdf
+```
+
+The response is the PDF binary itself, not an `ApiResponse` JSON envelope.
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="test-questionnaire-1006.pdf"
+```
+
+Rules:
+
+- The authenticated teacher must own the assessment through its class assignment.
+- The assessment must have `active` status and at least one question.
+- The generated A4 PDF supports multiple test parts and multiple pages.
+- Question numbering is continuous across test parts even though database `item_number` is local to each part.
+- Multiple-choice and True/False choices are printed.
+- Answer keys and `correctOption` are never printed.
+- This questionnaire endpoint is separate from `GET /api/v2/assessments/{testId}/omr-sheet`; it does not use or modify fixed OMR geometry.
+
+Possible errors use the standard V2 error response:
+
+- `ASSESSMENT_NOT_ACTIVE` (`409`)
+- `ASSESSMENT_HAS_NO_QUESTIONS` (`409`)
+- normal authentication, role, ownership, and not-found errors from assessment retrieval
+
+### Frontend integration
+
+The frontend must fetch this endpoint as a Blob using the authenticated V2 API client.
+
+- **Download Questionnaire:** create a temporary Blob URL, trigger an `<a download="test-questionnaire-{testId}.pdf">`, then revoke the URL.
+- **Print Questionnaire:** open a tab synchronously from the user click, fetch the same PDF Blob, and navigate the tab to the Blob URL so the browser PDF viewer can print it.
+- Do not recreate the questionnaire with HTML, `document.write()`, or frontend-calculated assessment data.
+- Do not call `window.print()` immediately after opening `about:blank`.
 
 ## Transaction Behavior
 

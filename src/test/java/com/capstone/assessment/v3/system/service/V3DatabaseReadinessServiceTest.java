@@ -48,6 +48,39 @@ class V3DatabaseReadinessServiceTest {
         assertThrows(IllegalStateException.class, service::requireReady);
     }
 
+    @Test
+    void cloudRequiresTheFullBaselineAndEnabledChecksRatherThanAcceptingThePartialImport() {
+        properties.setDatabaseEngine(V3BaselineProperties.DatabaseEngine.TIDB);
+        properties.setExpectedDatabase("performance_assessment_v3_test");
+        properties.setExpectedTableCount(79);
+        properties.setExpectedForeignKeyCount(200);
+        properties.setExpectedCheckConstraintCount(131);
+        properties.setExpectedUniqueConstraintCount(118);
+        properties.setExpectedOmrTemplateCount(2);
+        properties.setExpectedApprovedOmrTemplateCount(2);
+        when(repository.readSnapshot()).thenReturn(cloudSnapshot(131, 15, 16));
+        when(repository.areCheckConstraintsEnabled()).thenReturn(true);
+        assertTrue(service.requireReady().ready());
+
+        when(repository.areCheckConstraintsEnabled()).thenReturn(false);
+        assertFalse(service.checkReadiness().ready());
+        assertThrows(IllegalStateException.class, service::requireReady);
+
+        when(repository.areCheckConstraintsEnabled()).thenReturn(true);
+        when(repository.readSnapshot()).thenReturn(cloudSnapshot(7, 3, 9));
+        assertFalse(service.checkReadiness().ready());
+        assertThrows(IllegalStateException.class, service::requireReady);
+
+        // Restoring just the 19 specifically named startup checks is still incomplete.
+        when(repository.readSnapshot()).thenReturn(cloudSnapshot(26, 15, 16));
+        assertFalse(service.checkReadiness().ready());
+    }
+
+    private V3DatabaseBaselineSnapshot cloudSnapshot(int checks, int hardening, int calendar) {
+        return new V3DatabaseBaselineSnapshot("performance_assessment_v3_test", 79, 200, checks, 118,
+                6, 16, hardening, 3, 20, calendar, 3, 3, 15, 5, 2, 2, 0, 4);
+    }
+
     private V3DatabaseBaselineSnapshot snapshot(ReadinessMismatch mismatch) {
         String databaseName = "performance_assessment_v3_db";
         int tableCount = 67;

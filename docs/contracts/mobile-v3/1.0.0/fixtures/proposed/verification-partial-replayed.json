@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "message": "Illustrative contract response.",
+  "data": {
+    "syncUuid": "00000000-0000-4000-8000-000000000134",
+    "operationUuid": "00000000-0000-4000-8000-000000010134",
+    "syncStatus": "partial_success",
+    "items": [
+      {
+        "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+        "status": "success",
+        "disposition": "replayed",
+        "revision": 3,
+        "idMappings": [
+          {
+            "entityType": "test_result",
+            "uuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+            "centralId": 87001
+          },
+          {
+            "entityType": "student_answer",
+            "uuid": "00000000-0000-4000-8000-000000001004",
+            "centralId": 91001
+          }
+        ],
+        "error": null
+      },
+      {
+        "resultUuid": "00000000-0000-4000-8000-000000000902",
+        "status": "failed",
+        "disposition": "rejected",
+        "revision": null,
+        "idMappings": [],
+        "error": {
+          "code": "DEPENDENCY_NOT_READY",
+          "message": "Commit the referenced detection before verification.",
+          "retryable": true
+        }
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

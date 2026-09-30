@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "message": "Request completed successfully.",
+  "data": {
+    "resultUuid": "d5c36d5f-1e04-4128-bff3-3737c311558f",
+    "resultStatus": "superseded",
+    "revision": 5,
+    "scoreVersion": 1,
+    "replacementResultUuid": "a058fd61-7116-4e09-bdad-685c937fbaad",
+    "disposition": "created",
+    "acknowledgedAt": "2026-09-12T16:02:18.955305Z"
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T16:02:19.008403900Z"
+}

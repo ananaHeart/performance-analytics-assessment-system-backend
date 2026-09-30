@@ -12,6 +12,8 @@ import com.capstone.assessment.v3.school.model.V3AcademicCalendarModels.TermPeri
 import com.capstone.assessment.v3.school.repository.V3AcademicCalendarRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 
 import java.time.Clock;
@@ -19,10 +21,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -55,22 +60,24 @@ class V3AcademicCalendarServiceTest {
     }
 
     @Test
-    void principalCreatesOneSchoolScopedYearWithExactlyFourTerms() {
+    void principalCreatesOneSchoolScopedYearWithExactlyThreeTermsAndAccurateAuditCount() {
         when(repository.curriculumExists(1)).thenReturn(true);
         when(repository.insertAcademicYear(
                 "SCHOOL-001", 1, "2026-2027",
                 LocalDate.of(2026, 6, 1), LocalDate.of(2027, 3, 31)
         )).thenReturn(100L);
         when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("planned")));
-        when(repository.listTermPeriods(100)).thenReturn(termRows("planned", "automatic"));
+        when(repository.listTermPeriods(100)).thenReturn(threeTermRows("planned", "automatic"));
 
         var response = service.createAcademicYear(PRINCIPAL, validRequest(), null);
 
         assertEquals(100, response.academicYearId());
-        assertEquals(4, response.termPeriods().size());
-        verify(repository, times(4)).insertTermPeriod(
+        assertEquals(3, response.termPeriods().size());
+        verify(repository, times(3)).insertTermPeriod(
                 eq(100), anyString(), anyInt(), any(Instant.class), any(Instant.class), eq("automatic")
         );
+        verify(auditService).record(eq(7L), eq("academic_year.create"), eq("academic_years"), eq("100"),
+                eq("success"), any(), eq(Map.of("yearName", "2026-2027", "termCount", 3)), eq(NOW));
     }
 
     @Test
@@ -92,10 +99,7 @@ class V3AcademicCalendarServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
-        assertEquals(
-                "Term orders must be values from 1 through 4.",
-                exception.getErrors().get("termPeriods.termOrder")
-        );
+        assertTrue(exception.getErrors().containsKey("termPeriods"));
         verify(repository, never()).insertAcademicYear(
                 anyString(), anyInt(), anyString(), any(LocalDate.class), any(LocalDate.class)
         );
@@ -108,6 +112,7 @@ class V3AcademicCalendarServiceTest {
                 termRow(12, 2, "planned", "automatic")
         ));
         when(repository.priorIncompleteTermExists(100, 2)).thenReturn(true);
+        when(repository.listTermPeriods(100)).thenReturn(termRows("planned", "automatic"));
 
         V3AuthException exception = assertThrows(
                 V3AuthException.class,
@@ -137,6 +142,14 @@ class V3AcademicCalendarServiceTest {
     }
 
     private V3AcademicYearRequest validRequest() {
+        return request(List.of(
+                term("Term 1", 1, "2026-05-31T16:00:00Z", "2026-09-15T16:00:00Z"),
+                term("Term 2", 2, "2026-09-15T16:00:00Z", "2026-12-18T16:00:00Z"),
+                term("Term 3", 3, "2027-01-03T16:00:00Z", "2027-03-31T16:00:00Z")
+        ));
+    }
+
+    private V3AcademicYearRequest legacyRequest() {
         return new V3AcademicYearRequest(
                 1,
                 "2026-2027",
@@ -149,6 +162,157 @@ class V3AcademicCalendarServiceTest {
                         term("Fourth Quarter", 4, "2027-01-01T00:00:00Z", "2027-03-31T00:00:00Z")
                 )
         );
+    }
+
+    @Test
+    void legacyPlannedUpdateRetainsFourRowsIdsLabelsAndAuditCount() {
+        stubPlannedUpdate(termRows("planned", "automatic"));
+        var response = service.updateAcademicYear(PRINCIPAL, 100, legacyRequest(), null);
+        assertEquals(List.of(11, 12, 13, 14), response.termPeriods().stream().map(t -> t.termPeriodId()).toList());
+        assertEquals("Fourth Quarter", response.termPeriods().get(3).termName());
+        verify(repository).updateTermPeriod(eq(100), eq(4), eq("Fourth Quarter"), any(), any(), eq("automatic"));
+        verify(repository, never()).insertTermPeriod(anyInt(), anyString(), anyInt(), any(), any(), anyString());
+        verify(auditService).record(eq(7L), eq("academic_year.update"), eq("academic_years"), eq("100"),
+                eq("success"), any(), eq(Map.of("yearName", "2026-2027", "termCount", 4)), eq(NOW));
+    }
+
+    @Test
+    void threeTermPlannedUpdateRetainsThreeRowsAndAuditCount() {
+        stubPlannedUpdate(threeTermRows("planned", "automatic"));
+        var response = service.updateAcademicYear(PRINCIPAL, 100, validRequest(), null);
+        assertEquals(3, response.termPeriods().size());
+        verify(repository, times(3)).updateTermPeriod(eq(100), anyInt(), anyString(), any(), any(), eq("automatic"));
+        verify(auditService).record(eq(7L), eq("academic_year.update"), eq("academic_years"), eq("100"),
+                eq("success"), any(), eq(Map.of("yearName", "2026-2027", "termCount", 3)), eq(NOW));
+    }
+
+    @Test
+    void updatingCannotConvertLegacyYearIntoThreeTerms() {
+        stubPlannedUpdate(termRows("planned", "automatic"));
+        assertThrows(V3FieldValidationException.class,
+                () -> service.updateAcademicYear(PRINCIPAL, 100, validRequest(), null));
+        verify(repository, never()).updateAcademicYear(anyInt(), anyInt(), anyString(), any(), any());
+    }
+
+    @Test
+    void updatingCannotConvertThreeTermYearIntoQuarters() {
+        stubPlannedUpdate(threeTermRows("planned", "automatic"));
+        assertThrows(V3FieldValidationException.class,
+                () -> service.updateAcademicYear(PRINCIPAL, 100, legacyRequest(), null));
+        verify(repository, never()).updateAcademicYear(anyInt(), anyInt(), anyString(), any(), any());
+    }
+
+    @Test
+    void newYearCannotBeCreatedUsingOldFourQuarterFormat() {
+        when(repository.curriculumExists(1)).thenReturn(true);
+        assertThrows(V3FieldValidationException.class, () -> service.createAcademicYear(PRINCIPAL, legacyRequest(), null));
+        verify(repository, never()).insertAcademicYear(anyString(), anyInt(), anyString(), any(), any());
+    }
+
+    @Test
+    void missingFourthQuarterIsNotAcceptedAsThreeTermYearDuringActivationOrCompletion() {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("planned")));
+        when(repository.listTermPeriods(100)).thenReturn(termRows("planned", "automatic").subList(0, 3));
+        assertEquals("TERM_PERIODS_INCOMPLETE", assertThrows(V3AuthException.class,
+                () -> service.activateAcademicYear(PRINCIPAL, 100, reason(), null)).getCode());
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("active")));
+        when(repository.listTermPeriods(100)).thenReturn(termRows("completed", "automatic").subList(0, 3));
+        assertEquals("TERM_PERIODS_INCOMPLETE", assertThrows(V3AuthException.class,
+                () -> service.completeAcademicYear(PRINCIPAL, 100, reason(), null)).getCode());
+        verify(repository, never()).activateAcademicYear(anyInt());
+        verify(repository, never()).completeAcademicYear(anyInt());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void bothLayoutsCanActivateAndCompleteWhenEveryTermIsComplete(boolean legacy) {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("planned")));
+        when(repository.listTermPeriods(100)).thenReturn(legacy ? termRows("planned", "automatic") : threeTermRows("planned", "automatic"));
+        when(repository.activateAcademicYear(100)).thenReturn(1);
+        service.activateAcademicYear(PRINCIPAL, 100, reason(), null);
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("active")));
+        when(repository.listTermPeriods(100)).thenReturn(legacy ? termRows("completed", "automatic") : threeTermRows("completed", "automatic"));
+        when(repository.completeAcademicYear(100)).thenReturn(1);
+        service.completeAcademicYear(PRINCIPAL, 100, reason(), null);
+        verify(repository).activateAcademicYear(100);
+        verify(repository).completeAcademicYear(100);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"active", "completed"})
+    void activeAndCompletedYearsCannotBeEdited(String status) {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year(status)));
+        assertEquals("ACADEMIC_YEAR_LOCKED", assertThrows(V3AuthException.class,
+                () -> service.updateAcademicYear(PRINCIPAL, 100, validRequest(), null)).getCode());
+        verify(repository, never()).updateAcademicYear(anyInt(), anyInt(), anyString(), any(), any());
+    }
+
+    @Test
+    void anotherActiveYearOrTermStillBlocksActivation() {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("planned")));
+        when(repository.listTermPeriods(100)).thenReturn(threeTermRows("planned", "automatic"));
+        when(repository.anotherActiveAcademicYearExists("SCHOOL-001", 100)).thenReturn(true);
+        assertEquals("ACTIVE_ACADEMIC_YEAR_EXISTS", assertThrows(V3AuthException.class,
+                () -> service.activateAcademicYear(PRINCIPAL, 100, reason(), null)).getCode());
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("active")));
+        when(repository.findTermPeriod(100, 12)).thenReturn(Optional.of(threeTermRows("planned", "automatic").get(1)));
+        when(repository.anotherActiveTermExists(100, 12)).thenReturn(true);
+        assertEquals("ACTIVE_TERM_PERIOD_EXISTS", assertThrows(V3AuthException.class,
+                () -> service.activateTermPeriod(PRINCIPAL, 100, 12, reason(), null)).getCode());
+        verify(repository, never()).activateAcademicYear(anyInt());
+        verify(repository, never()).activateTermPeriod(anyInt(), anyLong(), anyString(), any());
+    }
+
+    @Test
+    void principalCannotManageAnotherSchoolsCalendar() {
+        when(repository.findAcademicYear("SCHOOL-001", 999)).thenReturn(Optional.empty());
+        assertEquals(HttpStatus.NOT_FOUND, assertThrows(V3AuthException.class,
+                () -> service.activateAcademicYear(PRINCIPAL, 999, reason(), null)).getStatus());
+        verify(repository, never()).activateAcademicYear(anyInt());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"overlap", "reversed", "zero", "before-year", "after-year"})
+    void rejectsInvalidTermDatesBeforePersistence(String scenario) {
+        when(repository.curriculumExists(1)).thenReturn(true);
+        List<V3TermPeriodRequest> terms = new ArrayList<>(validRequest().termPeriods());
+        V3TermPeriodRequest old = terms.get(1);
+        Instant start = switch (scenario) {
+            case "overlap" -> terms.get(0).endAt().minusSeconds(1);
+            case "before-year" -> terms.get(0).startAt().minusSeconds(1);
+            default -> old.startAt();
+        };
+        Instant end = switch (scenario) {
+            case "reversed" -> start.minusSeconds(1);
+            case "zero" -> start;
+            case "after-year" -> terms.get(2).endAt().plusSeconds(1);
+            default -> old.endAt();
+        };
+        terms.set(1, new V3TermPeriodRequest("Term 2", 2, start, end, "automatic"));
+        assertThrows(V3FieldValidationException.class, () -> service.createAcademicYear(PRINCIPAL, request(terms), null));
+        verify(repository, never()).insertAcademicYear(anyString(), anyInt(), anyString(), any(), any());
+    }
+
+    private void stubPlannedUpdate(List<TermPeriodRow> terms) {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("planned")));
+        when(repository.listTermPeriods(100)).thenReturn(terms);
+        when(repository.curriculumExists(1)).thenReturn(true);
+        when(repository.updateAcademicYear(anyInt(), anyInt(), anyString(), any(), any())).thenReturn(1);
+        when(repository.updateTermPeriod(anyInt(), anyInt(), anyString(), any(), any(), anyString())).thenReturn(1);
+    }
+
+    private V3LifecycleReasonRequest reason() {
+        return new V3LifecycleReasonRequest("Principal reviewed calendar.");
+    }
+
+    private V3AcademicYearRequest request(List<V3TermPeriodRequest> terms) {
+        return new V3AcademicYearRequest(1, "2026-2027", LocalDate.of(2026, 6, 1), LocalDate.of(2027, 3, 31), terms);
+    }
+
+    private List<TermPeriodRow> threeTermRows(String status, String mode) {
+        return validRequest().termPeriods().stream().map(term -> new TermPeriodRow(
+                10 + term.termOrder(), 100, term.termName(), term.termOrder(), term.startAt(), term.endAt(),
+                status, mode, null, null, null, null, null)).toList();
     }
 
     private V3TermPeriodRequest term(String name, int order, String start, String end) {

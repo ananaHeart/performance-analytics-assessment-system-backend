@@ -1,0 +1,166 @@
+{
+  "generatedAtUtc": "2026-09-12T14:18:43.1089489Z",
+  "scope": "Milestone 3 Prompt 11 attachment evidence upload and persistence",
+  "totalTests": 150.0,
+  "newPromptTests": 21,
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 75,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:14:45.1249992Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.storage.V3OriginalScanImageStorageTest",
+      "tests": 36,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:14:45.5146038Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:14:23.0718867Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3AttachmentUploadControllerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:15:37.8341602Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageUploadControllerTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:15:38.3974288Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:15:35.0140290Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.scoring.service.V3ScoringServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:15:38.6404305Z"
+    }
+  ],
+  "hashes": [
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3AttachmentUploadService.java",
+      "sha256": "625c640b4f121de69546b798fc13690f6050d3190d9fbfabfc18c7b79cbcb09a"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3AttachmentUploadRepository.java",
+      "sha256": "8a370cb600468533d249c2b5558368b4d42c316172677472b1805cb72486baee"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/controller/V3AttachmentUploadController.java",
+      "sha256": "878a21bdfb7d728e8e8dcead8971b3da129356861b4be546e2c752ff47155f6a"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/dto/V3AttachmentMetadata.java",
+      "sha256": "b15bf40878697e1881df3a49f8da87e3fb4cca027c6977d66fda851e3c504b60"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/dto/V3AttachmentResponse.java",
+      "sha256": "5b23c7901bf0f3e5581e213351436dc6326c412f661636560ab293ba3c8b330f"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/storage/V3OriginalScanImageStorage.java",
+      "sha256": "f041a1880c0752a1d86a9acec8c2b6f0393717fc24fc61eda67eef101a12db25"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3MobileReadbackRepository.java",
+      "sha256": "d27f433fff95db209d3e4b73bc9691a00719c0a1d48eb2471e5179eafa00cb88"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3MobileReadbackService.java",
+      "sha256": "51035cca937df6ff5aea754968c4f449a718e87fa08962ce83f7718db458e385"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/system/config/V3SystemSecurityConfig.java",
+      "sha256": "da5b6319d05f2f66ca4c6f2747a0f5dc0b080458c909a7d1e19cc71372021533"
+    },
+    {
+      "file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql",
+      "sha256": "0d51f456c9a43cac8f71aff196cfa4320a15657dc3e70431d5c78a29c3d734f6"
+    },
+    {
+      "file": "docs/contracts/mobile-v3/1.6.0/openapi.json",
+      "sha256": "5ebb1730079f03737677eaec8a51a7301254a12b80a555152543d06be3276fd8"
+    }
+  ],
+  "contract": {
+    "packVersion": "1.6.0",
+    "wireVersion": "3.0",
+    "openapi": "3.1.0",
+    "schemas": 7,
+    "fixtures": 6,
+    "syntheticRuntimeSamplesChecked": 3,
+    "allSevenPackValidatorsPassed": true,
+    "parentWireSchemasUnchanged": true
+  },
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "draftChain": "V3_019",
+    "tables": 74,
+    "foreignKeys": 179,
+    "checks": 102,
+    "uniqueConstraints": 106,
+    "newMigrationAdded": true,
+    "syntheticRecordsOnly": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true
+  },
+  "validationCases": [
+    "JPEG crop and PNG teacher evidence preserve original bytes and durable client UUID",
+    "Normalized source FK and crop JSON preserve distinct lineage representations",
+    "Concurrent retry, rollback after file publication, lost commit acknowledgement, missing pending file recovery",
+    "Corrupt published bytes cannot be replaced; purged evidence cannot be resurrected",
+    "Changed operation/attachment/sync identity and invalid hash/MIME/size/PNG CRC rejected",
+    "Foreign page/result, invalid region, invalid base dimensions and crop integer overflow rejected",
+    "Current account state and finalized/rejected write restrictions; historical exact replay without revision bump",
+    "Result attachment ID mappings and per-page/result attachment sync reconciliation",
+    "Strict multipart HTTP parsing and actual V3 security denial"
+  ],
+  "release": {
+    "attachmentHttpEnabled": false,
+    "configuredBaseline": "V3_014",
+    "manualRubricWriteImplemented": false,
+    "mobileCodeChanged": false,
+    "physicalWrittenScannerValidated": false,
+    "completeMobileFlow": false
+  },
+  "milestone": {
+    "number": 3,
+    "prompt": 11,
+    "componentStatus": "COMPLETE_RELEASE_GATED",
+    "milestoneStatus": "IN_PROGRESS",
+    "next": "Prompt 12 manual/rubric verification and scoring persistence"
+  },
+  "limitations": [
+    "Existing first-capture template remains one-page 10-MC A4; written/mixed physical capture not enabled.",
+    "Image-only answered SQL representation and explicit scoring-reference binding remain pending.",
+    "Attachment retry drives recovery; no new background attachment recovery/cleanup scheduler.",
+    "Crop lineage/bounds validation does not prove semantic correctness of client-produced pixels.",
+    "Attachment sync readback requires draft V3_019; schema deployment and Mobile production wiring remain gated."
+  ]
+}

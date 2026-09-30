@@ -1,0 +1,101 @@
+{
+  "generatedAtUtc": "2026-09-12T12:06:44.764946Z",
+  "scope": "Milestone 2 Prompt 6 MC/TF detection upload and persistence",
+  "totalTests": 139,
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:01:46.7293302Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3DetectionUploadControllerTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:04:51.3590185Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:01:56.3476977Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageUploadControllerTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:01:57.8559745Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3DetectionPersistenceTest",
+      "tests": 42,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:05:03.6128383Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanPageIngestionPersistenceTest",
+      "tests": 50,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:02:21.6375937Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:02:28.6774556Z"
+    }
+  ],
+  "draftMigration": "docs/migrations/v3/V3_016_mobile_detection_receipts_DRAFT.sql",
+  "migrationSha256": "b4a8cf63f98408f6f96f94b128bb57c14375d1d0d2958ca2d72bfb7d2edf59a2",
+  "contract": {
+    "packVersion": "1.1.0",
+    "wireVersion": "3.0",
+    "openapi": "3.1.0",
+    "openapiSha256": "7973cee959dda4d417c3c9b2466d820536ba2611caf53ff7e9f6d8d147734e25",
+    "schemas": 4,
+    "fixtures": 9,
+    "parentPackUnchanged": true,
+    "fixtureValidatorPassed": true
+  },
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "tables": 69,
+    "foreignKeys": 167,
+    "checks": 93,
+    "uniqueConstraints": 102,
+    "syntheticRecordsOnly": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true
+  },
+  "release": {
+    "productionPostEnabled": false,
+    "configuredBaseline": "V3_014",
+    "draftMigrationsDeployedToSchool": false,
+    "physicalScannerValidated": false,
+    "tfPrintFlowValidated": false,
+    "completeMobileFlow": false
+  },
+  "limitations": [
+    "Latest successful focused reports include reruns of the two detection suites after additional assertions.",
+    "Six of the ten MariaDB tests cover detection persistence; four cover the existing scan retry workflow.",
+    "TF tests arrange synthetic stored records and do not validate printed TF geometry or a TF scan-upload flow.",
+    "Transaction fault injection is not actual process-kill or power-loss validation.",
+    "The new mobile revision column is not yet integrated into verification, scoring or correction routes."
+  ]
+}

@@ -11,6 +11,7 @@ public record V3ScanPageUploadResponse(
         String uploadStatus,
         String pageStatus,
         String contentHash,
+        String originalAttachmentUuid,
         Instant acknowledgedAt
 ) {
 }

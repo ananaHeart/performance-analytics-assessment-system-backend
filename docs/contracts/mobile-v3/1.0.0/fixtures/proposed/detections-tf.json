@@ -1,0 +1,15 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "00000000-0000-4000-8000-000000000111",
+  "operationUuid": "00000000-0000-4000-8000-000000010111",
+  "detections": [
+    {
+      "detectionUuid": "00000000-0000-4000-8000-000000001005",
+      "regionUuid": "00000000-0000-4000-8000-000000001006",
+      "questionUuid": "00000000-0000-4000-8000-000000001007",
+      "detectionStatus": "detected",
+      "detectedOption": "B",
+      "confidence": 0.98
+    }
+  ]
+}

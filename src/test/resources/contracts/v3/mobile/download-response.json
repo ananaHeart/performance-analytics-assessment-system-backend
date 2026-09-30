@@ -1,0 +1,165 @@
+{
+  "success": true,
+  "message": "Teacher-owned V3 Mobile snapshot retrieved successfully.",
+  "data": {
+    "contractVersion": "3.0",
+    "snapshotMode": "full_snapshot",
+    "generatedAt": "2026-08-31T00:00:00Z",
+    "teacher": {"userId": 42, "schoolId": "SCHOOL-001", "email": "teacher@example.com"},
+    "classAssignments": [
+      {
+        "classAssignmentId": 200,
+        "classId": 300,
+        "academicYearId": 10,
+        "academicYearName": "2026-2027",
+        "gradeLevelId": 7,
+        "gradeLevelName": "Grade 7",
+        "sectionId": 70,
+        "sectionName": "Rizal",
+        "subjectId": 1,
+        "subjectCode": "ENG",
+        "subjectName": "English",
+        "assignmentRole": "primary",
+        "status": "active",
+        "classStatus": "active"
+      }
+    ],
+    "classAssignmentSchedules": [
+      {
+        "classAssignmentScheduleId": 70001,
+        "scheduleUuid": "00000000-0000-4000-8000-000000070001",
+        "classAssignmentId": 200,
+        "dayOfWeek": 1,
+        "startTime": "08:00:00",
+        "endTime": "09:00:00",
+        "timezoneName": "Asia/Manila",
+        "effectiveFrom": "2026-06-01",
+        "effectiveTo": null,
+        "scheduleStatus": "active",
+        "updatedAt": "2026-08-30T03:00:00Z"
+      }
+    ],
+    "classLists": [
+      {
+        "classListId": 41001,
+        "membershipUuid": "00000000-0000-4000-8000-000000041001",
+        "classId": 300,
+        "studentId": 500,
+        "enrollmentStatus": "enrolled",
+        "enrollmentSource": "sf1",
+        "enrolledAt": "2026-06-01T00:00:00Z"
+      }
+    ],
+    "students": [
+      {
+        "studentId": 500,
+        "studentLrn": "100000000001",
+        "firstName": "Juan",
+        "middleName": "Santos",
+        "lastName": "Dela Cruz",
+        "suffix": null,
+        "gender": "Male",
+        "status": "active"
+      }
+    ],
+    "termPeriods": [
+      {
+        "termPeriodId": 1,
+        "academicYearId": 10,
+        "termName": "First Quarter",
+        "termOrder": 1,
+        "startAt": "2026-06-01T00:00:00Z",
+        "endAt": "2026-08-31T15:59:59Z",
+        "status": "active"
+      }
+    ],
+    "testAssignments": [
+      {
+        "testAssignmentId": 12001,
+        "assignmentUuid": "26b14ea2-4383-43f5-bb40-f60683ee46bb",
+        "testId": 1006,
+        "classAssignmentId": 200,
+        "openAt": "2026-08-30T00:00:00Z",
+        "closeAt": "2026-09-01T00:00:00Z",
+        "assignmentStatus": "open",
+        "allowLateCapture": false,
+        "captureAllowedNow": true,
+        "captureAvailability": "open"
+      }
+    ],
+    "tests": [
+      {
+        "testId": 1006,
+        "testUuid": "00000000-0000-4000-8000-000000001006",
+        "versionNumber": 1,
+        "termPeriodId": 1,
+        "testName": "English Quiz 2",
+        "testType": "quiz",
+        "instructions": "Choose the correct answer.",
+        "totalItems": 10,
+        "status": "active"
+      }
+    ],
+    "testParts": [
+      {
+        "testPartId": 21001,
+        "testId": 1006,
+        "partOrder": 1,
+        "partName": "Multiple Choice",
+        "questionTypeId": 1,
+        "numberOfItems": 10,
+        "pointsPerItem": 1.00,
+        "instructions": "Fill one bubble completely."
+      }
+    ],
+    "questions": [
+      {
+        "questionId": 30001,
+        "questionUuid": "1dd4c493-013f-4251-9d87-ad9be9533298",
+        "testPartId": 21001,
+        "questionTypeId": 1,
+        "itemNumber": 1,
+        "globalItemNumber": 1,
+        "questionText": "Which sentence is grammatically correct?",
+        "maximumPoints": 1.00,
+        "rubricId": null,
+        "responseInstructions": null,
+        "answerOrderRequired": false,
+        "maximumResponseLength": null,
+        "expectedResponseCount": null,
+        "responseRegionSize": "none",
+        "forcePageBreakBefore": false
+      }
+    ],
+    "questionOptions": [
+      {"questionOptionId": 1, "questionId": 30001, "optionKey": "A", "optionText": "Option A", "optionOrder": 1},
+      {"questionOptionId": 2, "questionId": 30001, "optionKey": "B", "optionText": "Option B", "optionOrder": 2},
+      {"questionOptionId": 3, "questionId": 30001, "optionKey": "C", "optionText": "Option C", "optionOrder": 3},
+      {"questionOptionId": 4, "questionId": 30001, "optionKey": "D", "optionText": "Option D", "optionOrder": 4}
+    ],
+    "partSkillMappings": [
+      {"partSkillMappingId": 1, "testPartId": 21001, "skillId": 90, "startItemNumber": 1, "endItemNumber": 10, "itemCount": 10}
+    ],
+    "skills": [
+      {"skillId": 90, "competencyId": 80, "competencyName": "Grammar", "rootTagId": 70, "rootTagName": "Language", "termPeriodId": 1, "gradeLevelId": 7, "subjectId": 1}
+    ],
+    "answerSheets": [
+      {
+        "answerSheetUuid": "56d628da-d7fc-4faa-b018-3f740e048bf0",
+        "testAssignmentId": 12001,
+        "assignmentUuid": "26b14ea2-4383-43f5-bb40-f60683ee46bb",
+        "paperSize": "A4",
+        "generationNumber": 1,
+        "testVersionNumber": 1,
+        "totalQuestions": 10,
+        "totalPages": 1,
+        "manifestVersion": 1,
+        "manifestHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "requiredScannerVersion": "2.0.0",
+        "generatedAt": "2026-08-30T03:30:00Z"
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-08-31T00:00:00Z"
+}

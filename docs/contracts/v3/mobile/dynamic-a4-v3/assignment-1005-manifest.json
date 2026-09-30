@@ -1,0 +1,1295 @@
+{
+  "contractVersion": "3.0",
+  "manifestVersion": 2,
+  "answerSheetUuid": "75452cc4-90e7-4113-b9d9-3ee0d5a81101",
+  "testAssignment": {
+    "testAssignmentId": 1005,
+    "assignmentUuid": "30000000-0000-4000-8000-000000001005"
+  },
+  "paperSize": {
+    "code": "A4",
+    "widthPt": 595.276,
+    "heightPt": 841.89,
+    "orientation": "portrait"
+  },
+  "testVersionNumber": 1,
+  "totalQuestions": 7,
+  "totalPages": 1,
+  "manifestHash": "423a05d446d178a78ce97cd9aa7aea2213f84827b6ce60d3b2469be1ae95b673",
+  "requiredScannerVersion": "3.0.0",
+  "generatedAt": "2026-09-14T11:39:47Z",
+  "pages": [
+    {
+      "pageUuid": "1539cca6-64ed-4f69-afb8-db435c7489f7",
+      "pageNumber": 1,
+      "totalPages": 1,
+      "template": {
+        "code": "OMR-A4-DYNAMIC-CTX-V3",
+        "version": "3",
+        "geometryHash": "2029a0908e1af4098edd8df0581cdb6ac7e0d8348ad7ba282bcd84c730fbb2aa"
+      },
+      "qr": {
+        "payloadVersion": 3,
+        "payload": "{\"v\":3,\"as\":\"dUUsxJDnQRO52T7g1agRAQ\",\"pg\":\"FTnMpmTtT2mvuNtDXHSJ9w\",\"ta\":\"MAAAAAAAQACAAAAAAAAQBQ\",\"pn\":1,\"pc\":1,\"tc\":\"OMR-A4-DYNAMIC-CTX-V3\",\"tv\":\"3\",\"gh\":\"sXkppL3l_FEqfHF37tbxsWWY6EqF80tK90EpL15Dvv8\"}",
+        "payloadHash": "c56bab247e1c000edef0f3a68d49252d90f68b829c3e8de442ec56d2e3e9fc2e",
+        "errorCorrection": "M"
+      },
+      "coordinateSpace": {
+        "unit": "pt",
+        "origin": "pdf_bottom_left",
+        "width": 595.276,
+        "height": 841.89
+      },
+      "regions": [
+        {
+          "regionUuid": "901b7903-c8d1-4e7c-893b-c20e72a3514b",
+          "templateRegionCode": "MC_SLOT_01",
+          "questionId": 700034,
+          "questionUuid": "40000000-0000-4000-8000-000000700034",
+          "testPartId": 1007,
+          "globalItemNumber": 1,
+          "partItemNumber": 1,
+          "questionType": "multiple_choice",
+          "regionType": "objective_bubbles",
+          "responseRegionSize": "none",
+          "expectedResponseCount": null,
+          "responseLineCount": null,
+          "rectangle": {
+            "x": 72.6,
+            "y": 591.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometryHash": "a6e15d8aac3da6855fdc5650178a2664782e49180a867b3f4042705c370dcd68",
+          "options": [
+            {
+              "key": "A",
+              "storedValue": "A",
+              "centerX": 79,
+              "centerY": 597.49
+            },
+            {
+              "key": "B",
+              "storedValue": "B",
+              "centerX": 103,
+              "centerY": 597.49
+            },
+            {
+              "key": "C",
+              "storedValue": "C",
+              "centerX": 127,
+              "centerY": 597.49
+            },
+            {
+              "key": "D",
+              "storedValue": "D",
+              "centerX": 151,
+              "centerY": 597.49
+            }
+          ]
+        },
+        {
+          "regionUuid": "3436da14-15fc-46ca-b7c0-ac8c890dce71",
+          "templateRegionCode": "MC_SLOT_02",
+          "questionId": 700035,
+          "questionUuid": "40000000-0000-4000-8000-000000700035",
+          "testPartId": 1007,
+          "globalItemNumber": 2,
+          "partItemNumber": 2,
+          "questionType": "multiple_choice",
+          "regionType": "objective_bubbles",
+          "responseRegionSize": "none",
+          "expectedResponseCount": null,
+          "responseLineCount": null,
+          "rectangle": {
+            "x": 72.6,
+            "y": 557.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometryHash": "14845aff14b30d184d93a48678ae6210b518fe5519cab3e8e3fe67879d764f77",
+          "options": [
+            {
+              "key": "A",
+              "storedValue": "A",
+              "centerX": 79,
+              "centerY": 563.49
+            },
+            {
+              "key": "B",
+              "storedValue": "B",
+              "centerX": 103,
+              "centerY": 563.49
+            },
+            {
+              "key": "C",
+              "storedValue": "C",
+              "centerX": 127,
+              "centerY": 563.49
+            },
+            {
+              "key": "D",
+              "storedValue": "D",
+              "centerX": 151,
+              "centerY": 563.49
+            }
+          ]
+        },
+        {
+          "regionUuid": "1a98af72-5439-41b3-86bf-24cddfe69843",
+          "templateRegionCode": "MC_SLOT_03",
+          "questionId": 700036,
+          "questionUuid": "40000000-0000-4000-8000-000000700036",
+          "testPartId": 1007,
+          "globalItemNumber": 3,
+          "partItemNumber": 3,
+          "questionType": "multiple_choice",
+          "regionType": "objective_bubbles",
+          "responseRegionSize": "none",
+          "expectedResponseCount": null,
+          "responseLineCount": null,
+          "rectangle": {
+            "x": 72.6,
+            "y": 523.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometryHash": "cfb9a212e8ab27a8a8470ba9f761c4255ec97f27084896fb6aee1dd0d7b85d4d",
+          "options": [
+            {
+              "key": "A",
+              "storedValue": "A",
+              "centerX": 79,
+              "centerY": 529.49
+            },
+            {
+              "key": "B",
+              "storedValue": "B",
+              "centerX": 103,
+              "centerY": 529.49
+            },
+            {
+              "key": "C",
+              "storedValue": "C",
+              "centerX": 127,
+              "centerY": 529.49
+            },
+            {
+              "key": "D",
+              "storedValue": "D",
+              "centerX": 151,
+              "centerY": 529.49
+            }
+          ]
+        },
+        {
+          "regionUuid": "7858dca4-33b1-493c-b969-0413ecb0ef73",
+          "templateRegionCode": "MC_SLOT_04",
+          "questionId": 700037,
+          "questionUuid": "40000000-0000-4000-8000-000000700037",
+          "testPartId": 1007,
+          "globalItemNumber": 4,
+          "partItemNumber": 4,
+          "questionType": "multiple_choice",
+          "regionType": "objective_bubbles",
+          "responseRegionSize": "none",
+          "expectedResponseCount": null,
+          "responseLineCount": null,
+          "rectangle": {
+            "x": 72.6,
+            "y": 489.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometryHash": "079ffb8b1842ec9731374d5378980f0273aac935cc1f6d1bcc234a4e57fc25db",
+          "options": [
+            {
+              "key": "A",
+              "storedValue": "A",
+              "centerX": 79,
+              "centerY": 495.49
+            },
+            {
+              "key": "B",
+              "storedValue": "B",
+              "centerX": 103,
+              "centerY": 495.49
+            },
+            {
+              "key": "C",
+              "storedValue": "C",
+              "centerX": 127,
+              "centerY": 495.49
+            },
+            {
+              "key": "D",
+              "storedValue": "D",
+              "centerX": 151,
+              "centerY": 495.49
+            }
+          ]
+        },
+        {
+          "regionUuid": "d777b9c5-43d9-4cee-aa7e-b6065f2a2535",
+          "templateRegionCode": "MC_SLOT_05",
+          "questionId": 700038,
+          "questionUuid": "40000000-0000-4000-8000-000000700038",
+          "testPartId": 1007,
+          "globalItemNumber": 5,
+          "partItemNumber": 5,
+          "questionType": "multiple_choice",
+          "regionType": "objective_bubbles",
+          "responseRegionSize": "none",
+          "expectedResponseCount": null,
+          "responseLineCount": null,
+          "rectangle": {
+            "x": 72.6,
+            "y": 455.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometryHash": "6492f8c08bd57737464ddd23e6dc84183b2e29f6cb1d9cc4c9efcde23276f84b",
+          "options": [
+            {
+              "key": "A",
+              "storedValue": "A",
+              "centerX": 79,
+              "centerY": 461.49
+            },
+            {
+              "key": "B",
+              "storedValue": "B",
+              "centerX": 103,
+              "centerY": 461.49
+            },
+            {
+              "key": "C",
+              "storedValue": "C",
+              "centerX": 127,
+              "centerY": 461.49
+            },
+            {
+              "key": "D",
+              "storedValue": "D",
+              "centerX": 151,
+              "centerY": 461.49
+            }
+          ]
+        },
+        {
+          "regionUuid": "61889684-e5c9-462e-8313-7b898adfb7d0",
+          "templateRegionCode": "MC_SLOT_06",
+          "questionId": 700039,
+          "questionUuid": "40000000-0000-4000-8000-000000700039",
+          "testPartId": 1008,
+          "globalItemNumber": 6,
+          "partItemNumber": 1,
+          "questionType": "multiple_choice",
+          "regionType": "objective_bubbles",
+          "responseRegionSize": "none",
+          "expectedResponseCount": null,
+          "responseLineCount": null,
+          "rectangle": {
+            "x": 72.6,
+            "y": 421.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometryHash": "e07c9aff44b4bfa8be408440866d131c42b2836f412c9f06ede7ae74f794b51d",
+          "options": [
+            {
+              "key": "A",
+              "storedValue": "A",
+              "centerX": 79,
+              "centerY": 427.49
+            },
+            {
+              "key": "B",
+              "storedValue": "B",
+              "centerX": 103,
+              "centerY": 427.49
+            },
+            {
+              "key": "C",
+              "storedValue": "C",
+              "centerX": 127,
+              "centerY": 427.49
+            },
+            {
+              "key": "D",
+              "storedValue": "D",
+              "centerX": 151,
+              "centerY": 427.49
+            }
+          ]
+        },
+        {
+          "regionUuid": "a07d1334-c500-4d24-95eb-1a7b5c7b9663",
+          "templateRegionCode": "MC_SLOT_07",
+          "questionId": 700040,
+          "questionUuid": "40000000-0000-4000-8000-000000700040",
+          "testPartId": 1008,
+          "globalItemNumber": 7,
+          "partItemNumber": 2,
+          "questionType": "multiple_choice",
+          "regionType": "objective_bubbles",
+          "responseRegionSize": "none",
+          "expectedResponseCount": null,
+          "responseLineCount": null,
+          "rectangle": {
+            "x": 72.6,
+            "y": 387.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometryHash": "5d9aec4c7e35b0bf78537e37bba7350f880870beb874aeb30ffccd63d4b062cd",
+          "options": [
+            {
+              "key": "A",
+              "storedValue": "A",
+              "centerX": 79,
+              "centerY": 393.49
+            },
+            {
+              "key": "B",
+              "storedValue": "B",
+              "centerX": 103,
+              "centerY": 393.49
+            },
+            {
+              "key": "C",
+              "storedValue": "C",
+              "centerX": 127,
+              "centerY": 393.49
+            },
+            {
+              "key": "D",
+              "storedValue": "D",
+              "centerX": 151,
+              "centerY": 393.49
+            }
+          ]
+        }
+      ],
+      "pageGeometryHash": "b17929a4bde5fc512a7c7177eed6f1b16598e84a85f34b4af741292f5e43beff",
+      "templateRegions": [
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000001",
+          "regionCode": "MARKER_1",
+          "regionOrder": 1,
+          "regionType": "registration_marker",
+          "questionType": null,
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 20.0,
+            "y": 806.89,
+            "width": 15.0,
+            "height": 15.0
+          },
+          "geometry": {
+            "shape": "nested_square",
+            "inner_inset_ratio": 0.28,
+            "center_x_pt": 27.5,
+            "center_y_pt": 814.39
+          },
+          "geometryHash": "19d9d47f0dea0a3e20210ca99086b37e7167609675935e991af5553cd89fe6a1",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000002",
+          "regionCode": "MARKER_2",
+          "regionOrder": 2,
+          "regionType": "registration_marker",
+          "questionType": null,
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 560.276,
+            "y": 806.89,
+            "width": 15.0,
+            "height": 15.0
+          },
+          "geometry": {
+            "shape": "nested_square",
+            "inner_inset_ratio": 0.28,
+            "center_x_pt": 567.776,
+            "center_y_pt": 814.39
+          },
+          "geometryHash": "cc14eec3ad672f0756448b03463575c74c5792d6feb1888b45d008b59e4980fa",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000003",
+          "regionCode": "MARKER_3",
+          "regionOrder": 3,
+          "regionType": "registration_marker",
+          "questionType": null,
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 20.0,
+            "y": 20.0,
+            "width": 15.0,
+            "height": 15.0
+          },
+          "geometry": {
+            "shape": "nested_square",
+            "inner_inset_ratio": 0.28,
+            "center_x_pt": 27.5,
+            "center_y_pt": 27.5
+          },
+          "geometryHash": "e067d8de9437460dd6d3e6a50eea511b84feaf1f794382d8f70f7d478bb4ccae",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000004",
+          "regionCode": "MARKER_4",
+          "regionOrder": 4,
+          "regionType": "registration_marker",
+          "questionType": null,
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 560.276,
+            "y": 20.0,
+            "width": 15.0,
+            "height": 15.0
+          },
+          "geometry": {
+            "shape": "nested_square",
+            "inner_inset_ratio": 0.28,
+            "center_x_pt": 567.776,
+            "center_y_pt": 27.5
+          },
+          "geometryHash": "e482eaf4584abb6831a9625b94daeb6a007ff7043a7fccdfe85819a0a1920b55",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000005",
+          "regionCode": "PAGE_QR",
+          "regionOrder": 5,
+          "regionType": "page_identity",
+          "questionType": null,
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 463.276,
+            "y": 663.89,
+            "width": 96.0,
+            "height": 96.0
+          },
+          "geometry": {
+            "error_correction": "M",
+            "quiet_zone_pt": 8,
+            "x_pt": 463.27599999999995,
+            "y_pt": 663.89,
+            "size_pt": 96
+          },
+          "geometryHash": "a5463b17423fed0c904323d20ee9ea8108a1226fb3c5af6cd70a0586808cbc40",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000006",
+          "regionCode": "MC_SLOT_01",
+          "regionOrder": 10,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 591.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 591.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                597.49
+              ],
+              [
+                103,
+                597.49
+              ],
+              [
+                127,
+                597.49
+              ],
+              [
+                151,
+                597.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "a6e15d8aac3da6855fdc5650178a2664782e49180a867b3f4042705c370dcd68",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000007",
+          "regionCode": "MC_SLOT_02",
+          "regionOrder": 11,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 557.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 557.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                563.49
+              ],
+              [
+                103,
+                563.49
+              ],
+              [
+                127,
+                563.49
+              ],
+              [
+                151,
+                563.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "14845aff14b30d184d93a48678ae6210b518fe5519cab3e8e3fe67879d764f77",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000008",
+          "regionCode": "MC_SLOT_03",
+          "regionOrder": 12,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 523.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 523.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                529.49
+              ],
+              [
+                103,
+                529.49
+              ],
+              [
+                127,
+                529.49
+              ],
+              [
+                151,
+                529.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "cfb9a212e8ab27a8a8470ba9f761c4255ec97f27084896fb6aee1dd0d7b85d4d",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000009",
+          "regionCode": "MC_SLOT_04",
+          "regionOrder": 13,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 489.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 489.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                495.49
+              ],
+              [
+                103,
+                495.49
+              ],
+              [
+                127,
+                495.49
+              ],
+              [
+                151,
+                495.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "079ffb8b1842ec9731374d5378980f0273aac935cc1f6d1bcc234a4e57fc25db",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000010",
+          "regionCode": "MC_SLOT_05",
+          "regionOrder": 14,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 455.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 455.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                461.49
+              ],
+              [
+                103,
+                461.49
+              ],
+              [
+                127,
+                461.49
+              ],
+              [
+                151,
+                461.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "6492f8c08bd57737464ddd23e6dc84183b2e29f6cb1d9cc4c9efcde23276f84b",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000011",
+          "regionCode": "MC_SLOT_06",
+          "regionOrder": 15,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 421.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 421.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                427.49
+              ],
+              [
+                103,
+                427.49
+              ],
+              [
+                127,
+                427.49
+              ],
+              [
+                151,
+                427.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "e07c9aff44b4bfa8be408440866d131c42b2836f412c9f06ede7ae74f794b51d",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000012",
+          "regionCode": "MC_SLOT_07",
+          "regionOrder": 16,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 387.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 387.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                393.49
+              ],
+              [
+                103,
+                393.49
+              ],
+              [
+                127,
+                393.49
+              ],
+              [
+                151,
+                393.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "5d9aec4c7e35b0bf78537e37bba7350f880870beb874aeb30ffccd63d4b062cd",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000013",
+          "regionCode": "MC_SLOT_08",
+          "regionOrder": 17,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 353.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 353.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                359.49
+              ],
+              [
+                103,
+                359.49
+              ],
+              [
+                127,
+                359.49
+              ],
+              [
+                151,
+                359.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "faf41a6be2a55b6d12668d06fe0c29fdfb3b45de1ceeefbe9b99b15b0ca36c50",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000014",
+          "regionCode": "MC_SLOT_09",
+          "regionOrder": 18,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 319.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 319.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                325.49
+              ],
+              [
+                103,
+                325.49
+              ],
+              [
+                127,
+                325.49
+              ],
+              [
+                151,
+                325.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "524fdce2b4c63720decd9999dc8977169fae129a3e0b720c6dd764b010a8be24",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000015",
+          "regionCode": "MC_SLOT_10",
+          "regionOrder": 19,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 285.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 285.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                291.49
+              ],
+              [
+                103,
+                291.49
+              ],
+              [
+                127,
+                291.49
+              ],
+              [
+                151,
+                291.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "569b9fb8fed156cef4eb427117e63a291bc50fdc74b5bcc4067fd385b00d38f2",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000016",
+          "regionCode": "MC_SLOT_11",
+          "regionOrder": 20,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 251.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 251.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                257.49
+              ],
+              [
+                103,
+                257.49
+              ],
+              [
+                127,
+                257.49
+              ],
+              [
+                151,
+                257.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "034560d6ff93cfbe83a723694a6d1aa57859cfc86fe4d27c88364d474e4cfd03",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000017",
+          "regionCode": "MC_SLOT_12",
+          "regionOrder": 21,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 217.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 217.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                223.49
+              ],
+              [
+                103,
+                223.49
+              ],
+              [
+                127,
+                223.49
+              ],
+              [
+                151,
+                223.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "bc141f73c7cbbbd0e63b44b58db6639ecea76d85386c1e6c2537375137dd02b4",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000018",
+          "regionCode": "MC_SLOT_13",
+          "regionOrder": 22,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 183.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 183.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                189.49
+              ],
+              [
+                103,
+                189.49
+              ],
+              [
+                127,
+                189.49
+              ],
+              [
+                151,
+                189.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "a0f6ae94c8e91f4e0579d0ee9788e90440d8b7a916bdd6f57230a01f6bb0189f",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000019",
+          "regionCode": "MC_SLOT_14",
+          "regionOrder": 23,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 149.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 149.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                155.49
+              ],
+              [
+                103,
+                155.49
+              ],
+              [
+                127,
+                155.49
+              ],
+              [
+                151,
+                155.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "1d6a3729cbd806d2d99778a8c3247f8a6cd0df0e538aaceb745a7843b7519853",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000020",
+          "regionCode": "MC_SLOT_15",
+          "regionOrder": 24,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 115.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 115.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                121.49
+              ],
+              [
+                103,
+                121.49
+              ],
+              [
+                127,
+                121.49
+              ],
+              [
+                151,
+                121.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "39a2ef2a6d3dc66f2f2adf1216633082dff3cd836502cf0f41187794de1de92a",
+          "required": true
+        },
+        {
+          "regionUuid": "00000000-0024-4000-8000-000000000021",
+          "regionCode": "MC_SLOT_16",
+          "regionOrder": 25,
+          "regionType": "objective_bubbles",
+          "questionType": "multiple_choice",
+          "layoutVariant": "dynamic_context_v3",
+          "responseRegionSize": "none",
+          "rectangle": {
+            "x": 72.6,
+            "y": 81.09,
+            "width": 84.8,
+            "height": 12.8
+          },
+          "geometry": {
+            "rectangle": {
+              "x": 72.6,
+              "y": 81.09,
+              "width": 84.8,
+              "height": 12.8
+            },
+            "option_keys": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "bubble_centers_pt": [
+              [
+                79,
+                87.49
+              ],
+              [
+                103,
+                87.49
+              ],
+              [
+                127,
+                87.49
+              ],
+              [
+                151,
+                87.49
+              ]
+            ],
+            "bubble_radius_pt": 6.4
+          },
+          "geometryHash": "215c4fcae62683380319bd2c4e7945dbffc9e0a79cc23906344ebc9236dda024",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

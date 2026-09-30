@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "message": "Illustrative contract response.",
+  "data": {
+    "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+    "resultStatus": "superseded",
+    "revision": 5,
+    "scoreVersion": 1,
+    "replacementResultUuid": "00000000-0000-4000-8000-000000000902",
+    "disposition": "created",
+    "acknowledgedAt": "2026-09-12T02:00:00Z"
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

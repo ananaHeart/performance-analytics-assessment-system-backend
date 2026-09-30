@@ -36,3 +36,19 @@ build/
 /output/v3-scan-evidence/
 /output/local-mobile-staging/
 /output/local-dynamic-staging-*/
+
+### Runtime output, logs and JVM crash dumps ###
+/output/
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+### Database dumps - contain real user emails and password hashes, never commit ###
+/docs/backups/
+/docs/recovery/checkpoints/
+
+### Scratch / handoff artifacts ###
+/tmp/
+/patch_fix/
+*.patch
+*.diff

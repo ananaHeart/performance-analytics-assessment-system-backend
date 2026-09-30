@@ -1,0 +1,1608 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SMART Mobile V3 supersession and audited page rescan",
+    "version": "1.11.0",
+    "description": "Milestone 4 Prompt 16. Implements the previously proposed 3.0 supersede DTO and bounded teacher-requested rescan using unchanged 3.0 scan metadata. Initial 3.0, written 3.1 and correction 3.2 wire contracts are unchanged. Production remains gated."
+  },
+  "paths": {
+    "/api/v3/mobile/results/{resultUuid}": {
+      "get": {
+        "operationId": "readMobileResult",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022",
+          "V3_023"
+        ],
+        "description": "Owned repeatable-read snapshot. Disabled by default until persistence contracts are deployed. GET never finalizes, retries or mutates records. Metrics are server score totals only; advanced modules remain unavailable.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resultUuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current owned state, with explicit unavailable analytics and stage-scoped acknowledgements.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultReadback"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired session"
+          },
+          "403": {
+            "description": "Wrong role or inactive school account"
+          },
+          "404": {
+            "description": "Unknown or no-longer-owned resource; no existence disclosure"
+          },
+          "409": {
+            "description": "READBACK_STATE_INCONSISTENT, READBACK_LIMIT_EXCEEDED or unsupported sync stage"
+          },
+          "422": {
+            "description": "Noncanonical UUID"
+          },
+          "503": {
+            "description": "MOBILE_READBACK_UNAVAILABLE release gate"
+          }
+        }
+      }
+    },
+    "/api/v3/mobile/results/{resultUuid}/analytics": {
+      "get": {
+        "operationId": "readMobileResultAnalytics",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022",
+          "V3_023"
+        ],
+        "description": "Owned repeatable-read snapshot. Disabled by default until persistence contracts are deployed. GET never finalizes, retries or mutates records. Metrics are server score totals only; advanced modules remain unavailable.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resultUuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current owned state, with explicit unavailable analytics and stage-scoped acknowledgements.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired session"
+          },
+          "403": {
+            "description": "Wrong role or inactive school account"
+          },
+          "404": {
+            "description": "Unknown or no-longer-owned resource; no existence disclosure"
+          },
+          "409": {
+            "description": "READBACK_STATE_INCONSISTENT, READBACK_LIMIT_EXCEEDED or unsupported sync stage"
+          },
+          "422": {
+            "description": "Noncanonical UUID"
+          },
+          "503": {
+            "description": "MOBILE_READBACK_UNAVAILABLE release gate"
+          }
+        }
+      }
+    },
+    "/api/v3/mobile/syncs/{syncUuid}": {
+      "get": {
+        "operationId": "readMobileSync",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022",
+          "V3_023"
+        ],
+        "description": "Owned repeatable-read snapshot. Disabled by default until persistence contracts are deployed. GET never finalizes, retries or mutates records. Metrics are server score totals only; advanced modules remain unavailable.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "syncUuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current owned state, with explicit unavailable analytics and stage-scoped acknowledgements.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncReadback"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired session"
+          },
+          "403": {
+            "description": "Wrong role or inactive school account"
+          },
+          "404": {
+            "description": "Unknown or no-longer-owned resource; no existence disclosure"
+          },
+          "409": {
+            "description": "READBACK_STATE_INCONSISTENT, READBACK_LIMIT_EXCEEDED or unsupported sync stage"
+          },
+          "422": {
+            "description": "Noncanonical UUID"
+          },
+          "503": {
+            "description": "MOBILE_READBACK_UNAVAILABLE release gate"
+          }
+        }
+      }
+    },
+    "/api/v3/mobile/results/{resultUuid}/supersede": {
+      "post": {
+        "operationId": "supersedeMobileResult",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022",
+          "V3_023"
+        ],
+        "description": "Link a finalized or audited reopened official source to a newer finalized result for the same delivery/student/current teacher. The replacement must be the latest non-superseded server-assigned attempt with distinct verified capture. Locks both; appends source/replacement official snapshots, audit, sync and immediate result/session lineage, marks source superseded and advances its revision only. Neither score version is recomputed. Existing latest-attempt report policy already selects one result before linkage; this endpoint records explicit supersession, not a retake grading policy. Replays return the original link even after a later chain link. Follow GET supersession and current result readback to resolve the chain.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resultUuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupersedeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Immutable superseded acknowledgement, created or replayed; same 3.0 LifecycleAck.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleAck"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTHENTICATION_REQUIRED"
+          },
+          "403": {
+            "description": "RESULT_ACCESS_DENIED, or closed HTTP release gate"
+          },
+          "404": {
+            "description": "RESOURCE_NOT_FOUND: unknown or no-longer-owned result"
+          },
+          "409": {
+            "description": "Source/replacement not official/current, different context, stale source revision/version, identity conflict, missing evidence or invalid receipt. Whole operation rolled back.",
+            "x-error-codes": [
+              "REVISION_CONFLICT",
+              "RESULT_NOT_FINALIZED",
+              "REOPEN_IDENTITY_CONFLICT",
+              "SYNC_IDENTITY_CONFLICT",
+              "OFFICIAL_SCORE_UNAVAILABLE",
+              "FINALIZATION_STATE_CONFLICT",
+              "REOPEN_STATE_CONFLICT",
+              "RESULT_REVISION_EXHAUSTED",
+              "ASSIGNMENT_ARCHIVED",
+              "ASSESSMENT_NOT_SCORABLE"
+            ]
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE above 32 KiB"
+          },
+          "422": {
+            "description": "VALIDATION_FAILED: invalid fields, blank reason, invalid UUID/version, coercion, missing or unknown properties"
+          },
+          "503": {
+            "description": "MOBILE_SUPERSEDE_UNAVAILABLE or SUPERSEDE_PERSISTENCE_UNAVAILABLE. Retry identical request after uncertain commit acknowledgement."
+          }
+        }
+      }
+    },
+    "/api/v3/mobile/results/{resultUuid}/supersession": {
+      "get": {
+        "operationId": "readMobileSupersession",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022",
+          "V3_023"
+        ],
+        "description": "Read the durable immediate successor for this owned source. Reauthorizes both results. 404 SUPERSESSION_NOT_FOUND if no committed link exists. Follow each successor until its current result is not superseded; this is a read, never a relink or rescore.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resultUuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Immutable superseded acknowledgement, created or replayed; same 3.0 LifecycleAck.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleAck"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "AUTHENTICATION_REQUIRED"
+          },
+          "403": {
+            "description": "RESULT_ACCESS_DENIED, or closed HTTP release gate"
+          },
+          "404": {
+            "description": "Owned result or committed link not found."
+          },
+          "409": {
+            "description": "Source/replacement not official/current, different context, stale source revision/version, identity conflict, missing evidence or invalid receipt. Whole operation rolled back.",
+            "x-error-codes": [
+              "REVISION_CONFLICT",
+              "RESULT_NOT_FINALIZED",
+              "REOPEN_IDENTITY_CONFLICT",
+              "SYNC_IDENTITY_CONFLICT",
+              "OFFICIAL_SCORE_UNAVAILABLE",
+              "FINALIZATION_STATE_CONFLICT",
+              "REOPEN_STATE_CONFLICT",
+              "RESULT_REVISION_EXHAUSTED",
+              "ASSIGNMENT_ARCHIVED",
+              "ASSESSMENT_NOT_SCORABLE"
+            ]
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE above 32 KiB"
+          },
+          "422": {
+            "description": "VALIDATION_FAILED: invalid fields, blank reason, invalid UUID/version, coercion, missing or unknown properties"
+          },
+          "503": {
+            "description": "MOBILE_SUPERSEDE_UNAVAILABLE or SUPERSEDE_PERSISTENCE_UNAVAILABLE. Retry identical request after uncertain commit acknowledgement."
+          }
+        }
+      }
+    },
+    "/api/v3/mobile/scan-pages": {
+      "post": {
+        "operationId": "uploadMobileScanPage",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022",
+          "V3_023"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Exactly one metadata JSON part and one image part. First captureNumber=1; rescan uses same result/scan/sheet/page identity, new syncUuid and scanPageUuid, captureNumber=current+1, at most 5 captures. Requires committed teacher rescan_requested decision and no accepted answers or previous official score. Atomically supersedes predecessor, links immutable page lineage, inserts new evidence/receipt and advances result revision. Preserves old evidence/detections/audits. Rescan uses existing one-page 10-MC A4 eligibility; paper/QR geometry is unchanged. Stage acknowledgement remains captured on historical replay. GET result/sync for current state.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "metadata": {
+                    "$ref": "#/components/schemas/ScanMetadata"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "metadata",
+                  "image"
+                ],
+                "additionalProperties": false
+              },
+              "encoding": {
+                "metadata": {
+                  "contentType": "application/json"
+                },
+                "image": {
+                  "contentType": "image/jpeg, image/png"
+                }
+              }
+            }
+          }
+        },
+        "x-max-metadata-bytes": 65536,
+        "x-max-captures-per-page": 5,
+        "x-max-image-bytes": 15728640,
+        "responses": {
+          "201": {
+            "description": "New capture committed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Historical committed capture replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Teacher authorization or HTTP release gate"
+          },
+          "404": {
+            "description": "Owned capture context not found"
+          },
+          "409": {
+            "description": "Rescan predecessor/decision/context/number/identity or lifecycle conflict"
+          },
+          "413": {
+            "description": "Upload bounds exceeded"
+          },
+          "422": {
+            "description": "Invalid metadata or multipart content"
+          },
+          "500": {
+            "description": "Uncertain persistence failure; retry identical upload or invoke backend recovery"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "LifecycleAck": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "resultUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "resultStatus": {
+                "enum": [
+                  "pending_verification",
+                  "superseded"
+                ]
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "scoreVersion": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "replacementResultUuid": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "disposition": {
+                "enum": [
+                  "created",
+                  "replayed"
+                ]
+              },
+              "acknowledgedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              }
+            },
+            "required": [
+              "resultUuid",
+              "resultStatus",
+              "revision",
+              "scoreVersion",
+              "replacementResultUuid",
+              "disposition",
+              "acknowledgedAt"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "ResultReadback": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractVersion": {
+                "const": "3.0"
+              },
+              "resultUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "testResultId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "assignmentUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "classListId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "studentId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "resultStatus": {
+                "enum": [
+                  "draft",
+                  "pending_verification",
+                  "finalized",
+                  "superseded"
+                ]
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "scoreVersion": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "pendingReasons": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "idMappings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/IdMapping"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "pages": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PageState"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "rubricScoreMappings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RubricMapping"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "officialScore": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/OfficialScore"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "analytics": {
+                "$ref": "#/components/schemas/AnalyticsState"
+              }
+            },
+            "required": [
+              "contractVersion",
+              "resultUuid",
+              "testResultId",
+              "assignmentUuid",
+              "classListId",
+              "studentId",
+              "resultStatus",
+              "revision",
+              "scoreVersion",
+              "pendingReasons",
+              "idMappings",
+              "pages",
+              "rubricScoreMappings",
+              "officialScore",
+              "analytics"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "IdMapping": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "enum": [
+              "test_result",
+              "scan_session",
+              "scan_page",
+              "answer_sheet_version",
+              "answer_sheet_page",
+              "answer_sheet_region",
+              "student_answer",
+              "omr_detection",
+              "answer_attachment",
+              "scan_verification",
+              "answer_verification",
+              "sync"
+            ]
+          },
+          "uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "centralId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "entityType",
+          "uuid",
+          "centralId"
+        ],
+        "additionalProperties": false
+      },
+      "PageState": {
+        "type": "object",
+        "properties": {
+          "scanUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "pageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "pageStatus": {
+            "type": "string",
+            "minLength": 1
+          },
+          "originalAttachmentUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "scanUuid",
+          "scanPageUuid",
+          "pageUuid",
+          "pageStatus",
+          "originalAttachmentUuid"
+        ],
+        "additionalProperties": false
+      },
+      "RubricMapping": {
+        "type": "object",
+        "properties": {
+          "answerUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "rubricCriterionId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "scoreVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "centralAnswerRubricScoreId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "answerUuid",
+          "rubricCriterionId",
+          "scoreVersion",
+          "centralAnswerRubricScoreId"
+        ],
+        "additionalProperties": false
+      },
+      "OfficialScore": {
+        "type": "object",
+        "properties": {
+          "testResultId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "testAssignmentId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "testId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "classListId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "studentId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "studentName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "totalScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "maxScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "percentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "performanceStatus": {
+            "type": "string",
+            "minLength": 1
+          },
+          "performanceLabel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "performanceRuleSetId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "itemsEvaluated": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "scoreVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "resultStatus": {
+            "const": "finalized"
+          },
+          "scoredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "scoreChanged": {
+            "type": "boolean"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartScore"
+            },
+            "minItems": 1,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "testResultId",
+          "resultUuid",
+          "testAssignmentId",
+          "testId",
+          "classListId",
+          "studentId",
+          "studentName",
+          "attemptNumber",
+          "totalScore",
+          "maxScore",
+          "percentage",
+          "performanceStatus",
+          "performanceLabel",
+          "performanceRuleSetId",
+          "itemsEvaluated",
+          "scoreVersion",
+          "resultStatus",
+          "scoredAt",
+          "scoreChanged",
+          "parts"
+        ],
+        "additionalProperties": false
+      },
+      "PartScore": {
+        "type": "object",
+        "properties": {
+          "testPartId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "partOrder": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "partName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "totalScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "maxScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "percentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "itemsEvaluated": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "testPartId",
+          "partOrder",
+          "partName",
+          "totalScore",
+          "maxScore",
+          "percentage",
+          "itemsEvaluated"
+        ],
+        "additionalProperties": false
+      },
+      "AnalyticsState": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "unavailable",
+              "pending",
+              "ready",
+              "stale"
+            ]
+          },
+          "scoreVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "scoreVersion",
+          "reasonCode"
+        ],
+        "additionalProperties": false
+      },
+      "AnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractVersion": {
+                "const": "3.0"
+              },
+              "resultUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "scoreVersion": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "enum": [
+                  "unavailable",
+                  "pending",
+                  "ready",
+                  "stale"
+                ]
+              },
+              "reasonCode": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "generatedAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "Z$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "metrics": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "totalScore": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 999999.99,
+                        "multipleOf": 0.01
+                      },
+                      "maxScore": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 999999.99,
+                        "multipleOf": 0.01
+                      },
+                      "percentage": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "itemAnalysis": {
+                        "type": "null"
+                      },
+                      "mastery": {
+                        "type": "null"
+                      },
+                      "interventions": {
+                        "type": "null"
+                      },
+                      "student360": {
+                        "type": "null"
+                      }
+                    },
+                    "required": [
+                      "totalScore",
+                      "maxScore",
+                      "percentage",
+                      "itemAnalysis",
+                      "mastery",
+                      "interventions",
+                      "student360"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "unavailableModules": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "itemAnalysis",
+                    "mastery",
+                    "interventions",
+                    "student360"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "contractVersion",
+              "resultUuid",
+              "scoreVersion",
+              "status",
+              "reasonCode",
+              "generatedAt",
+              "metrics",
+              "unavailableModules"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "SyncReadback": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractVersion": {
+                "const": "3.0"
+              },
+              "syncUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "assignmentUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "syncStatus": {
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "partial_success",
+                  "success",
+                  "failed"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SyncResultOutcome"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "contractVersion",
+              "syncUuid",
+              "assignmentUuid",
+              "syncStatus",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "SyncResultOutcome": {
+        "type": "object",
+        "properties": {
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "pending"
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pageOutcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageOutcome"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "resultUuid",
+          "status",
+          "error",
+          "pageOutcomes"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "additionalProperties": false
+      },
+      "PageOutcome": {
+        "type": "object",
+        "properties": {
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "pending"
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "scanPageUuid",
+          "status",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "SupersedeRequest": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "const": "3.0"
+          },
+          "syncUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "operationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "expectedScoreVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "replacementResultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "contractVersion",
+          "syncUuid",
+          "operationUuid",
+          "expectedRevision",
+          "expectedScoreVersion",
+          "reasonCode",
+          "comment",
+          "replacementResultUuid"
+        ],
+        "additionalProperties": false
+      },
+      "ScanMetadata": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "const": "3.0"
+          },
+          "syncUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "answerSheetUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "pageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "assignmentUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "classListId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "captureNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "scannerVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "qrPayloadHash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "imageHash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "contractVersion",
+          "syncUuid",
+          "resultUuid",
+          "scanUuid",
+          "scanPageUuid",
+          "answerSheetUuid",
+          "pageUuid",
+          "assignmentUuid",
+          "classListId",
+          "pageNumber",
+          "captureNumber",
+          "scannerVersion",
+          "qrPayloadHash",
+          "imageHash",
+          "capturedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ScanResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "syncUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "resultUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "scanUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "scanPageUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "backendScanPageId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "uploadStatus": {
+                "enum": [
+                  "created",
+                  "replayed"
+                ]
+              },
+              "pageStatus": {
+                "type": "string",
+                "minLength": 1
+              },
+              "contentHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "acknowledgedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              }
+            },
+            "required": [
+              "syncUuid",
+              "resultUuid",
+              "scanUuid",
+              "scanPageUuid",
+              "backendScanPageId",
+              "uploadStatus",
+              "pageStatus",
+              "contentHash",
+              "acknowledgedAt"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "x-mobile-production-enabled": false
+}

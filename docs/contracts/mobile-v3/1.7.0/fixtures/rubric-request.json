@@ -1,0 +1,56 @@
+{
+  "contractVersion": "3.1",
+  "syncUuid": "00000000-0000-4000-8000-000000000133",
+  "operationUuid": "00000000-0000-4000-8000-000000010133",
+  "assignmentUuid": "00000000-0000-4000-8000-000000002102",
+  "items": [
+    {
+      "resultUuid": "00000000-0000-4000-8000-000000002100",
+      "expectedRevision": 2,
+      "pageDecisions": [
+        {
+          "verificationUuid": "00000000-0000-4000-8000-000000000140",
+          "scanPageUuid": "00000000-0000-4000-8000-000000002101",
+          "action": "accepted",
+          "reasonCode": null,
+          "comment": null,
+          "clientDecidedAt": "2026-09-12T02:00:00Z"
+        }
+      ],
+      "answers": [
+        {
+          "answerUuid": "00000000-0000-4000-8000-000000002131",
+          "verificationUuid": "00000000-0000-4000-8000-000000000143",
+          "questionUuid": "00000000-0000-4000-8000-000000002111",
+          "regionUuid": "00000000-0000-4000-8000-000000002121",
+          "scanPageUuid": "00000000-0000-4000-8000-000000002101",
+          "evaluation": {
+            "kind": "rubric",
+            "answerStatus": "answered",
+            "responseText": null,
+            "attachmentUuids": [
+              "00000000-0000-4000-8000-000000002141"
+            ],
+            "rubricId": 6001,
+            "criterionScores": [
+              {
+                "rubricCriterionId": 6101,
+                "pointsAwarded": 3,
+                "comment": "Relevant explanation."
+              },
+              {
+                "rubricCriterionId": 6102,
+                "pointsAwarded": 1,
+                "comment": "Needs clearer organization."
+              }
+            ]
+          },
+          "comment": null,
+          "clientDecidedAt": "2026-09-12T02:00:00Z"
+        }
+      ],
+      "testVersionNumber": 1,
+      "evaluationReferenceHash": "f34d16174ff4f4ddad2dcedf456873591346447a5afde3f45497f4f90adf8dc2"
+    }
+  ]
+}

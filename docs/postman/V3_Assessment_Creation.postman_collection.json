@@ -1,0 +1,738 @@
+{
+  "info": {
+    "_postman_id": "d6488dbc-81fd-49f8-bc49-5e35440f6440",
+    "name": "SMART V3 Assessment Creation",
+    "description": "Runs the isolated V3 teacher assessment-creation flow. Set teacherEmail and teacherPassword, then run in order. Frontend and Mobile remain unchanged.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "teacherEmail",
+      "value": ""
+    },
+    {
+      "key": "teacherPassword",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "classAssignmentId",
+      "value": ""
+    },
+    {
+      "key": "termPeriodId",
+      "value": ""
+    },
+    {
+      "key": "skillId",
+      "value": ""
+    },
+    {
+      "key": "testId",
+      "value": ""
+    },
+    {
+      "key": "rubricId",
+      "value": ""
+    },
+    {
+      "key": "openAt",
+      "value": ""
+    },
+    {
+      "key": "closeAt",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Login Teacher",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\",\n  \"deviceIdentifier\": \"postman-v3-assessment\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Login succeeds\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Bearer token returned\", () => {",
+              "  pm.expect(body.success).to.eql(true);",
+              "  pm.expect(body.data.tokenType).to.eql(\"Bearer\");",
+              "  pm.expect(body.data.accessToken).to.be.a(\"string\").and.not.empty;",
+              "});",
+              "if (body.data && body.data.accessToken) {",
+              "  pm.collectionVariables.set(\"accessToken\", body.data.accessToken);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Discover Owned Assignments",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments/reference-data",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments",
+            "reference-data"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Reference data succeeds\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"At least one active assignment is available\", () => {",
+              "  pm.expect(body.data.assignments).to.be.an(\"array\").that.is.not.empty;",
+              "});",
+              "if (body.data.assignments.length) {",
+              "  pm.collectionVariables.set(\"classAssignmentId\", body.data.assignments[0].classAssignmentId);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Load Assignment Terms",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments/reference-data?classAssignmentId={{classAssignmentId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments",
+            "reference-data?classAssignmentId={{classAssignmentId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Assignment terms succeed\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"At least one term is available\", () => {",
+              "  pm.expect(body.data.termPeriods).to.be.an(\"array\").that.is.not.empty;",
+              "});",
+              "if (body.data.termPeriods.length) {",
+              "  pm.collectionVariables.set(\"termPeriodId\", body.data.termPeriods[0].termPeriodId);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Load Term Skills",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments/reference-data?classAssignmentId={{classAssignmentId}}&termPeriodId={{termPeriodId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments",
+            "reference-data?classAssignmentId={{classAssignmentId}}&termPeriodId={{termPeriodId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Term skills succeed\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"All five question types are active\", () => {",
+              "  const codes = body.data.questionTypes.map(item => item.code);",
+              "  [\"multiple_choice\", \"true_false\", \"identification\", \"enumeration\", \"essay\"]",
+              "    .forEach(code => pm.expect(codes).to.include(code));",
+              "});",
+              "pm.test(\"At least one contextual skill is available\", () => {",
+              "  pm.expect(body.data.skills).to.be.an(\"array\").that.is.not.empty;",
+              "});",
+              "if (body.data.skills.length) {",
+              "  pm.collectionVariables.set(\"skillId\", body.data.skills[0].skillId);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Create Five-Type Draft",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"classAssignmentId\": {{classAssignmentId}},\n  \"termPeriodId\": {{termPeriodId}},\n  \"testName\": \"Five Type Assessment\",\n  \"testType\": \"quiz\",\n  \"instructions\": \"Read every part carefully.\",\n  \"openAt\": \"{{openAt}}\",\n  \"closeAt\": \"{{closeAt}}\",\n  \"allowLateCapture\": false,\n  \"parts\": [\n    {\n      \"partOrder\": 1,\n      \"partName\": \"Multiple Choice\",\n      \"questionTypeCode\": \"multiple_choice\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 1,\n      \"partInstructions\": \"Select the best answer.\",\n      \"questions\": [\n        {\n          \"itemNumber\": 1,\n          \"questionText\": \"Which state has a fixed volume but no fixed shape?\",\n          \"maximumPoints\": 1,\n          \"options\": [\n            { \"optionKey\": \"A\", \"optionText\": \"Solid\", \"optionOrder\": 1 },\n            { \"optionKey\": \"B\", \"optionText\": \"Liquid\", \"optionOrder\": 2 },\n            { \"optionKey\": \"C\", \"optionText\": \"Gas\", \"optionOrder\": 3 },\n            { \"optionKey\": \"D\", \"optionText\": \"Plasma\", \"optionOrder\": 4 }\n          ],\n          \"correctOptionKey\": \"B\"\n        }\n      ],\n      \"skillMappings\": [\n        { \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }\n      ]\n    },\n    {\n      \"partOrder\": 2,\n      \"partName\": \"True or False\",\n      \"questionTypeCode\": \"true_false\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 1,\n      \"questions\": [\n        {\n          \"itemNumber\": 1,\n          \"questionText\": \"Water boils at 100 degrees Celsius at sea level.\",\n          \"maximumPoints\": 1,\n          \"correctOptionKey\": \"A\"\n        }\n      ],\n      \"skillMappings\": [\n        { \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }\n      ]\n    },\n    {\n      \"partOrder\": 3,\n      \"partName\": \"Identification\",\n      \"questionTypeCode\": \"identification\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 2,\n      \"questions\": [\n        {\n          \"itemNumber\": 1,\n          \"questionText\": \"Name the process plants use to make food.\",\n          \"maximumPoints\": 2,\n          \"maximumResponseLength\": 120,\n          \"expectedResponseCount\": 1,\n          \"responseRegionSize\": \"short\",\n          \"matchingMode\": \"normalized\",\n          \"acceptedAnswers\": [\n            {\n              \"acceptedText\": \"Photosynthesis\",\n              \"points\": 2,\n              \"primary\": true,\n              \"caseSensitive\": false\n            }\n          ]\n        }\n      ],\n      \"skillMappings\": [\n        { \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }\n      ]\n    },\n    {\n      \"partOrder\": 4,\n      \"partName\": \"Enumeration\",\n      \"questionTypeCode\": \"enumeration\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 2,\n      \"questions\": [\n        {\n          \"itemNumber\": 1,\n          \"questionText\": \"Give two states of matter.\",\n          \"maximumPoints\": 2,\n          \"maximumResponseLength\": 200,\n          \"expectedResponseCount\": 2,\n          \"responseRegionSize\": \"medium\",\n          \"matchingMode\": \"normalized\",\n          \"acceptedAnswers\": [\n            {\n              \"answerOrder\": 1,\n              \"acceptedText\": \"Solid\",\n              \"points\": 1,\n              \"primary\": true,\n              \"caseSensitive\": false\n            },\n            {\n              \"answerOrder\": 2,\n              \"acceptedText\": \"Liquid\",\n              \"points\": 1,\n              \"primary\": true,\n              \"caseSensitive\": false\n            }\n          ]\n        }\n      ],\n      \"skillMappings\": [\n        { \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }\n      ]\n    },\n    {\n      \"partOrder\": 5,\n      \"partName\": \"Essay\",\n      \"questionTypeCode\": \"essay\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 5,\n      \"questions\": [\n        {\n          \"itemNumber\": 1,\n          \"questionText\": \"Explain how matter changes state.\",\n          \"maximumPoints\": 5,\n          \"responseInstructions\": \"Use complete sentences.\",\n          \"maximumResponseLength\": 1000,\n          \"responseRegionSize\": \"long\",\n          \"forcePageBreakBefore\": true,\n          \"rubric\": {\n            \"rubricName\": \"Science Explanation Rubric {{$randomUUID}}\",\n            \"description\": \"Scores scientific accuracy and clarity.\",\n            \"criteria\": [\n              {\n                \"criterionOrder\": 1,\n                \"criterionName\": \"Scientific accuracy\",\n                \"criterionDescription\": \"Uses correct scientific ideas.\",\n                \"maximumPoints\": 3,\n                \"required\": true\n              },\n              {\n                \"criterionOrder\": 2,\n                \"criterionName\": \"Clarity\",\n                \"criterionDescription\": \"Explains the answer clearly.\",\n                \"maximumPoints\": 2,\n                \"required\": true\n              }\n            ]\n          }\n        }\n      ],\n      \"skillMappings\": [\n        { \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }\n      ]\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"openAt\", new Date(Date.now() + 60 * 60 * 1000).toISOString());",
+              "pm.collectionVariables.set(\"closeAt\", new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString());"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Draft created\", () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test(\"Computed snapshots are correct\", () => {",
+              "  pm.expect(body.data.status).to.eql(\"draft\");",
+              "  pm.expect(body.data.totalItems).to.eql(5);",
+              "  pm.expect(Number(body.data.maximumScore)).to.eql(11);",
+              "  pm.expect(body.data.parts).to.have.length(5);",
+              "});",
+              "if (body.data) {",
+              "  pm.collectionVariables.set(\"testId\", body.data.testId);",
+              "  const essay = body.data.parts.find(part => part.questionTypeCode === \"essay\");",
+              "  if (essay && essay.questions[0].rubric) {",
+              "    pm.collectionVariables.set(\"rubricId\", essay.questions[0].rubric.rubricId);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 List Assessments",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments?classAssignmentId={{classAssignmentId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments?classAssignmentId={{classAssignmentId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Assessment list succeeds\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Created test is listed\", () => {",
+              "  pm.expect(body.data.some(item => String(item.testId) === String(pm.collectionVariables.get(\"testId\")))).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Get Assessment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments/{{testId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments",
+            "{{testId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Complete assessment graph succeeds\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Five parts and generated True/False options are returned\", () => {",
+              "  pm.expect(body.data.parts).to.have.length(5);",
+              "  const tf = body.data.parts.find(part => part.questionTypeCode === \"true_false\");",
+              "  pm.expect(tf.questions[0].options.map(option => option.optionKey)).to.eql([\"A\", \"B\"]);",
+              "  pm.expect(tf.questions[0].options.map(option => option.optionText)).to.eql([\"True\", \"False\"]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Reject Missing Skill Mapping",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"classAssignmentId\": {{classAssignmentId}},\n  \"termPeriodId\": {{termPeriodId}},\n  \"testName\": \"Invalid Missing Mapping\",\n  \"testType\": \"quiz\",\n  \"allowLateCapture\": false,\n  \"parts\": [{\n    \"partOrder\": 1,\n    \"partName\": \"Multiple Choice\",\n    \"questionTypeCode\": \"multiple_choice\",\n    \"numberOfItems\": 1,\n    \"pointsPerItem\": 1,\n    \"questions\": [{\n      \"itemNumber\": 1,\n      \"questionText\": \"This request must be rejected.\",\n      \"maximumPoints\": 1,\n      \"options\": [\n        { \"optionKey\": \"A\", \"optionText\": \"A\", \"optionOrder\": 1 },\n        { \"optionKey\": \"B\", \"optionText\": \"B\", \"optionOrder\": 2 },\n        { \"optionKey\": \"C\", \"optionText\": \"C\", \"optionOrder\": 3 },\n        { \"optionKey\": \"D\", \"optionText\": \"D\", \"optionOrder\": 4 }\n      ],\n      \"correctOptionKey\": \"A\"\n    }],\n    \"skillMappings\": []\n  }]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Invalid mapping is rejected\", () => pm.response.to.have.status(400));",
+              "const body = pm.response.json();",
+              "pm.test(\"Validation envelope is returned\", () => {",
+              "  pm.expect(body.success).to.eql(false);",
+              "  pm.expect(body.errors.code).to.eql(\"VALIDATION_FAILED\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Update Draft",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments/{{testId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments",
+            "{{testId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"classAssignmentId\": {{classAssignmentId}},\n  \"termPeriodId\": {{termPeriodId}},\n  \"testName\": \"Five Type Assessment - Updated\",\n  \"testType\": \"exam\",\n  \"instructions\": \"Updated while the assessment is still a draft.\",\n  \"openAt\": \"{{openAt}}\",\n  \"closeAt\": \"{{closeAt}}\",\n  \"allowLateCapture\": false,\n  \"parts\": [\n    {\n      \"partOrder\": 1,\n      \"partName\": \"Multiple Choice\",\n      \"questionTypeCode\": \"multiple_choice\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 1,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Which state has a fixed volume but no fixed shape?\",\n        \"maximumPoints\": 1,\n        \"options\": [\n          { \"optionKey\": \"A\", \"optionText\": \"Solid\", \"optionOrder\": 1 },\n          { \"optionKey\": \"B\", \"optionText\": \"Liquid\", \"optionOrder\": 2 },\n          { \"optionKey\": \"C\", \"optionText\": \"Gas\", \"optionOrder\": 3 },\n          { \"optionKey\": \"D\", \"optionText\": \"Plasma\", \"optionOrder\": 4 }\n        ],\n        \"correctOptionKey\": \"B\"\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    },\n    {\n      \"partOrder\": 2,\n      \"partName\": \"True or False\",\n      \"questionTypeCode\": \"true_false\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 1,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Water boils at 100 degrees Celsius at sea level.\",\n        \"maximumPoints\": 1,\n        \"correctOptionKey\": \"A\"\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    },\n    {\n      \"partOrder\": 3,\n      \"partName\": \"Identification\",\n      \"questionTypeCode\": \"identification\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 2,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Name the process plants use to make food.\",\n        \"maximumPoints\": 2,\n        \"maximumResponseLength\": 120,\n        \"expectedResponseCount\": 1,\n        \"responseRegionSize\": \"short\",\n        \"matchingMode\": \"normalized\",\n        \"acceptedAnswers\": [{\n          \"acceptedText\": \"Photosynthesis\",\n          \"points\": 2,\n          \"primary\": true,\n          \"caseSensitive\": false\n        }]\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    },\n    {\n      \"partOrder\": 4,\n      \"partName\": \"Enumeration\",\n      \"questionTypeCode\": \"enumeration\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 2,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Give two states of matter.\",\n        \"maximumPoints\": 2,\n        \"maximumResponseLength\": 200,\n        \"expectedResponseCount\": 2,\n        \"responseRegionSize\": \"medium\",\n        \"matchingMode\": \"normalized\",\n        \"acceptedAnswers\": [\n          { \"answerOrder\": 1, \"acceptedText\": \"Solid\", \"points\": 1, \"primary\": true, \"caseSensitive\": false },\n          { \"answerOrder\": 2, \"acceptedText\": \"Liquid\", \"points\": 1, \"primary\": true, \"caseSensitive\": false }\n        ]\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    },\n    {\n      \"partOrder\": 5,\n      \"partName\": \"Essay\",\n      \"questionTypeCode\": \"essay\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 5,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Explain how matter changes state.\",\n        \"maximumPoints\": 5,\n        \"responseInstructions\": \"Use complete sentences.\",\n        \"maximumResponseLength\": 1000,\n        \"responseRegionSize\": \"long\",\n        \"forcePageBreakBefore\": true,\n        \"rubricId\": {{rubricId}}\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Draft update succeeds\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Updated fields and snapshots are returned\", () => {",
+              "  pm.expect(body.data.testName).to.eql(\"Five Type Assessment - Updated\");",
+              "  pm.expect(body.data.testType).to.eql(\"exam\");",
+              "  pm.expect(body.data.totalItems).to.eql(5);",
+              "  pm.expect(Number(body.data.maximumScore)).to.eql(11);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 Activate Assessment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments/{{testId}}/activate",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments",
+            "{{testId}}",
+            "activate"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Assessment activates\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Status is active\", () => pm.expect(body.data.status).to.eql(\"active\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Reject Active Update",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments/{{testId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments",
+            "{{testId}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"classAssignmentId\": {{classAssignmentId}},\n  \"termPeriodId\": {{termPeriodId}},\n  \"testName\": \"Five Type Assessment - Updated\",\n  \"testType\": \"exam\",\n  \"instructions\": \"Updated while the assessment is still a draft.\",\n  \"openAt\": \"{{openAt}}\",\n  \"closeAt\": \"{{closeAt}}\",\n  \"allowLateCapture\": false,\n  \"parts\": [\n    {\n      \"partOrder\": 1,\n      \"partName\": \"Multiple Choice\",\n      \"questionTypeCode\": \"multiple_choice\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 1,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Which state has a fixed volume but no fixed shape?\",\n        \"maximumPoints\": 1,\n        \"options\": [\n          { \"optionKey\": \"A\", \"optionText\": \"Solid\", \"optionOrder\": 1 },\n          { \"optionKey\": \"B\", \"optionText\": \"Liquid\", \"optionOrder\": 2 },\n          { \"optionKey\": \"C\", \"optionText\": \"Gas\", \"optionOrder\": 3 },\n          { \"optionKey\": \"D\", \"optionText\": \"Plasma\", \"optionOrder\": 4 }\n        ],\n        \"correctOptionKey\": \"B\"\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    },\n    {\n      \"partOrder\": 2,\n      \"partName\": \"True or False\",\n      \"questionTypeCode\": \"true_false\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 1,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Water boils at 100 degrees Celsius at sea level.\",\n        \"maximumPoints\": 1,\n        \"correctOptionKey\": \"A\"\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    },\n    {\n      \"partOrder\": 3,\n      \"partName\": \"Identification\",\n      \"questionTypeCode\": \"identification\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 2,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Name the process plants use to make food.\",\n        \"maximumPoints\": 2,\n        \"maximumResponseLength\": 120,\n        \"expectedResponseCount\": 1,\n        \"responseRegionSize\": \"short\",\n        \"matchingMode\": \"normalized\",\n        \"acceptedAnswers\": [{\n          \"acceptedText\": \"Photosynthesis\",\n          \"points\": 2,\n          \"primary\": true,\n          \"caseSensitive\": false\n        }]\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    },\n    {\n      \"partOrder\": 4,\n      \"partName\": \"Enumeration\",\n      \"questionTypeCode\": \"enumeration\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 2,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Give two states of matter.\",\n        \"maximumPoints\": 2,\n        \"maximumResponseLength\": 200,\n        \"expectedResponseCount\": 2,\n        \"responseRegionSize\": \"medium\",\n        \"matchingMode\": \"normalized\",\n        \"acceptedAnswers\": [\n          { \"answerOrder\": 1, \"acceptedText\": \"Solid\", \"points\": 1, \"primary\": true, \"caseSensitive\": false },\n          { \"answerOrder\": 2, \"acceptedText\": \"Liquid\", \"points\": 1, \"primary\": true, \"caseSensitive\": false }\n        ]\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    },\n    {\n      \"partOrder\": 5,\n      \"partName\": \"Essay\",\n      \"questionTypeCode\": \"essay\",\n      \"numberOfItems\": 1,\n      \"pointsPerItem\": 5,\n      \"questions\": [{\n        \"itemNumber\": 1,\n        \"questionText\": \"Explain how matter changes state.\",\n        \"maximumPoints\": 5,\n        \"responseInstructions\": \"Use complete sentences.\",\n        \"maximumResponseLength\": 1000,\n        \"responseRegionSize\": \"long\",\n        \"forcePageBreakBefore\": true,\n        \"rubricId\": {{rubricId}}\n      }],\n      \"skillMappings\": [{ \"startItemNumber\": 1, \"endItemNumber\": 1, \"skillIds\": [{{skillId}}] }]\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Active content is locked\", () => pm.response.to.have.status(409));",
+              "const body = pm.response.json();",
+              "pm.test(\"Content-lock code is returned\", () => {",
+              "  pm.expect(body.errors.code).to.eql(\"ASSESSMENT_CONTENT_LOCKED\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 Archive Assessment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments/{{testId}}/archive",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments",
+            "{{testId}}",
+            "archive"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Assessment archives\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Status is archived\", () => pm.expect(body.data.status).to.eql(\"archived\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 Reject Missing Token",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/assessments/reference-data",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "assessments",
+            "reference-data"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Missing token is rejected\", () => pm.response.to.have.status(401));",
+              "const body = pm.response.json();",
+              "pm.test(\"Authentication error envelope is returned\", () => {",
+              "  pm.expect(body.success).to.eql(false);",
+              "  pm.expect(body.errors.code).to.eql(\"AUTHENTICATION_REQUIRED\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+

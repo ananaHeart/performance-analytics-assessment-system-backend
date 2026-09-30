@@ -1,0 +1,210 @@
+{
+  "generatedAtUtc": "2026-09-12T15:20:27.5557322Z",
+  "scope": "Milestone 4 Prompt 14 audited result reopen",
+  "totalTests": 156.0,
+  "newPromptTests": 23,
+  "newPersistenceTests": [
+    "reopenRollbackAndLostAcknowledgementAreRecoverable",
+    "reopenRejectsUnfinalizedAndSupersededResults",
+    "concurrentDifferentReopenOperationsHaveOneWinner",
+    "reopenSchemaRejectsInvalidRevisionReasonAndSnapshot",
+    "reopenRejectsUsedSyncAndSecondOperation",
+    "reopenReauthorizesAssignmentOwnershipOnRetry",
+    "reopenPreservesOfficialReceiptAndAnswersAndReturnsStaleReadback",
+    "reopenRetryIsHistoricalAndPayloadChangesConflict",
+    "reopenHonorsAssessmentLifecycleForNewIntentButReplaysHistoricalReceipt",
+    "reopenRejectsUnknownOrOtherSchoolAndInactiveTeacher",
+    "reopenRequiresOfficialReceiptAndRejectsRevisionExhaustion",
+    "reopenWrittenResultPreservesRubricAuditsAfterReferenceEdit",
+    "reopenRejectsStaleRevisionAndScoreVersionWithoutAudit",
+    "concurrentReopenRetriesCommitOneAuditAndReceipt",
+    "reopenRejectsCorruptOfficialAndReopenReceipts"
+  ],
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 123,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T15:19:33.9090376Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ResultReopenControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T15:18:52.7074664Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ResultReopenGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T15:18:53.8453921Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T15:18:52.8961863Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3MobileFinalizationBaselineTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T15:18:53.4203000Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.scoring.service.V3ScoringServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T15:19:33.9780626Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T15:18:49.0696929Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3MobileReadbackControllerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T15:18:52.4980718Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3MobileReadbackGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T15:18:53.5632224Z"
+    }
+  ],
+  "hashes": [
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/dto/V3ReopenRequest.java",
+      "sha256": "618a6d727129836af954eba0ca822d046690d0f53c7368e9ca7e970f9c5c86b7"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/dto/V3LifecycleAck.java",
+      "sha256": "3a3d8597e13c4bb83b4ee345cf5603edb7c15fbbce339cf05f0563f827985928"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/controller/V3ResultReopenController.java",
+      "sha256": "0941d254a74c6aff446170b0590a757d5acba18ccd1a3aa3b3a13fdf991079dc"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3ResultReopenService.java",
+      "sha256": "eb9bdd431d36a28b8c61a2a9b6750e56f1a286578cf9b19790ca45c16c8d33c0"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3ResultReopenRepository.java",
+      "sha256": "688920d4a62a4d9106bd0bc947b0b5e50a549f84b6c9f712f1a7d291c4f76b08"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3MobileReadbackService.java",
+      "sha256": "00ebe026fc9729861259cefbcff2eac3b32239de758d41b8a108538f454f377e"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3MobileReadbackRepository.java",
+      "sha256": "ba9463fb3852752ebf9abde9c42680dad1b7f061fa069846ee81122a4517f511"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/system/config/V3SystemSecurityConfig.java",
+      "sha256": "4aee141ab06b7e99588ac96f8b1df9f87d53f1019ff84d2d5f3806474bf084fc"
+    },
+    {
+      "file": "src/main/resources/application-v3.properties",
+      "sha256": "7af54781dbe9507ce460ffc5a669375c7fd837e3fabcee93a6b52cb5ddd41b30"
+    },
+    {
+      "file": "src/test/java/com/capstone/assessment/v3/mobile/service/V3ScanUploadMariaDbTest.java",
+      "sha256": "14a228080adc18097b0259c4802e15c21a251a9a28462aea6a5146183cfd3a85"
+    },
+    {
+      "file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "sha256": "ad6bb19fd52629b764e9a868cfc08de2bfc4958d25455e81060d3a4ee27d1f52"
+    },
+    {
+      "file": "docs/contracts/mobile-v3/1.9.0/openapi.json",
+      "sha256": "c57f5c3d8bdd096ff7f897fa05aa1dfd668f597536020085c370bccc3a774bb8"
+    }
+  ],
+  "contract": {
+    "packVersion": "1.9.0",
+    "requestVersion": "3.0",
+    "openapi": "3.1.0",
+    "schemas": 14,
+    "fixtures": 6,
+    "syntheticRuntimeSamplesChecked": 6,
+    "allTenPackValidatorsPassed": true,
+    "previousNamedWireSchemasUnchanged": true,
+    "runtimeRejectsWhitespaceOnlyReason": true
+  },
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "draftChain": "V3_021",
+    "tables": 76,
+    "foreignKeys": 186,
+    "checks": 114,
+    "uniqueConstraints": 109,
+    "newMigrationAdded": true,
+    "syntheticRecordsOnly": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true
+  },
+  "retrySemantics": {
+    "oneReopenPerOfficialScoreVersion": true,
+    "operationAndSyncIdentityBound": true,
+    "currentOwnershipCheckedOnReplay": true,
+    "historicalAcknowledgement": true,
+    "lostAcknowledgementRetrySafe": true,
+    "scoreVersionAdvancedOnReopen": false
+  },
+  "readback": {
+    "resultStatus": "pending_verification",
+    "officialScore": null,
+    "analyticsStatus": "stale",
+    "reasonCode": "RESULT_REOPENED",
+    "analyticsMetrics": null,
+    "reopenSyncStatus": "success",
+    "reopenPageOutcomes": []
+  },
+  "release": {
+    "reopenHttpEnabled": false,
+    "reopenFlagDefault": false,
+    "configuredBaseline": "V3_014",
+    "mobileCodeChanged": false,
+    "physicalWrittenScannerValidated": false,
+    "completeMobileFlow": false
+  },
+  "milestone": {
+    "number": 4,
+    "prompt": 14,
+    "componentStatus": "COMPLETE_RELEASE_GATED",
+    "milestoneStatus": "IN_PROGRESS",
+    "next": "Prompt 15 audited correction upload and re-finalization"
+  },
+  "limitations": [
+    "Reopen preserves old answers and scores; correction writes, re-finalization, superseding and rescans are not implemented by this slice.",
+    "No new public score-history endpoint; previous official score is stored in the reopen audit history.",
+    "Reopen and affected readback require reviewed draft V3_021 deployment; first reopen also uses the finalization bridge flag.",
+    "Synthetic written fixture geometry is not physical scanner validation.",
+    "Advanced analytics, production Mobile wiring, secure persistent sessions and physical acceptance remain pending."
+  ]
+}

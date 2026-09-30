@@ -783,10 +783,41 @@ class V3ScanUploadMariaDbTest {
         assertEquals(2,reference.rubrics().get(0).criteria().size());assertFalse(reference.rubrics().get(0).criteria().get(1).isRequired());
         assertTrue(reference.questions().stream().anyMatch(q->Integer.valueOf(3).equals(q.expectedResponseCount())));
         assertTrue(reference.evaluationReferenceHash().matches("[0-9a-f]{64}"));
+        assertEquals("3.1",reference.contractVersion());
+        // Contract 3.1 sends keys and criterion guidance on purpose; the model solution
+        // (answer_keys.answer_explanation) and internal column names still never leave.
+        assertEquals("Private descriptor",reference.rubrics().get(0).criteria().get(0).description());
         String json=mapper.writeValueAsString(reference);
-        for(String secret:List.of("SECRET","answerKey","correctQuestion","accepted_text","Private descriptor","levelDefinition","password"))assertFalse(json.contains(secret),secret);
+        for(String secret:List.of("SECRET","answerKey","correctQuestion","accepted_text","answer_explanation","password"))assertFalse(json.contains(secret),secret);
         var folder=Path.of("target/mobile-evaluation-contract-samples");java.nio.file.Files.createDirectories(folder);
         mapper.copy().disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS).writeValue(folder.resolve("evaluation-reference.json").toFile(),com.capstone.assessment.common.response.ApiResponse.success(reference));
+    }
+    @Test void evaluationReferenceCarriesAnswerKeysForThePreliminaryScore() {
+        var refs=writtenReferences();
+        jdbc.update("""
+                INSERT INTO accepted_answers(question_id,answer_order,accepted_text,normalized_text,matching_mode,is_case_sensitive,points,is_primary,is_active)
+                VALUES(?,1,'Mitochondria','mitochondria','normalized',FALSE,1.00,TRUE,TRUE),
+                      (?,2,'Retired answer','retired answer','exact',TRUE,1.00,FALSE,FALSE)
+                """,refs.enumeration(),refs.enumeration());
+        var reference=evaluationReader().get(teacher,request.assignmentUuid());
+        String enumerationUuid=jdbc.queryForObject("SELECT question_uuid FROM questions WHERE question_id=?",String.class,refs.enumeration());
+        var enumeration=reference.questions().stream().filter(q->q.questionUuid().equals(enumerationUuid)).findFirst().orElseThrow();
+        assertEquals("enumeration",enumeration.questionType());assertNull(enumeration.correctOptionKey());
+        assertEquals(List.of("Mitochondria"),enumeration.acceptedAnswers().stream().map(a->a.text()).toList(),"inactive answers are not sent");
+        assertEquals("normalized",enumeration.acceptedAnswers().get(0).matchingMode());
+        // Every objective question carries exactly the option key the backend scorer uses.
+        for(var question:reference.questions().stream().filter(q->"multiple_choice".equals(q.questionType())||"true_false".equals(q.questionType())).toList()) {
+            String expected=jdbc.queryForObject("""
+                    SELECT o.option_key FROM questions q JOIN answer_keys k ON k.question_id=q.question_id
+                    JOIN question_options o ON o.question_option_id=k.correct_question_option_id WHERE q.question_uuid=?
+                    """,String.class,question.questionUuid());
+            assertEquals(expected,question.correctOptionKey());assertTrue(question.acceptedAnswers().isEmpty());
+        }
+        assertTrue(reference.questions().stream().anyMatch(q->q.correctOptionKey()!=null),"fixture has objective questions");
+        // A key change alone must change the hash, even with the same question UUIDs and version.
+        String before=reference.evaluationReferenceHash();
+        jdbc.update("UPDATE accepted_answers SET accepted_text='Mitochondrion' WHERE question_id=? AND answer_order=1",refs.enumeration());
+        assertNotEquals(before,evaluationReader().get(teacher,request.assignmentUuid()).evaluationReferenceHash());
     }
     @Test void evaluationReferenceHashIsStableAndTracksPublicReferenceChanges() {
         var refs=writtenReferences();String first=evaluationReader().get(teacher,request.assignmentUuid()).evaluationReferenceHash();

@@ -1,0 +1,504 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "description": "Objective-only focused supplement; wire contractVersion remains 3.0. Production remains gated.",
+    "version": "1.2.0",
+    "title": "SMART Mobile V3 teacher verification"
+  },
+  "paths": {
+    "/api/v3/mobile/verification-batches": {
+      "post": {
+        "operationId": "verifyMobileObjectiveResults",
+        "summary": "Audited teacher decisions with per-result atomic outcomes",
+        "x-implementation-status": "IMPLEMENTED_OBJECTIVE_ONLY_RELEASE_BLOCKED",
+        "x-production-enabled": false,
+        "x-max-body-bytes": 2097152,
+        "x-supported-evaluations": [
+          "objective"
+        ],
+        "description": "One immutable batch for 1..50 results in one owned assignment. Each item commits independently. HTTP 200 success=true only means processed: inspect every item. Manual/rubric evaluation is not accepted in this slice. Exact retry preserves successful receipts and retries transient failed items.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Processed batch: success, partial_success or failed; inspect item status and error.retryable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid bearer session"
+          },
+          "403": {
+            "description": "Production release gate or teacher/assignment/result/page ownership rejection"
+          },
+          "409": {
+            "description": "Whole-batch operation/sync identity conflict; no new item accepted"
+          },
+          "413": {
+            "description": "Declared or actual JSON exceeds 2 MiB"
+          },
+          "415": {
+            "description": "Requires application/json"
+          },
+          "422": {
+            "description": "Malformed/unsupported JSON, missing or duplicate fields/identities, invalid values"
+          },
+          "500": {
+            "description": "Uncertain registration or outcome persistence: retry unchanged operation; prior item commits may exist"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "VerificationBatch": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "const": "3.0"
+          },
+          "syncUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "operationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "assignmentUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VerificationItem"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "contractVersion",
+          "syncUuid",
+          "operationUuid",
+          "assignmentUuid",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "VerificationItem": {
+        "type": "object",
+        "properties": {
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageDecisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageDecision"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnswerEvaluation"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "resultUuid",
+          "expectedRevision",
+          "pageDecisions",
+          "answers"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "pageDecisions": {
+                "minItems": 1
+              }
+            }
+          },
+          {
+            "properties": {
+              "answers": {
+                "minItems": 1
+              }
+            }
+          }
+        ]
+      },
+      "PageDecision": {
+        "type": "object",
+        "properties": {
+          "verificationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "action": {
+            "enum": [
+              "accepted",
+              "rescan_requested",
+              "rejected"
+            ]
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clientDecidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "verificationUuid",
+          "scanPageUuid",
+          "action",
+          "reasonCode",
+          "comment",
+          "clientDecidedAt"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "enum": [
+                    "rescan_requested",
+                    "rejected"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "reasonCode": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AnswerEvaluation": {
+        "type": "object",
+        "properties": {
+          "answerUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "verificationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "questionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "regionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/ObjectiveEvaluation"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clientDecidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "answerUuid",
+          "verificationUuid",
+          "questionUuid",
+          "regionUuid",
+          "scanPageUuid",
+          "evaluation",
+          "comment",
+          "clientDecidedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ObjectiveEvaluation": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "objective"
+          },
+          "detectionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "kind",
+          "detectionUuid"
+        ],
+        "additionalProperties": false
+      },
+      "VerificationOutcome": {
+        "type": "object",
+        "properties": {
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed"
+            ]
+          },
+          "disposition": {
+            "enum": [
+              "created",
+              "replayed",
+              "rejected"
+            ]
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdMapping"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "resultUuid",
+          "status",
+          "disposition",
+          "revision",
+          "idMappings",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "VerificationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "syncUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "operationUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "syncStatus": {
+                "enum": [
+                  "success",
+                  "partial_success",
+                  "failed"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/VerificationOutcome"
+                },
+                "minItems": 1,
+                "maxItems": 50
+              }
+            },
+            "required": [
+              "syncUuid",
+              "operationUuid",
+              "syncStatus",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "IdMapping": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "enum": [
+              "test_result",
+              "scan_session",
+              "scan_page",
+              "answer_sheet_version",
+              "answer_sheet_page",
+              "answer_sheet_region",
+              "student_answer",
+              "omr_detection",
+              "answer_attachment",
+              "scan_verification",
+              "answer_verification",
+              "sync"
+            ]
+          },
+          "uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "centralId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "entityType",
+          "uuid",
+          "centralId"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  }
+}

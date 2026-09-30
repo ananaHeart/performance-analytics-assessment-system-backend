@@ -1,0 +1,47 @@
+{
+  "milestone": 5,
+  "prompt": 17,
+  "validatedAt": "2026-09-14",
+  "status": "COMPONENT_COMPLETE_RELEASE_GATED",
+  "releaseBaseline": {
+    "latestMigration": "V3_023",
+    "tables": 79,
+    "foreignKeys": 200,
+    "checks": 131,
+    "uniqueConstraints": 118
+  },
+  "validation": {
+    "compile": "PASS",
+    "fullV3Regression": {
+      "status": "PASS",
+      "testsDiscovered": 580,
+      "skipped": 156,
+      "failures": 0,
+      "errors": 0,
+      "skipReason": "MariaDB integration class is environment-gated in the ordinary Maven run"
+    },
+    "finalFocusedReleaseTests": {
+      "status": "PASS",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0
+    },
+    "contractFixturePacks": {
+      "status": "PASS",
+      "count": 12,
+      "versions": [
+        "1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0",
+        "1.6.0", "1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0"
+      ]
+    }
+  },
+  "releaseClaims": {
+    "backendPreflightImplemented": true,
+    "writeRoutesEnabledByDefault": false,
+    "schoolDatabaseMigrated": false,
+    "stablePhoneUrlVerified": false,
+    "mobileProductionWiringVerified": false,
+    "physicalScannerVerified": false,
+    "fullyConnected": false
+  }
+}

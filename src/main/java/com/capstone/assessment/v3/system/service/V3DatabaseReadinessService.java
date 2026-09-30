@@ -8,6 +8,7 @@ import com.capstone.assessment.v3.system.repository.V3DatabaseBaselineRepository
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Profile("v3")
@@ -27,7 +28,7 @@ public class V3DatabaseReadinessService {
 
     public V3DatabaseReadinessResponse checkReadiness() {
         V3DatabaseBaselineSnapshot snapshot = repository.readSnapshot();
-        List<V3DatabaseCheckResponse> checks = List.of(
+        List<V3DatabaseCheckResponse> checks = new ArrayList<>(List.of(
                 check("database_name", properties.getExpectedDatabase(), snapshot.databaseName()),
                 check("central_table_count", properties.getExpectedTableCount(), snapshot.tableCount()),
                 check("foreign_key_count", properties.getExpectedForeignKeyCount(), snapshot.foreignKeyCount()),
@@ -47,7 +48,10 @@ public class V3DatabaseReadinessService {
                 check("approved_active_omr_template_count", properties.getExpectedApprovedOmrTemplateCount(), snapshot.approvedActiveOmrTemplateCount()),
                 check("unapproved_active_omr_template_count", properties.getExpectedUnapprovedOmrTemplateCount(), snapshot.unapprovedActiveOmrTemplateCount()),
                 check("active_performance_rule_set_count", properties.getExpectedPerformanceRuleSetCount(), snapshot.activePerformanceRuleSetCount())
-        );
+        ));
+        if (properties.getDatabaseEngine() == V3BaselineProperties.DatabaseEngine.TIDB) {
+            checks.add(check("check_constraints_enabled", true, repository.areCheckConstraintsEnabled()));
+        }
         boolean ready = checks.stream().allMatch(V3DatabaseCheckResponse::passed);
 
         return new V3DatabaseReadinessResponse(
@@ -61,7 +65,7 @@ public class V3DatabaseReadinessService {
                 snapshot.activeQuestionTypeCount(),
                 snapshot.activeOmrTemplateCount(),
                 snapshot.activePerformanceRuleSetCount(),
-                checks
+                List.copyOf(checks)
         );
     }
 

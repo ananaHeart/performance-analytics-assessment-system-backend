@@ -3,9 +3,15 @@ package com.capstone.assessment.v3.report.service;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
 import com.capstone.assessment.v3.auth.exception.V3FieldValidationException;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
+import com.capstone.assessment.v3.report.dto.V3LearningCompetencyReportResponse;
 import com.capstone.assessment.v3.report.dto.V3ReportReferenceDataResponse;
+import com.capstone.assessment.v3.report.dto.V3SyncActivityReportResponse;
 import com.capstone.assessment.v3.report.model.V3ReportModels.AssessmentResultRow;
 import com.capstone.assessment.v3.report.model.V3ReportModels.AssessmentScopeRow;
+import com.capstone.assessment.v3.report.model.V3ReportModels.CompetencyScopeRow;
+import com.capstone.assessment.v3.report.model.V3ReportModels.StudentCompetencyTotalRow;
+import com.capstone.assessment.v3.report.model.V3ReportModels.StudentSkillAnswerTotalRow;
+import com.capstone.assessment.v3.report.model.V3ReportModels.StudentSkillItemTotalRow;
 import com.capstone.assessment.v3.report.repository.V3ReportRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -250,6 +256,262 @@ class V3ReportServiceTest {
         assertEquals("ASSESSMENT_NOT_FOUND", missing.getCode());
     }
 
+    /** The seeded "intervention" rule set, verbatim from performance_rule_sets (id 4). */
+    private static final String INTERVENTION_RULE_SET = """
+            {"metric":"skill_mastery_percentage","teacher_facing_only":true,"bands":[
+             {"minimum_percentage":80,"maximum_percentage":100,"minimum_inclusive":true,"maximum_inclusive":true,
+              "status":"maintain","label":"Maintain","recommendation_template":"Maintain {competency_name} through regular practice."},
+             {"minimum_percentage":60,"maximum_percentage":80,"minimum_inclusive":true,"maximum_inclusive":false,
+              "status":"review","label":"Review","recommendation_template":"Review {competency_name} with short guided practice."},
+             {"minimum_percentage":40,"maximum_percentage":60,"minimum_inclusive":true,"maximum_inclusive":false,
+              "status":"reteach","label":"Reteach","recommendation_template":"Reteach {competency_name} using focused examples and checking."},
+             {"minimum_percentage":0,"maximum_percentage":40,"minimum_inclusive":true,"maximum_inclusive":false,
+              "status":"priority_intervention","label":"Priority Intervention","recommendation_template":"Prioritize intervention for {competency_name} and monitor affected learners."}]}
+            """;
+
+    @Test
+    void studentProfileInterventionsFollowRuleSetBandsAndSkipMaintainedSkills() {
+        long studentId = 77L;
+        List<Long> classListIds = List.of(501L);
+        when(reportRepository.listClassListIdsForStudent(studentId, SCHOOL_ID, null)).thenReturn(classListIds);
+        when(reportRepository.findStudentIdentity(studentId, SCHOOL_ID))
+                .thenReturn(Optional.of(new V3ReportRepository.StudentIdentity("123456789012", "Juan Dela Cruz")));
+        // 100 possible points per skill, so earned points read directly as the mastery %.
+        when(reportRepository.listStudentSkillItemTotals(classListIds, null)).thenReturn(List.of(
+                new StudentSkillItemTotalRow(1L, "Verb Tenses", 5, new BigDecimal("100")),
+                new StudentSkillItemTotalRow(2L, "Parts of Speech", 5, new BigDecimal("100")),
+                new StudentSkillItemTotalRow(3L, "Reading", 5, new BigDecimal("100")),
+                new StudentSkillItemTotalRow(4L, "Spelling", 5, new BigDecimal("100")),
+                new StudentSkillItemTotalRow(5L, "Grammar", 5, new BigDecimal("100")),
+                new StudentSkillItemTotalRow(6L, "Vocabulary", 5, new BigDecimal("100"))
+        ));
+        when(reportRepository.listStudentSkillAnswerTotals(classListIds, null)).thenReturn(List.of(
+                new StudentSkillAnswerTotalRow(1L, new BigDecimal("100")),   // maintain
+                new StudentSkillAnswerTotalRow(2L, new BigDecimal("80")),    // maintain: 80 is inclusive
+                new StudentSkillAnswerTotalRow(3L, new BigDecimal("79.99")), // review: 80 is exclusive above
+                new StudentSkillAnswerTotalRow(4L, new BigDecimal("40")),    // reteach: 40 is inclusive
+                new StudentSkillAnswerTotalRow(5L, new BigDecimal("39.99")), // priority
+                new StudentSkillAnswerTotalRow(6L, BigDecimal.ZERO)          // priority
+        ));
+        when(reportRepository.findActiveRuleDefinition(SCHOOL_ID, "intervention"))
+                .thenReturn(Optional.of(INTERVENTION_RULE_SET));
+
+        var profile = reportService.getStudentPerformanceProfile(PRINCIPAL, studentId);
+
+        var interventions = profile.interventions();
+        assertEquals(4, interventions.size(), "maintained skills must not be listed");
+        assertEquals(List.of("Vocabulary", "Grammar", "Spelling", "Reading"),
+                interventions.stream().map(suggestion -> suggestion.skillName()).toList());
+        assertEquals(List.of("priority_intervention", "priority_intervention", "reteach", "review"),
+                interventions.stream().map(suggestion -> suggestion.recommendationCode()).toList());
+        assertEquals("Priority Intervention", interventions.get(0).recommendationLabel());
+        assertEquals("Prioritize intervention for Vocabulary and monitor affected learners.",
+                interventions.get(0).suggestion());
+        assertEquals("Review Reading with short guided practice.", interventions.get(3).suggestion());
+
+        // The mastery pill must agree with the recommendation at the 80% boundary.
+        var partsOfSpeech = profile.competencyPerformance().stream()
+                .filter(skill -> skill.skillId() == 2L).findFirst().orElseThrow();
+        assertEquals("mastered", partsOfSpeech.masteryStatusCode());
+    }
+
+    @Test
+    void studentProfileWithoutInterventionRuleSetReturnsNoSuggestionsAndWarns() {
+        long studentId = 78L;
+        List<Long> classListIds = List.of(502L);
+        when(reportRepository.listClassListIdsForStudent(studentId, SCHOOL_ID, null)).thenReturn(classListIds);
+        when(reportRepository.findStudentIdentity(studentId, SCHOOL_ID))
+                .thenReturn(Optional.of(new V3ReportRepository.StudentIdentity("123456789013", "Maria Santos")));
+        when(reportRepository.listStudentSkillItemTotals(classListIds, null)).thenReturn(List.of(
+                new StudentSkillItemTotalRow(1L, "Verb Tenses", 5, new BigDecimal("100"))));
+        when(reportRepository.listStudentSkillAnswerTotals(classListIds, null)).thenReturn(List.of(
+                new StudentSkillAnswerTotalRow(1L, BigDecimal.ZERO)));
+        when(reportRepository.findActiveRuleDefinition(SCHOOL_ID, "intervention")).thenReturn(Optional.empty());
+
+        var profile = reportService.getStudentPerformanceProfile(PRINCIPAL, studentId);
+
+        assertTrue(profile.interventions().isEmpty());
+        assertTrue(profile.warnings().stream()
+                .anyMatch(warning -> "INTERVENTION_RULES_UNAVAILABLE".equals(warning.code())));
+    }
+
+    @Test
+    void syncActivityListsMostRecentlySyncedTeachersFirstAndCountsOnlyUnresolvedFailures() {
+        Instant older = Instant.parse("2026-09-21T02:40:00Z");
+        Instant newer = Instant.parse("2026-09-22T12:03:00Z");
+        when(reportRepository.listTeachers(SCHOOL_ID, null)).thenReturn(List.of(
+                new V3ReportReferenceDataResponse.TeacherOption(1L, "Ana Cruz", "active"),
+                new V3ReportReferenceDataResponse.TeacherOption(2L, "Ben Diaz", "active"),
+                new V3ReportReferenceDataResponse.TeacherOption(3L, "Carla Reyes", "active")
+        ));
+        when(reportRepository.listSyncedAssessments(SCHOOL_ID, null, null, null)).thenReturn(List.of(
+                new V3SyncActivityReportResponse.AssessmentSync(2L, "Ben Diaz", 11L, "Quiz Y", "Grade 7 - Rizal",
+                        newer, 2, "Existing page decisions cannot be changed here."),
+                new V3SyncActivityReportResponse.AssessmentSync(1L, "Ana Cruz", 10L, "Quiz X", "Grade 7 - Rizal",
+                        older, 0, null),
+                // Every upload attempt for Quiz Z failed, so it was never successfully synced.
+                new V3SyncActivityReportResponse.AssessmentSync(2L, "Ben Diaz", 12L, "Quiz Z", "Grade 7 - Rizal",
+                        null, 1, "Uncertain objective bubbles require teacher verification.")
+        ));
+
+        var report = reportService.getSyncActivityReport(PRINCIPAL, null, null, null, null, null);
+
+        assertEquals("available", report.dataStatus());
+        assertEquals(List.of("Ben Diaz", "Ana Cruz", "Carla Reyes"),
+                report.teachers().stream().map(teacher -> teacher.teacherName()).toList());
+        var ben = report.teachers().get(0);
+        assertEquals(newer, ben.lastSyncedAt());
+        assertEquals(1, ben.assessmentsSynced(), "Quiz Z never synced successfully");
+        assertEquals(3, ben.resultsNotUploaded());
+        var carla = report.teachers().get(2);
+        assertNull(carla.lastSyncedAt(), "never synced");
+        assertEquals(0, carla.assessmentsSynced());
+        assertEquals(3, report.assessments().size());
+    }
+
+    @Test
+    void syncActivityIgnoresATeachersRequestedTeacherFilterAndScopesToThemselves() {
+        reportService.getSyncActivityReport(TEACHER, null, null, 999L, null, null);
+
+        verify(reportRepository).listTeachers(SCHOOL_ID, 20L);
+        verify(reportRepository).listSyncedAssessments(SCHOOL_ID, 20L, null, null);
+    }
+
+    private static final CompetencyScopeRow COMPETENCY_SCOPE = new CompetencyScopeRow(
+            SCHOOL_ID, "SMART School", 1, "2026-2027", 11, "First Quarter", "Grade 7", "English");
+
+    /** 10 possible points, so earned points x 10 reads directly as the mastery %. */
+    private static StudentCompetencyTotalRow competencyTotal(
+            long rootTagId, String rootName, long skillId, String skillName, long studentId, String studentName,
+            String earnedOutOfTen
+    ) {
+        return new StudentCompetencyTotalRow(rootTagId, rootName, skillId, skillId + 100, skillName,
+                studentId, studentName, "Rizal", 2, new BigDecimal("10"), new BigDecimal(earnedOutOfTen));
+    }
+
+    private void givenCompetencyData(Long teacherUserId, List<StudentCompetencyTotalRow> totals) {
+        when(reportRepository.findCompetencyScope(SCHOOL_ID, 11, 7, 3)).thenReturn(Optional.of(COMPETENCY_SCOPE));
+        when(reportRepository.listCompetencyAssessments(SCHOOL_ID, 11, 7, 3, teacherUserId)).thenReturn(List.of(
+                new V3LearningCompetencyReportResponse.IncludedAssessment(1001L, "Quiz 1"),
+                new V3LearningCompetencyReportResponse.IncludedAssessment(1002L, "Quarterly Exam")));
+        when(reportRepository.listStudentCompetencyTotals(SCHOOL_ID, 11, 7, 3, teacherUserId)).thenReturn(totals);
+        when(reportRepository.findActiveRuleDefinition(SCHOOL_ID, "intervention"))
+                .thenReturn(Optional.of(INTERVENTION_RULE_SET));
+    }
+
+    @Test
+    void learningCompetencyRanksLeastMasteredFirstAndListsOnlyStudentsBelowMastery() {
+        givenCompetencyData(null, List.of(
+                competencyTotal(1L, "Grammar", 10L, "Verb Tenses", 501L, "Ana Cruz", "9"),
+                competencyTotal(1L, "Grammar", 10L, "Verb Tenses", 502L, "Ben Diaz", "8"),
+                competencyTotal(1L, "Grammar", 11L, "Parts of Speech", 501L, "Ana Cruz", "5"),
+                competencyTotal(1L, "Grammar", 11L, "Parts of Speech", 502L, "Ben Diaz", "2"),
+                competencyTotal(2L, "Reading", 20L, "Main Idea", 501L, "Ana Cruz", "7"),
+                competencyTotal(2L, "Reading", 20L, "Main Idea", 502L, "Ben Diaz", "3")
+        ));
+
+        var report = reportService.getLearningCompetencyReport(PRINCIPAL, 11, 7, 3, null, null);
+
+        assertEquals("available", report.dataStatus());
+        assertEquals(2, report.assessments().size());
+        assertEquals("Grade 7", report.scope().gradeLevelName());
+        // Reading 10/20 = 50% is weaker than Grammar 24/40 = 60%.
+        assertEquals(List.of("Reading", "Grammar"),
+                report.rootCompetencies().stream().map(root -> root.rootTagName()).toList());
+        assertEquals(new BigDecimal("60.00"), report.rootCompetencies().get(1).masteryPercentage());
+
+        var grammarSkills = report.rootCompetencies().get(1).skills();
+        assertEquals(List.of("Parts of Speech", "Verb Tenses"),
+                grammarSkills.stream().map(skill -> skill.competencyName()).toList());
+        var partsOfSpeech = grammarSkills.get(0);
+        assertEquals(new BigDecimal("35.00"), partsOfSpeech.masteryPercentage());
+        // Class-level intervention for the skill, from the same rule set as the students'.
+        assertEquals("priority_intervention", partsOfSpeech.recommendationCode());
+        assertEquals("Priority Intervention", partsOfSpeech.recommendationLabel());
+        assertEquals("Prioritize intervention for Parts of Speech and monitor affected learners.",
+                partsOfSpeech.suggestion());
+        assertEquals(List.of("Ben Diaz", "Ana Cruz"),
+                partsOfSpeech.weakStudents().stream().map(student -> student.fullName()).toList());
+        assertEquals("priority_intervention", partsOfSpeech.weakStudents().get(0).recommendationCode());
+        assertEquals("reteach", partsOfSpeech.weakStudents().get(1).recommendationCode());
+
+        // 90% and exactly 80% are both mastered, so nobody is listed as weak.
+        var verbTenses = grammarSkills.get(1);
+        assertEquals("maintain", verbTenses.recommendationCode());
+        assertEquals(2, verbTenses.studentCount());
+        assertEquals(0, verbTenses.weakStudentCount());
+        assertTrue(verbTenses.weakStudents().isEmpty());
+    }
+
+    @Test
+    void suggestionDropsTheTrailingPeriodOfACompetencyWrittenAsASentence() {
+        givenCompetencyData(null, List.of(competencyTotal(1L, "English Language Competencies", 10L,
+                "Use correct subject-verb agreement in sentences.", 501L, "Ana Cruz", "2")));
+
+        var skill = reportService.getLearningCompetencyReport(PRINCIPAL, 11, 7, 3, null, null)
+                .rootCompetencies().get(0).skills().get(0);
+
+        assertEquals("Prioritize intervention for Use correct subject-verb agreement in sentences"
+                + " and monitor affected learners.", skill.suggestion());
+    }
+
+    @Test
+    void learningCompetencyForATeacherOnlyReadsTheirOwnClasses() {
+        givenCompetencyData(20L, List.of(
+                competencyTotal(1L, "Grammar", 10L, "Verb Tenses", 501L, "Ana Cruz", "4")));
+
+        var report = reportService.getLearningCompetencyReport(TEACHER, 11, 7, 3, null, null);
+
+        verify(reportRepository).listStudentCompetencyTotals(SCHOOL_ID, 11, 7, 3, 20L);
+        assertEquals(1, report.rootCompetencies().get(0).skills().get(0).weakStudentCount());
+    }
+
+    @Test
+    void learningCompetencySkillFilterKeepsOnlyThatSkillUnderItsRoot() {
+        givenCompetencyData(null, List.of(
+                competencyTotal(1L, "Grammar", 10L, "Verb Tenses", 501L, "Ana Cruz", "4"),
+                competencyTotal(1L, "Grammar", 11L, "Parts of Speech", 501L, "Ana Cruz", "5"),
+                competencyTotal(2L, "Reading", 20L, "Main Idea", 501L, "Ana Cruz", "3")
+        ));
+
+        var report = reportService.getLearningCompetencyReport(PRINCIPAL, 11, 7, 3, null, 11L);
+
+        assertEquals(1, report.rootCompetencies().size());
+        assertEquals("Grammar", report.rootCompetencies().get(0).rootTagName());
+        assertEquals(List.of(11L),
+                report.rootCompetencies().get(0).skills().stream().map(skill -> skill.skillId()).toList());
+    }
+
+    @Test
+    void learningCompetencyWithoutFinalizedResultsIsEmptyAndWarns() {
+        when(reportRepository.findCompetencyScope(SCHOOL_ID, 11, 7, 3)).thenReturn(Optional.of(COMPETENCY_SCOPE));
+        when(reportRepository.findActiveRuleDefinition(SCHOOL_ID, "intervention"))
+                .thenReturn(Optional.of(INTERVENTION_RULE_SET));
+
+        var report = reportService.getLearningCompetencyReport(PRINCIPAL, 11, 7, 3, null, null);
+
+        assertEquals("empty", report.dataStatus());
+        assertTrue(report.rootCompetencies().isEmpty());
+        assertTrue(report.warnings().stream().anyMatch(warning -> "NO_SUBMITTED_RESULTS".equals(warning.code())));
+    }
+
+    @Test
+    void learningCompetencyRejectsATermOrGradeLevelThatDoesNotExist() {
+        when(reportRepository.findCompetencyScope(SCHOOL_ID, 99, 7, 3)).thenReturn(Optional.empty());
+        when(reportRepository.findCompetencyScope(SCHOOL_ID, 11, 99, 3)).thenReturn(Optional.of(
+                new CompetencyScopeRow(SCHOOL_ID, "SMART School", 1, "2026-2027", 11, "First Quarter",
+                        null, "English")));
+
+        var unknownTerm = assertThrows(V3FieldValidationException.class,
+                () -> reportService.getLearningCompetencyReport(PRINCIPAL, 99, 7, 3, null, null));
+        var unknownGrade = assertThrows(V3FieldValidationException.class,
+                () -> reportService.getLearningCompetencyReport(PRINCIPAL, 11, 99, 3, null, null));
+
+        assertEquals(HttpStatus.NOT_FOUND, unknownTerm.getStatus());
+        assertEquals(HttpStatus.NOT_FOUND, unknownGrade.getStatus());
+        verify(reportRepository, never()).listStudentCompetencyTotals(SCHOOL_ID, 11, 99, 3, null);
+    }
+
     private static AssessmentScopeRow scope(long teacherUserId) {
         return new AssessmentScopeRow(
                 SCHOOL_ID,
@@ -292,6 +554,7 @@ class V3ReportServiceTest {
                 "Dela Cruz, Juan",
                 "enrolled",
                 7001L,
+                "aaaaaaaa-0000-4000-8000-000000007001",
                 "finalized",
                 submittedAt,
                 NOW.minusSeconds(300),
@@ -319,6 +582,7 @@ class V3ReportServiceTest {
                 "Reyes, Ana",
                 "enrolled",
                 7002L,
+                "aaaaaaaa-0000-4000-8000-000000007002",
                 "pending_verification",
                 submittedAt,
                 null,
@@ -341,6 +605,7 @@ class V3ReportServiceTest {
                 "100000000003",
                 "Santos, Maria",
                 "enrolled",
+                null,
                 null,
                 "not_submitted",
                 null,

@@ -74,10 +74,15 @@ class V3TeacherVerificationPersistenceTest {
     @Test void staleRevisionHasPermanentItemOutcomeWithoutMutation() {
         failed("REVISION_CONFLICT",items(List.of(new Item(item().resultUuid(),1L,item().pageDecisions(),item().answers()))));noDecisions();
     }
+    /** Scanning was relaxed: an unclear or double mark no longer forces a rescan. It is saved
+     *  exactly as scanned - never turned into a chosen option - and the scorer gives it zero. */
     @ParameterizedTest @ValueSource(strings={"uncertain","multiple_marks"})
-    void unresolvedMarksRollbackEvenThePageDecision(String state) {
+    void unresolvedMarksAreAcceptedAsScannedWithoutAChosenOption(String state) {
         f.jdbc.update("UPDATE omr_detections SET detection_status=?,detected_option=NULL WHERE question_id=2",state);
-        failed("OBJECTIVE_RESCAN_REQUIRED",batch);noDecisions();
+        assertEquals("created",outcome(batch).disposition());
+        assertEquals("uncertain".equals(state)?"uncertain":"multiple",
+                f.jdbc.queryForObject("SELECT answer_status FROM student_answers WHERE question_id=2",String.class));
+        assertNull(f.jdbc.queryForObject("SELECT selected_question_option_id FROM student_answers WHERE question_id=2",Long.class));
     }
     @Test void verifiedBlankRetainsNullOption() {
         f.jdbc.update("UPDATE omr_detections SET detection_status='blank',detected_option=NULL WHERE question_id=2");

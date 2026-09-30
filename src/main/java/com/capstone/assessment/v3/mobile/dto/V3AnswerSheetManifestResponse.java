@@ -16,7 +16,8 @@ public record V3AnswerSheetManifestResponse(
         String manifestHash,
         String requiredScannerVersion,
         Instant generatedAt,
-        List<Page> pages
+        List<Page> pages,
+        DesignSystem designSystem
 ) {
 
     public V3AnswerSheetManifestResponse {
@@ -24,6 +25,12 @@ public record V3AnswerSheetManifestResponse(
     }
 
     public record TestAssignmentIdentity(long testAssignmentId, String assignmentUuid) {
+    }
+
+    public record DesignSystem(String code, String version, boolean nativePaperGeometry, List<String> sharedRules) {
+        public DesignSystem {
+            sharedRules = List.copyOf(sharedRules);
+        }
     }
 
     public record PaperSize(
@@ -43,15 +50,24 @@ public record V3AnswerSheetManifestResponse(
             CoordinateSpace coordinateSpace,
             List<Region> regions,
             String pageGeometryHash,
-            List<V3MobileReferenceDataResponse.TemplateRegion> templateRegions
+            List<V3MobileReferenceDataResponse.TemplateRegion> templateRegions,
+            List<RegistrationMarker> registrationMarkers,
+            MarkerPattern markerPattern
     ) {
         public Page(String pageUuid,int pageNumber,int totalPages,Template template,Qr qr,CoordinateSpace coordinateSpace,List<Region> regions) {
-            this(pageUuid,pageNumber,totalPages,template,qr,coordinateSpace,regions,null,List.of());
+            this(pageUuid,pageNumber,totalPages,template,qr,coordinateSpace,regions,null,List.of(),List.of(),null);
         }
         public Page {
             regions = List.copyOf(regions);
             templateRegions = List.copyOf(templateRegions);
+            registrationMarkers = List.copyOf(registrationMarkers);
         }
+    }
+
+    public record RegistrationMarker(String markerId, String corner, String style, Rectangle rectangle) {
+    }
+
+    public record MarkerPattern(String orientationCorner, String orientationStyle, String locatorStyle) {
     }
 
     public record Template(String code, String version, String geometryHash) {

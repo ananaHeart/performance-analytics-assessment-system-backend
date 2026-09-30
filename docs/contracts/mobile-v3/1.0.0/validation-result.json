@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "checkedAt": "2026-09-12T10:22:11.785Z",
+  "packVersion": "1.0.0",
+  "routes": 19,
+  "schemas": 44,
+  "fixtures": 58,
+  "schemaPositiveFixtures": 53,
+  "schemaNegativeFixtures": 5,
+  "semanticNegativeFixtures": 4,
+  "unchangedSourceCopies": 7,
+  "sourceDtoRootFieldChecks": 7,
+  "checks": [
+    "schema compilation",
+    "fixture schemas",
+    "negative examples",
+    "source copy integrity",
+    "source DTO root fields",
+    "replay identity",
+    "partial outcome correlation",
+    "result/score/analytics consistency",
+    "download additions",
+    "private field exclusion",
+    "fixture index completeness"
+  ],
+  "schemasSha256": "aa592559499d9f446b7812b940940dd0b4f2a1df3970306a318ef45610571ebd",
+  "indexSha256": "0668f66f9051635d00fcaec7d217ac539cb481af68779677061677d0c3786929",
+  "runtimeTestsExecuted": false,
+  "databaseTestsExecuted": false,
+  "mobileTestsExecuted": false,
+  "physicalScannerValidated": false,
+  "productionReady": false
+}

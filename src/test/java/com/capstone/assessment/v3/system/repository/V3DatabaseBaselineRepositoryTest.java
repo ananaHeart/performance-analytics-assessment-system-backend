@@ -1,9 +1,16 @@
 package com.capstone.assessment.v3.system.repository;
 
+import com.capstone.assessment.v3.system.config.V3BaselineProperties;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -57,6 +64,42 @@ class V3DatabaseBaselineRepositoryTest {
         assertEquals(1, snapshot.unapprovedActiveOmrTemplateCount());
     }
 
+    @Test
+    void tidbReadsNamedAndTotalChecksFromCheckConstraintsWithoutDoubleCounting() {
+        var cloudProperties = new V3BaselineProperties();
+        cloudProperties.setDatabaseEngine(V3BaselineProperties.DatabaseEngine.TIDB);
+        var cloudRepository = new V3DatabaseBaselineRepository(jdbcTemplate, cloudProperties);
+        stubDatabaseName();
+        stubIntegerQueries(6);
+
+        var snapshot = cloudRepository.readSnapshot();
+
+        assertEquals(131, snapshot.checkConstraintCount());
+        assertEquals(15, snapshot.requiredHardeningConstraintCount());
+        assertEquals(16, snapshot.academicCalendarConstraintCount());
+        ArgumentCaptor<String> queries = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, atLeastOnce()).queryForObject(queries.capture(), eq(Integer.class));
+        var namedCheckQueries = queries.getAllValues().stream()
+                .filter(sql -> sql.contains("chk_questions_expected_response_count") || sql.contains("chk_term_periods_order"))
+                .toList();
+        assertEquals(2, namedCheckQueries.size());
+        assertTrue(namedCheckQueries.stream().allMatch(sql -> sql.contains("information_schema.check_constraints")
+                && sql.contains("constraint_type <> 'CHECK'")));
+    }
+
+    @Test
+    void tidbRequiresTheGlobalCheckConstraintSwitchWhileMariaDbMakesNoSuchQuery() {
+        assertTrue(repository.areCheckConstraintsEnabled());
+        verify(jdbcTemplate, never()).queryForObject("SELECT @@GLOBAL.tidb_enable_check_constraint", Integer.class);
+        var cloudProperties = new V3BaselineProperties();
+        cloudProperties.setDatabaseEngine(V3BaselineProperties.DatabaseEngine.TIDB);
+        var cloudRepository = new V3DatabaseBaselineRepository(jdbcTemplate, cloudProperties);
+        when(jdbcTemplate.queryForObject("SELECT @@GLOBAL.tidb_enable_check_constraint", Integer.class))
+                .thenReturn(1, 0);
+        assertTrue(cloudRepository.areCheckConstraintsEnabled());
+        assertFalse(cloudRepository.areCheckConstraintsEnabled());
+    }
+
     private void stubDatabaseName() {
         when(jdbcTemplate.queryForObject("SELECT DATABASE()", String.class))
                 .thenReturn("performance_assessment_v3_db");
@@ -83,6 +126,9 @@ class V3DatabaseBaselineRepositoryTest {
         }
         if (sql.contains("constraint_type = 'CHECK'")) {
             return 87;
+        }
+        if (sql.contains("FROM information_schema.check_constraints")) {
+            return 131;
         }
         if (sql.contains("constraint_type = 'UNIQUE'")) {
             return 99;

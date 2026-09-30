@@ -3,6 +3,8 @@
 **Date:** August 9, 2026  
 **Scope:** Isolated Python/OpenCV prototype versus the proposed V2 API and central database contract
 
+> **Superseded QR note (August 23, 2026):** The validated reusable context template `OMR-A4-10-MC-CTX-V2` no longer embeds `classListId`. Its QR contains `v`, `tv`, `t`, `q`, and `n`; the selected authenticated mobile context supplies learner/class membership. The older blocker and decision text below is retained as dated audit history, not the current print contract.
+
 ## Decision
 
 The OMR prototype remains isolated. Production SQLite, V1 synchronization, Spring Boot runtime code, local V1 MySQL, and TiDB are unchanged. Integration is blocked until the identity, question mapping, True/False encoding, ambiguous-detection behavior, template registry, and upload metadata match the approved V2 contract.

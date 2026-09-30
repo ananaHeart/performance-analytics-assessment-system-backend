@@ -1,0 +1,9 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "ad2a0a98-6e4f-422b-b42e-801ffb73f04b",
+  "operationUuid": "716f8119-b7fc-45c3-8fb9-598be4038c75",
+  "expectedRevision": 4,
+  "expectedScoreVersion": 1,
+  "reasonCode": "TEACHER_REVIEW_REQUEST",
+  "comment": "Review the accepted evaluation."
+}

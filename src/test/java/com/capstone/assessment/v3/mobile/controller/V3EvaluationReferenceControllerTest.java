@@ -32,8 +32,16 @@ class V3EvaluationReferenceControllerTest {
     @Test void activeTeacherReceivesTypedReferenceWithoutCaching(WebApplicationContext context)throws Exception {
         webAppContextSetup(context).apply(springSecurity()).build().perform(get(route(UUID)).header("Authorization","Bearer teacher"))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"))
-                .andExpect(jsonPath("$.data.contractVersion").value("3.0")).andExpect(jsonPath("$.data.rubrics[0].criteria[0].isRequired").value(true))
-                .andExpect(jsonPath("$.data.answerKeys").doesNotExist());
+                .andExpect(jsonPath("$.data.contractVersion").value("3.1")).andExpect(jsonPath("$.data.rubrics[0].criteria[0].isRequired").value(true))
+                .andExpect(jsonPath("$.data.questions[0].correctOptionKey").value("C"))
+                .andExpect(jsonPath("$.data.questions[1].correctOptionKey").value("B"))
+                .andExpect(jsonPath("$.data.questions[2].acceptedAnswers[1].text").value("Nucleus"))
+                .andExpect(jsonPath("$.data.questions[3].acceptedAnswers").isEmpty())
+                .andExpect(jsonPath("$.data.rubrics[0].criteria[0].levelDefinition[0].label").value("Complete"))
+                .andExpect(jsonPath("$.data.rubrics[0].criteria[1].levelDefinition").isEmpty())
+                // The model solution (answer_keys.answer_explanation) is never part of the contract.
+                .andExpect(jsonPath("$.data.answerKeys").doesNotExist())
+                .andExpect(jsonPath("$.data.questions[0].answerExplanation").doesNotExist());
     }
     @Test void anonymousExpiredAndPrincipalSessionsCannotReadReference(WebApplicationContext context)throws Exception {
         var mvc=webAppContextSetup(context).apply(springSecurity()).build();
@@ -59,7 +67,7 @@ class V3EvaluationReferenceControllerTest {
         @Bean V3AuthenticationFilter filter(V3AuthService a,V3AuthenticationEntryPoint e){return new V3AuthenticationFilter(a,e);}
         @Bean V3EvaluationReferenceService service(ObjectMapper m)throws Exception {
             var s=mock(V3EvaluationReferenceService.class);
-            when(s.get(any(),eq(UUID))).thenReturn(m.treeToValue(m.readTree(Path.of("docs/contracts/mobile-v3/1.0.0/fixtures/proposed/evaluation-reference.json").toFile()).get("data"),V3EvaluationReference.class));
+            when(s.get(any(),eq(UUID))).thenReturn(m.treeToValue(m.readTree(Path.of("docs/contracts/mobile-v3/1.12.0/fixtures/evaluation-reference.json").toFile()).get("data"),V3EvaluationReference.class));
             when(s.get(any(),eq("00000000-0000-4000-8000-000000000002"))).thenThrow(new V3AuthException("EVALUATION_REFERENCE_UNAVAILABLE","Reference unavailable.",HttpStatus.SERVICE_UNAVAILABLE));return s;
         }
     }

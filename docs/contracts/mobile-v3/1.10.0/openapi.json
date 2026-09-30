@@ -1,0 +1,1581 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SMART Mobile V3 atomic correction and re-finalization",
+    "version": "1.10.0",
+    "description": "Prompt 15: explicit 3.2 complete-result correction request, followed by official scoring in the same transaction. Existing 3.0/3.1 contracts remain unchanged. Isolated backend validation only; production release remains gated."
+  },
+  "paths": {
+    "/api/v3/mobile/results/{resultUuid}": {
+      "get": {
+        "operationId": "readMobileResult",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022"
+        ],
+        "description": "Owned repeatable-read snapshot. Disabled by default until persistence contracts are deployed. GET never finalizes, retries or mutates records. Metrics are server score totals only; advanced modules remain unavailable.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resultUuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current owned state, with explicit unavailable analytics and stage-scoped acknowledgements.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultReadback"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired session"
+          },
+          "403": {
+            "description": "Wrong role or inactive school account"
+          },
+          "404": {
+            "description": "Unknown or no-longer-owned resource; no existence disclosure"
+          },
+          "409": {
+            "description": "READBACK_STATE_INCONSISTENT, READBACK_LIMIT_EXCEEDED or unsupported sync stage"
+          },
+          "422": {
+            "description": "Noncanonical UUID"
+          },
+          "503": {
+            "description": "MOBILE_READBACK_UNAVAILABLE release gate"
+          }
+        }
+      }
+    },
+    "/api/v3/mobile/results/{resultUuid}/analytics": {
+      "get": {
+        "operationId": "readMobileResultAnalytics",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022"
+        ],
+        "description": "Owned repeatable-read snapshot. Disabled by default until persistence contracts are deployed. GET never finalizes, retries or mutates records. Metrics are server score totals only; advanced modules remain unavailable.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resultUuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current owned state, with explicit unavailable analytics and stage-scoped acknowledgements.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired session"
+          },
+          "403": {
+            "description": "Wrong role or inactive school account"
+          },
+          "404": {
+            "description": "Unknown or no-longer-owned resource; no existence disclosure"
+          },
+          "409": {
+            "description": "READBACK_STATE_INCONSISTENT, READBACK_LIMIT_EXCEEDED or unsupported sync stage"
+          },
+          "422": {
+            "description": "Noncanonical UUID"
+          },
+          "503": {
+            "description": "MOBILE_READBACK_UNAVAILABLE release gate"
+          }
+        }
+      }
+    },
+    "/api/v3/mobile/syncs/{syncUuid}": {
+      "get": {
+        "operationId": "readMobileSync",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022"
+        ],
+        "description": "Owned repeatable-read snapshot. Disabled by default until persistence contracts are deployed. GET never finalizes, retries or mutates records. Metrics are server score totals only; advanced modules remain unavailable.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "syncUuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current owned state, with explicit unavailable analytics and stage-scoped acknowledgements.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncReadback"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired session"
+          },
+          "403": {
+            "description": "Wrong role or inactive school account"
+          },
+          "404": {
+            "description": "Unknown or no-longer-owned resource; no existence disclosure"
+          },
+          "409": {
+            "description": "READBACK_STATE_INCONSISTENT, READBACK_LIMIT_EXCEEDED or unsupported sync stage"
+          },
+          "422": {
+            "description": "Noncanonical UUID"
+          },
+          "503": {
+            "description": "MOBILE_READBACK_UNAVAILABLE release gate"
+          }
+        }
+      }
+    },
+    "/api/v3/mobile/results/{resultUuid}/corrections": {
+      "post": {
+        "operationId": "correctAndFinalizeMobileResult",
+        "x-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018",
+          "V3_019",
+          "V3_020",
+          "V3_021",
+          "V3_022"
+        ],
+        "description": "Submit a teacher review of every existing answer of the reopened result, including unchanged answers. Accepts corrections to objective options, written transcription, evidence selection, manual/rubric points and comments. The server computes objective points, validates current references and immutable capture, then commits answers, score version +1, revision +1, audit/history and successful sync receipt together. Any error rolls back the entire result. Retry the identical typed request with the same operation/sync/verification UUIDs; a replay returns the historical finalized response with scoreChanged=false. GET result/analytics for current state. This route does not accept replacement scans or staged partial corrections.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "resultUuid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Atomic finalized result; scoreChanged=true for a new correction, false for a committed historical retry. No second finalize request is required.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinalizationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired session"
+          },
+          "403": {
+            "description": "Wrong role or inactive school account"
+          },
+          "404": {
+            "description": "Unknown or no-longer-owned resource; no existence disclosure"
+          },
+          "409": {
+            "description": "Revision/reference/identity/state/capture/evidence conflict; whole result unchanged. Reconcile before creating new intent."
+          },
+          "422": {
+            "description": "Invalid explicit 3.2 DTO, duplicate identities, invalid manual/rubric/option decision or incomplete review."
+          },
+          "503": {
+            "description": "MOBILE_CORRECTION_UNAVAILABLE or dependent release gate; CORRECTION_PERSISTENCE_UNAVAILABLE requires identical retry because acknowledgement may be lost."
+          },
+          "413": {
+            "description": "JSON body exceeds 2 MiB"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectionRequest"
+              }
+            }
+          }
+        },
+        "x-max-body-bytes": 2097152
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ResultReadback": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractVersion": {
+                "const": "3.0"
+              },
+              "resultUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "testResultId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "assignmentUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "classListId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "studentId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "resultStatus": {
+                "enum": [
+                  "draft",
+                  "pending_verification",
+                  "finalized",
+                  "superseded"
+                ]
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "scoreVersion": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "pendingReasons": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "idMappings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/IdMapping"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "pages": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/PageState"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "rubricScoreMappings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RubricMapping"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "officialScore": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/OfficialScore"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "analytics": {
+                "$ref": "#/components/schemas/AnalyticsState"
+              }
+            },
+            "required": [
+              "contractVersion",
+              "resultUuid",
+              "testResultId",
+              "assignmentUuid",
+              "classListId",
+              "studentId",
+              "resultStatus",
+              "revision",
+              "scoreVersion",
+              "pendingReasons",
+              "idMappings",
+              "pages",
+              "rubricScoreMappings",
+              "officialScore",
+              "analytics"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "IdMapping": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "enum": [
+              "test_result",
+              "scan_session",
+              "scan_page",
+              "answer_sheet_version",
+              "answer_sheet_page",
+              "answer_sheet_region",
+              "student_answer",
+              "omr_detection",
+              "answer_attachment",
+              "scan_verification",
+              "answer_verification",
+              "sync"
+            ]
+          },
+          "uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "centralId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "entityType",
+          "uuid",
+          "centralId"
+        ],
+        "additionalProperties": false
+      },
+      "PageState": {
+        "type": "object",
+        "properties": {
+          "scanUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "pageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "pageStatus": {
+            "type": "string",
+            "minLength": 1
+          },
+          "originalAttachmentUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "scanUuid",
+          "scanPageUuid",
+          "pageUuid",
+          "pageStatus",
+          "originalAttachmentUuid"
+        ],
+        "additionalProperties": false
+      },
+      "RubricMapping": {
+        "type": "object",
+        "properties": {
+          "answerUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "rubricCriterionId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "scoreVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "centralAnswerRubricScoreId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "answerUuid",
+          "rubricCriterionId",
+          "scoreVersion",
+          "centralAnswerRubricScoreId"
+        ],
+        "additionalProperties": false
+      },
+      "OfficialScore": {
+        "type": "object",
+        "properties": {
+          "testResultId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "testAssignmentId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "testId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "classListId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "studentId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "studentName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "totalScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "maxScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "percentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "performanceStatus": {
+            "type": "string",
+            "minLength": 1
+          },
+          "performanceLabel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "performanceRuleSetId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "itemsEvaluated": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "scoreVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "resultStatus": {
+            "const": "finalized"
+          },
+          "scoredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "scoreChanged": {
+            "type": "boolean"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartScore"
+            },
+            "minItems": 1,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "testResultId",
+          "resultUuid",
+          "testAssignmentId",
+          "testId",
+          "classListId",
+          "studentId",
+          "studentName",
+          "attemptNumber",
+          "totalScore",
+          "maxScore",
+          "percentage",
+          "performanceStatus",
+          "performanceLabel",
+          "performanceRuleSetId",
+          "itemsEvaluated",
+          "scoreVersion",
+          "resultStatus",
+          "scoredAt",
+          "scoreChanged",
+          "parts"
+        ],
+        "additionalProperties": false
+      },
+      "PartScore": {
+        "type": "object",
+        "properties": {
+          "testPartId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "partOrder": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "partName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "totalScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "maxScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "percentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "itemsEvaluated": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "testPartId",
+          "partOrder",
+          "partName",
+          "totalScore",
+          "maxScore",
+          "percentage",
+          "itemsEvaluated"
+        ],
+        "additionalProperties": false
+      },
+      "AnalyticsState": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "unavailable",
+              "pending",
+              "ready",
+              "stale"
+            ]
+          },
+          "scoreVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "scoreVersion",
+          "reasonCode"
+        ],
+        "additionalProperties": false
+      },
+      "AnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractVersion": {
+                "const": "3.0"
+              },
+              "resultUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "scoreVersion": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "enum": [
+                  "unavailable",
+                  "pending",
+                  "ready",
+                  "stale"
+                ]
+              },
+              "reasonCode": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "generatedAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "Z$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "metrics": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "totalScore": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 999999.99,
+                        "multipleOf": 0.01
+                      },
+                      "maxScore": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 999999.99,
+                        "multipleOf": 0.01
+                      },
+                      "percentage": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "itemAnalysis": {
+                        "type": "null"
+                      },
+                      "mastery": {
+                        "type": "null"
+                      },
+                      "interventions": {
+                        "type": "null"
+                      },
+                      "student360": {
+                        "type": "null"
+                      }
+                    },
+                    "required": [
+                      "totalScore",
+                      "maxScore",
+                      "percentage",
+                      "itemAnalysis",
+                      "mastery",
+                      "interventions",
+                      "student360"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "unavailableModules": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "itemAnalysis",
+                    "mastery",
+                    "interventions",
+                    "student360"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "contractVersion",
+              "resultUuid",
+              "scoreVersion",
+              "status",
+              "reasonCode",
+              "generatedAt",
+              "metrics",
+              "unavailableModules"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "SyncReadback": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractVersion": {
+                "const": "3.0"
+              },
+              "syncUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "assignmentUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "syncStatus": {
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "partial_success",
+                  "success",
+                  "failed"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SyncResultOutcome"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "contractVersion",
+              "syncUuid",
+              "assignmentUuid",
+              "syncStatus",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "SyncResultOutcome": {
+        "type": "object",
+        "properties": {
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "pending"
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pageOutcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageOutcome"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "resultUuid",
+          "status",
+          "error",
+          "pageOutcomes"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "additionalProperties": false
+      },
+      "PageOutcome": {
+        "type": "object",
+        "properties": {
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "pending"
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "scanPageUuid",
+          "status",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "FinalizationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "$ref": "#/components/schemas/OfficialScore"
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "CriterionScore": {
+        "type": "object",
+        "properties": {
+          "rubricCriterionId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pointsAwarded": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rubricCriterionId",
+          "pointsAwarded",
+          "comment"
+        ],
+        "additionalProperties": false
+      },
+      "ManualEvaluation31": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "manual"
+          },
+          "answerStatus": {
+            "enum": [
+              "answered",
+              "blank"
+            ]
+          },
+          "responseText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000,
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attachmentUuids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "minItems": 0,
+            "maxItems": 20,
+            "uniqueItems": true
+          },
+          "points": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          }
+        },
+        "required": [
+          "kind",
+          "answerStatus",
+          "responseText",
+          "attachmentUuids",
+          "points"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "answerStatus": {
+                  "const": "blank"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "points": {
+                  "const": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "answerStatus": {
+                  "const": "blank"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "responseText": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "responseText": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "attachmentUuids": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "RubricEvaluation31": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "rubric"
+          },
+          "answerStatus": {
+            "enum": [
+              "answered",
+              "blank"
+            ]
+          },
+          "responseText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000,
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attachmentUuids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "minItems": 0,
+            "maxItems": 20,
+            "uniqueItems": true
+          },
+          "rubricId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "criterionScores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CriterionScore"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "kind",
+          "answerStatus",
+          "responseText",
+          "attachmentUuids",
+          "rubricId",
+          "criterionScores"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "answerStatus": {
+                  "const": "blank"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "responseText": {
+                  "type": "null"
+                },
+                "criterionScores": {
+                  "items": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/CriterionScore"
+                      },
+                      {
+                        "properties": {
+                          "pointsAwarded": {
+                            "const": 0
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "else": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "responseText": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "attachmentUuids": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "CorrectionObjective": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "objective"
+          },
+          "answerStatus": {
+            "enum": [
+              "answered",
+              "blank"
+            ]
+          },
+          "detectionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "selectedOption": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              null
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "answerStatus",
+          "detectionUuid",
+          "selectedOption"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "answerStatus": {
+                  "const": "blank"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "selectedOption": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "selectedOption": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "CorrectionAnswer": {
+        "type": "object",
+        "properties": {
+          "answerUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "verificationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "questionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "regionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "evaluation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CorrectionObjective"
+              },
+              {
+                "$ref": "#/components/schemas/ManualEvaluation31"
+              },
+              {
+                "$ref": "#/components/schemas/RubricEvaluation31"
+              }
+            ]
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clientDecidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "answerUuid",
+          "verificationUuid",
+          "questionUuid",
+          "regionUuid",
+          "scanPageUuid",
+          "evaluation",
+          "comment",
+          "clientDecidedAt"
+        ],
+        "additionalProperties": false
+      },
+      "CorrectionRequest": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "const": "3.2"
+          },
+          "syncUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "operationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "reopenOperationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "expectedScoreVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "testVersionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "evaluationReferenceHash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "pattern": "\\S"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "answers": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/CorrectionAnswer"
+            }
+          }
+        },
+        "required": [
+          "contractVersion",
+          "syncUuid",
+          "operationUuid",
+          "reopenOperationUuid",
+          "expectedRevision",
+          "expectedScoreVersion",
+          "testVersionNumber",
+          "evaluationReferenceHash",
+          "reasonCode",
+          "comment",
+          "answers"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "x-mobile-production-enabled": false,
+  "x-required-baseline": "V3_014 configured baseline unchanged; draft V3_015..V3_022 must be reviewed and deployed before coordinated activation."
+}

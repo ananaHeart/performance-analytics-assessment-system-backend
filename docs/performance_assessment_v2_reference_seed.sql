@@ -43,6 +43,22 @@ ON DUPLICATE KEY UPDATE
     description = VALUES(description),
     is_active = VALUES(is_active);
 
+INSERT INTO suffixes (
+    suffix_id,
+    suffix_name,
+    display_order,
+    is_active
+) VALUES
+    (1, 'Jr.', 1, TRUE),
+    (2, 'Sr.', 2, TRUE),
+    (3, 'II', 3, TRUE),
+    (4, 'III', 4, TRUE),
+    (5, 'IV', 5, TRUE)
+ON DUPLICATE KEY UPDATE
+    suffix_name = VALUES(suffix_name),
+    display_order = VALUES(display_order),
+    is_active = VALUES(is_active);
+
 INSERT INTO roles (role_id, role_name) VALUES
     (1, 'principal'),
     (2, 'teacher')

@@ -239,7 +239,7 @@ public class V3Sf1ImportService {
                 "sf1.import.confirm",
                 "sf1_imports",
                 Long.toString(importId),
-                "failed".equals(finalStatus) ? "failure" : "success",
+                "failed".equals(finalStatus) ? "failed" : "success",
                 metadata,
                 Map.of(
                         "importUuid", normalizedUuid,

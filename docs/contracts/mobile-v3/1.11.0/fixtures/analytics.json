@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "message": "Request completed successfully.",
+  "data": {
+    "contractVersion": "3.0",
+    "resultUuid": "d5c36d5f-1e04-4128-bff3-3737c311558f",
+    "scoreVersion": 1,
+    "status": "stale",
+    "reasonCode": "RESULT_SUPERSEDED",
+    "generatedAt": null,
+    "metrics": null,
+    "unavailableModules": [
+      "itemAnalysis",
+      "mastery",
+      "interventions",
+      "student360"
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T16:02:19.025408Z"
+}

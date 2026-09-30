@@ -1,0 +1,21 @@
+FROM eclipse-temurin:17-jdk-jammy AS build
+WORKDIR /workspace
+COPY mvnw pom.xml ./
+COPY .mvn .mvn
+RUN chmod +x mvnw && ./mvnw -q -DskipTests dependency:go-offline
+COPY src src
+RUN ./mvnw -q -DskipTests package
+
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends util-linux \
+    && useradd --create-home --shell /bin/bash spring \
+    && mkdir -p /var/data/answer-sheets /var/data/scan-evidence \
+    && chown -R spring:spring /var/data
+COPY --from=build /workspace/target/*.jar app.jar
+COPY deploy/start-v3-cloud.sh /app/start-v3-cloud.sh
+RUN sed -i 's/\r$//' /app/start-v3-cloud.sh && chmod 755 /app/start-v3-cloud.sh
+ENV SPRING_PROFILES_ACTIVE=v3,v3-mobile-release,v3-cloud
+USER spring
+EXPOSE 8080
+ENTRYPOINT ["/app/start-v3-cloud.sh"]

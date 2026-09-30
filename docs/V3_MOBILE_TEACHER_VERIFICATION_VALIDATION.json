@@ -1,0 +1,101 @@
+{
+  "generatedAtUtc": "2026-09-12T12:41:43.4120339Z",
+  "scope": "Milestone 2 Prompt 7 objective teacher verification",
+  "totalTests": 126,
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:35:39.7665986Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3DetectionUploadControllerTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:35:44.2936369Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:35:46.1066366Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3TeacherVerificationControllerTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:35:46.9706328Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3DetectionPersistenceTest",
+      "tests": 42,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:35:52.4940135Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:38:09.5049833Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3TeacherVerificationPersistenceTest",
+      "tests": 29,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:38:17.3116422Z"
+    }
+  ],
+  "draftMigration": "docs/migrations/v3/V3_017_mobile_teacher_verification_DRAFT.sql",
+  "migrationSha256": "a470e6955ebf1d84c78767f80d4e63ff1918b19eb8d92f03557c81b3520aa796",
+  "contract": {
+    "packVersion": "1.2.0",
+    "wireVersion": "3.0",
+    "openapi": "3.1.0",
+    "openapiSha256": "9b28ddbac31a7bf1d983ee904426a5aff612da655efa3e69baac16828a57aa6c",
+    "schemas": 9,
+    "fixtures": 9,
+    "evaluationScope": "objective",
+    "allThreePackValidatorsPassed": true
+  },
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "tables": 72,
+    "foreignKeys": 174,
+    "checks": 95,
+    "uniqueConstraints": 104,
+    "syntheticRecordsOnly": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true
+  },
+  "release": {
+    "verificationPostEnabled": false,
+    "configuredBaseline": "V3_014",
+    "draftMigrationsDeployedToSchool": false,
+    "physicalScannerValidated": false,
+    "completeMobileFlow": false
+  },
+  "limitations": [
+    "The latest affected persistence suites were rerun after per-result authorization refinement and competing-revision test.",
+    "Six of sixteen MariaDB tests cover verification; ten cover existing scan/detection persistence.",
+    "Existing scoring repository verification-field reads passed; complete scoring/finalization integration remains pending.",
+    "Manual/rubric evaluation, correction/reopen and actual rescan upload are not implemented by this slice.",
+    "Transaction fault injection does not prove power-loss or process-kill durability.",
+    "TF record validation uses synthetic fixtures; no TF printed scanner acceptance was performed."
+  ]
+}

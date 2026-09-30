@@ -1,0 +1,46 @@
+{
+  "success": true,
+  "message": "Illustrative contract response.",
+  "data": {
+    "contractVersion": "3.0",
+    "assignmentUuid": "00000000-0000-4000-8000-000000002102",
+    "testVersionNumber": 1,
+    "evaluationReferenceHash": "b0878f762cd7ef92fed12a4d9b242d74774974b71b4054eba80c0f9aca94659a",
+    "questions": [
+      {
+        "questionUuid": "00000000-0000-4000-8000-000000002110",
+        "maximumPoints": 5,
+        "rubricId": null,
+        "expectedResponseCount": 1
+      },
+      {
+        "questionUuid": "00000000-0000-4000-8000-000000002111",
+        "maximumPoints": 5,
+        "rubricId": 6001,
+        "expectedResponseCount": null
+      }
+    ],
+    "rubrics": [
+      {
+        "rubricId": 6001,
+        "name": "Explanation",
+        "criteria": [
+          {
+            "rubricCriterionId": 6101,
+            "name": "Nilalaman — 内容",
+            "maximumPoints": 3,
+            "isRequired": true
+          },
+          {
+            "rubricCriterionId": 6102,
+            "name": "Organization",
+            "maximumPoints": 2,
+            "isRequired": true
+          }
+        ]
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

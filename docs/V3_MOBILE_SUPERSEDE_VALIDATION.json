@@ -1,0 +1,409 @@
+{
+  "generatedAtUtc": "2026-09-12T16:04:06.520518+00:00",
+  "scope": "Milestone 4 Prompt 16 audited page rescan and result supersession",
+  "status": "BACKEND_COMPONENT_COMPLETE_RELEASE_GATED",
+  "totalTests": 222,
+  "newPromptTests": 25,
+  "newPersistenceTests": [
+    "rescanRequiresTeacherDecisionAndExactNextCapture",
+    "supersedeSupportsAuditedReopenedSource",
+    "supersedeRejectsStaleRevisionSelfLinkAndReverseAttempt",
+    "supersedeRollbackAndLostAcknowledgementAreRecoverable",
+    "supersedeSchemaRejectsSelfLinksBadRevisionAndMalformedHistory",
+    "supersedeConcurrentRetriesAndChangedContent",
+    "rescanRepeatedRequestsKeepOneCurrentPageAndRejectBrokenLineage",
+    "rescanRollbackAndConcurrentRetryPreserveOneSuccessor",
+    "supersedeReportsSelectOnlyOneLatestAttemptBeforeAndAfterLink",
+    "rescanRetainsOriginalEvidenceAndFinalizesOnlyTheReplacementPage",
+    "supersedeRequiresFinalizedLatestReplacement",
+    "supersedeRechecksOwnerAndRejectsCorruptReceipt",
+    "supersedeRejectsMissingReplacementOriginalAndCrossSchoolReference",
+    "rescanRejectsAcceptedOrOfficialCapture",
+    "supersedeChainReplaysHistoricalLinkAndNeverCycles",
+    "supersedePreservesScoresAndExposesDurableLinkAndStaleAnalytics"
+  ],
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 156,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:02:20.008543+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageUploadControllerTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:56.867828+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ResultSupersedeControllerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:55.653820+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ResultSupersedeGateTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:58.834395+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ResultCorrectionControllerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:55.223716+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ResultCorrectionGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:58.410943+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ResultReopenControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:55.397723+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ResultReopenGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:58.761223+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:56.098735+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3MobileFinalizationBaselineTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:57.649289+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.scoring.service.V3ScoringServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:02:20.138645+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:49.507775+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3MobileReadbackControllerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:54.535718+00:00"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3MobileReadbackGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T16:00:57.897897+00:00"
+    }
+  ],
+  "contractValidation": [
+    {
+      "status": "PASS",
+      "checkedAt": "2026-09-12T16:02:51.870Z",
+      "packVersion": "1.0.0",
+      "routes": 19,
+      "schemas": 44,
+      "fixtures": 58,
+      "schemaPositiveFixtures": 53,
+      "schemaNegativeFixtures": 5,
+      "semanticNegativeFixtures": 4,
+      "unchangedSourceCopies": 7,
+      "sourceDtoRootFieldChecks": 7,
+      "checks": [
+        "schema compilation",
+        "fixture schemas",
+        "negative examples",
+        "source copy integrity",
+        "source DTO root fields",
+        "replay identity",
+        "partial outcome correlation",
+        "result/score/analytics consistency",
+        "download additions",
+        "private field exclusion",
+        "fixture index completeness"
+      ],
+      "schemasSha256": "aa592559499d9f446b7812b940940dd0b4f2a1df3970306a318ef45610571ebd",
+      "indexSha256": "0668f66f9051635d00fcaec7d217ac539cb481af68779677061677d0c3786929",
+      "runtimeTestsExecuted": false,
+      "databaseTestsExecuted": false,
+      "mobileTestsExecuted": false,
+      "physicalScannerValidated": false,
+      "productionReady": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.1.0",
+      "checkedAt": "2026-09-12T16:02:52.002Z",
+      "schemas": 4,
+      "fixtures": 9,
+      "parentWireShapesUnchanged": true,
+      "productionEnabled": false,
+      "runtimeTestsExecuted": false,
+      "physicalScannerValidated": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.2.0",
+      "checkedAt": "2026-09-12T16:02:52.131Z",
+      "schemas": 9,
+      "fixtures": 9,
+      "scope": "objective_verification",
+      "productionEnabled": false,
+      "runtimeTestsExecuted": false,
+      "physicalScannerValidated": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.3.0",
+      "schemas": 3,
+      "fixtures": 3,
+      "mobileProductionEnabled": false,
+      "runtimeTestsExecuted": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.4.0",
+      "schemas": 12,
+      "fixtures": 6,
+      "runtimeSamplesChecked": 3,
+      "productionEnabled": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.5.0",
+      "schemas": 6,
+      "fixtures": 5,
+      "runtimeSamplesChecked": 1,
+      "writeRoutesImplemented": false,
+      "productionEnabled": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.6.0",
+      "schemas": 7,
+      "fixtures": 6,
+      "runtimeSamplesChecked": 3,
+      "parentShapesUnchanged": true,
+      "productionEnabled": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.7.0",
+      "writtenRequestVersion": "3.1",
+      "schemas": 22,
+      "fixtures": 4,
+      "runtimeSamplesChecked": 4,
+      "previousNamedSchemasUnchanged": true,
+      "productionEnabled": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.8.0",
+      "schemas": 13,
+      "fixtures": 4,
+      "runtimeSamplesChecked": 4,
+      "productionEnabled": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.9.0",
+      "schemas": 14,
+      "fixtures": 6,
+      "runtimeSamplesChecked": 6,
+      "productionEnabled": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.10.0",
+      "schemas": 19,
+      "fixtures": 8,
+      "runtimeSamplesChecked": 8,
+      "productionEnabled": false
+    },
+    {
+      "status": "PASS",
+      "packVersion": "1.11.0",
+      "schemas": 16,
+      "fixtures": 11,
+      "runtimeSamplesChecked": 11,
+      "productionEnabled": false
+    }
+  ],
+  "hashes": [
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/controller/V3ResultSupersedeController.java",
+      "sha256": "51c28484bd696ce0fa88aa1c9e1ee095642943b4c5036039d5d2b1046b67ceff"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/dto/V3SupersedeRequest.java",
+      "sha256": "7fd0ceb023b39f4f4e681efe857624b1b763b86708474f2a1b978950df468ded"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3ResultSupersedeRepository.java",
+      "sha256": "4387b19d77f89fcad4b53df0140c5e2b01bd4d8b61f657f0de0a4300e0d016d3"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3ResultSupersedeService.java",
+      "sha256": "f1553277c43f3ad48865eb0129a55adf3aeac67b2025d2dd9c1b07f817ca8511"
+    },
+    {
+      "file": "src/test/java/com/capstone/assessment/v3/mobile/controller/V3ResultSupersedeControllerTest.java",
+      "sha256": "7cc511baf05eb1f8036f1159f05587a03618927c468d3632eec4b9f39a3cd9d5"
+    },
+    {
+      "file": "src/test/java/com/capstone/assessment/v3/mobile/service/V3ResultSupersedeGateTest.java",
+      "sha256": "6a7e3d993ec9dbe4e833510edfc5b9dd0217d8233e52ced48aec294f2952bdb4"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3ScanPageIngestionService.java",
+      "sha256": "794a2c7d81de693c54848a9dbc428cde9bef9d6ab1cf9abc508fcee6f2f17140"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3ScanPageRepository.java",
+      "sha256": "4da8189b1ae1976ca58b3782f8d7e5af3b66b5b7ec18268ff18b6ee0e90beefa"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3MobileFinalizationService.java",
+      "sha256": "779056bed16a8b0d085b0ffcf7c5fdd88e07b530c484cd47f0a1f9f602141e8e"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3MobileFinalizationRepository.java",
+      "sha256": "e132ed846f9bdb71f9677d1bc2168fccd7e21ae9582c35975f35f1aa9bf1dd73"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3MobileReadbackService.java",
+      "sha256": "bf7d50a4b6ef1f7d680f3c2e9e817d0abe535910a348ea22b8c12ce037f70a17"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3MobileReadbackRepository.java",
+      "sha256": "a53c8047ad776403ee434335fed115a93ad2d652b0c724a33f0aa8198e23e32a"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/controller/V3ScanPageUploadController.java",
+      "sha256": "7d1623ee78253e27d99351dd751afffee30e64140e7410479124962f5f2029c4"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/system/config/V3SystemSecurityConfig.java",
+      "sha256": "ecec7ab232665126690462e10739573b11e41ac4f2128fa2c71e6c21cb712536"
+    },
+    {
+      "file": "src/main/resources/application-v3.properties",
+      "sha256": "3bb5d8f931fb3c37b86af40011b6d017510aa594cd928cc9c686f68aa4dac832"
+    },
+    {
+      "file": "src/test/java/com/capstone/assessment/v3/mobile/service/V3ScanUploadMariaDbTest.java",
+      "sha256": "f4475c89c9822e0020766c91af3736b1897bb9e6d2dec6187450fca60f73ae92"
+    },
+    {
+      "file": "src/test/java/com/capstone/assessment/v3/mobile/controller/V3ScanPageUploadControllerTest.java",
+      "sha256": "33806e39c7202fe7478dfacbbed07f9906587021771c2ab76c5c99e59bbf7711"
+    },
+    {
+      "file": "src/test/java/com/capstone/assessment/v3/mobile/controller/V3ScanPageSecurityGateTest.java",
+      "sha256": "74000963ee496fd3c7038bf1d12d78ebd6db3181ef4d456fb6d531f0a3b60176"
+    },
+    {
+      "file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "sha256": "8ddfb88a385df51ddcbacd2a4b5265a66f3b77a920ea895861b430146e00b6cb"
+    },
+    {
+      "file": "docs/contracts/mobile-v3/1.11.0/openapi.json",
+      "sha256": "070c7c16b7116172e2a12d3a57bed8938cbf728dfd606a6185a711d284446e60"
+    },
+    {
+      "file": "docs/contracts/mobile-v3/1.11.0/validate.cjs",
+      "sha256": "469c9fcb87f117b5db25a65c872e446b99ff4c566ca11a92f505949c43e7d4ca"
+    }
+  ],
+  "disposableDatabase": {
+    "engine": "MariaDB 10.4.32",
+    "host": "127.0.0.1",
+    "port": 33317,
+    "schema": "v3_scan_validation_full_000019",
+    "tables": 79,
+    "foreignKeys": 200,
+    "checks": 131,
+    "uniqueConstraints": 118,
+    "draftThrough": "V3_023",
+    "stopped": true,
+    "portClosedVerified": true
+  },
+  "configuredBaseline": {
+    "version": "V3_014",
+    "tables": 67,
+    "foreignKeys": 163,
+    "checks": 87,
+    "uniqueConstraints": 99,
+    "changed": false
+  },
+  "productionEnabled": false,
+  "schoolDatabaseMigrated": false,
+  "mobileChanged": false,
+  "physicalValidationPerformed": false,
+  "sf1Changed": false,
+  "coverage": [
+    "Teacher-requested same-session rescan retains predecessor evidence and finalizes current accepted page",
+    "Exact next capture and committed rescan decision required; accepted/official capture rejected",
+    "Rescan rollback, concurrent retry, repeated lineage and broken-lineage rejection",
+    "Newer finalized replacement, source/replacement snapshots, durable immediate link, stale source analytics and sync readback",
+    "Audited reopened source supported",
+    "Stale source revision, self/reverse link, pending/non-latest replacement, changed retry and inactive/cross-school ownership rejected",
+    "Replacement original file required",
+    "Concurrent same-operation replay, before-commit rollback and after-commit lost acknowledgement",
+    "Chain historical replay and monotonic attempt order",
+    "Real report repository returns one latest attempt before and after supersession",
+    "Database history/identity constraints and malformed receipt rejected",
+    "Strict POST JSON and multipart capture-number parsing; actual HTTP gates and disabled-service isolation"
+  ],
+  "limitations": [
+    "Production deployment, Mobile sessions/SQLite/wiring and physical scanner acceptance remain Milestone 5",
+    "Capture eligibility unchanged: one-page ten-MC A4; at most five captures per page",
+    "Written printed geometry is not newly implemented or physically validated",
+    "Existing latest non-superseded report policy is preserved; a pending newer attempt can be selected before explicit supersession",
+    "No new institutional retake grading policy or advanced analytics modules"
+  ],
+  "validationNotes": [
+    "First run caught invalid non-JSON rescan audit detail and a supersession GET deny rule placed after a broader allow rule. Both were fixed, then the full focused suite and all contract validators passed.",
+    "The final runner exited 0 and stopped only its disposable server on port 33317."
+  ]
+}

@@ -330,18 +330,20 @@ public class V3ScoringService {
                     "Question " + row.questionId() + " requires an option answer key."
             );
         }
-        if (!Set.of("answered", "blank").contains(row.answerStatus())) {
+        if (!Set.of("answered", "blank", "multiple", "uncertain").contains(row.answerStatus())) {
             throw conflict(
                     "OBJECTIVE_RESCAN_REQUIRED",
                     "Question " + row.questionId()
-                            + " has a multiple, uncertain, invalid, or unresolved objective mark."
+                            + " has an invalid or unresolved objective mark."
             );
         }
-        if ("blank".equals(row.answerStatus())) {
+        // Multiple/uncertain marks are recorded faithfully (never converted into a chosen
+        // option) and simply earn zero credit, the same as a blank response.
+        if (Set.of("blank", "multiple", "uncertain").contains(row.answerStatus())) {
             if (row.selectedQuestionOptionId() != null) {
                 throw conflict(
                         "OBJECTIVE_ANSWER_INVALID",
-                        "Question " + row.questionId() + " is blank but has a selected option."
+                        "Question " + row.questionId() + " has status '" + row.answerStatus() + "' but has a selected option."
                 );
             }
             return new ScoredAnswer(false, normalizePoints(BigDecimal.ZERO));

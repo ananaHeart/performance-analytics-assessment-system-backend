@@ -1,6 +1,8 @@
 package com.capstone.assessment.v3.auth.exception;
 
 import com.capstone.assessment.common.response.ApiResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -19,6 +21,8 @@ import java.util.Map;
 @RestControllerAdvice(basePackages = "com.capstone.assessment.v3")
 public class V3AuthExceptionHandler {
 
+    private static final Logger LOG = LoggerFactory.getLogger(V3AuthExceptionHandler.class);
+
     @ExceptionHandler(V3AuthException.class)
     public ResponseEntity<ApiResponse<Void>> handleAuthException(V3AuthException exception) {
         Map<String, Object> errors = new LinkedHashMap<>();
@@ -30,6 +34,7 @@ public class V3AuthExceptionHandler {
 
     @ExceptionHandler(V3FieldValidationException.class)
     public ResponseEntity<ApiResponse<Void>> handleFieldValidation(V3FieldValidationException exception) {
+        LOG.warn("Field validation failed: {}", exception.getErrors());
         return ResponseEntity.status(exception.getStatus())
                 .body(ApiResponse.error(exception.getMessage(), exception.getErrors()));
     }

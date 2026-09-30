@@ -1,0 +1,16 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "00000000-0000-4000-8000-000000000120",
+  "operationUuid": "00000000-0000-4000-8000-000000010120",
+  "attachmentUuid": "00000000-0000-4000-8000-000000002140",
+  "resultUuid": "00000000-0000-4000-8000-000000002100",
+  "scanPageUuid": "00000000-0000-4000-8000-000000002101",
+  "attachmentType": "teacher_evidence",
+  "regionUuid": null,
+  "sourceAttachmentUuid": null,
+  "crop": null,
+  "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "fileSizeBytes": 1024,
+  "mimeType": "image/png",
+  "capturedAt": "2026-09-12T02:00:00Z"
+}

@@ -26,6 +26,8 @@ import com.capstone.assessment.v3.auth.service.V3AuditService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -227,6 +229,81 @@ class V3AssessmentServiceTest {
                 anyString(), anyString(), anyLong(), anyInt(), anyString(), anyString(),
                 nullable(String.class), anyInt()
         );
+    }
+
+    @Test
+    void openingDateIsRequiredButClosingDateStaysOptional() {
+        stubValidCreationContext();
+        V3AssessmentRequest valid = validFiveTypeRequest();
+        V3AssessmentRequest noOpen = new V3AssessmentRequest(valid.classAssignmentId(), valid.termPeriodId(),
+                valid.testName(), valid.testType(), valid.instructions(), null, null,
+                false, false, null, valid.parts());
+
+        // Reports print the opening date as the date the assessment was conducted.
+        assertInvalidField("openAt", () -> service.createAssessment(TEACHER, noOpen, null));
+        verify(repository, never()).insertTest(
+                anyString(), anyString(), anyLong(), anyInt(), anyString(), anyString(),
+                nullable(String.class), anyInt()
+        );
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, 1})
+    void newTermRejectsOpeningAtOrAfterExclusiveEndEvenWhenClosingIsAbsent(long secondsAfterEnd) {
+        stubValidCreationContext();
+        Instant end = NOW.plusSeconds(7200);
+        when(repository.findTermWindow(9, 2026, "SCHOOL-001")).thenReturn(Optional.of(
+                new TermWindow(9, 2026, NOW, end, "active", true)));
+        assertInvalidField("openAt", () -> service.createAssessment(TEACHER,
+                withSchedule(end.plusSeconds(secondsAfterEnd), null), null));
+        verify(repository, never()).insertTest(anyString(), anyString(), anyLong(), anyInt(), anyString(),
+                anyString(), nullable(String.class), anyInt());
+    }
+
+    @Test
+    void newTermAcceptsOpeningAtStartAndClosingExactlyAtExclusiveEnd() {
+        stubValidCreationContext();
+        Instant end = NOW.plusSeconds(7200);
+        when(repository.findTermWindow(9, 2026, "SCHOOL-001")).thenReturn(Optional.of(
+                new TermWindow(9, 2026, NOW, end, "active", true)));
+        stubCreatedDraft();
+        assertEquals(1000L, service.createAssessment(TEACHER, withSchedule(NOW, end), null).testId());
+    }
+
+    @Test
+    void legacyQuarterRetainsOpeningAtEndWithOptionalClosing() {
+        stubValidCreationContext();
+        Instant end = NOW.plusSeconds(7200);
+        when(repository.findTermWindow(9, 2026, "SCHOOL-001")).thenReturn(Optional.of(
+                new TermWindow(9, 2026, NOW, end, "active")));
+        stubCreatedDraft();
+        assertEquals(1000L, service.createAssessment(TEACHER, withSchedule(end, null), null).testId());
+    }
+
+    @Test
+    void newTermStillRejectsOutsideDatesAndClosingAtOrBeforeOpening() {
+        stubValidCreationContext();
+        Instant end = NOW.plusSeconds(7200);
+        when(repository.findTermWindow(9, 2026, "SCHOOL-001")).thenReturn(Optional.of(
+                new TermWindow(9, 2026, NOW, end, "active", true)));
+        assertInvalidField("openAt", () -> service.createAssessment(TEACHER, withSchedule(NOW.minusSeconds(1), null), null));
+        assertInvalidField("closeAt", () -> service.createAssessment(TEACHER, withSchedule(NOW, end.plusSeconds(1)), null));
+        assertInvalidField("closeAt", () -> service.createAssessment(TEACHER, withSchedule(NOW, NOW), null));
+        assertInvalidField("closeAt", () -> service.createAssessment(TEACHER, withSchedule(NOW, NOW.minusSeconds(1)), null));
+        verify(repository, never()).insertTest(anyString(), anyString(), anyLong(), anyInt(), anyString(),
+                anyString(), nullable(String.class), anyInt());
+    }
+
+    private V3AssessmentRequest withSchedule(Instant open, Instant close) {
+        V3AssessmentRequest valid = validFiveTypeRequest();
+        return new V3AssessmentRequest(valid.classAssignmentId(), valid.termPeriodId(), valid.testName(),
+                valid.testType(), valid.instructions(), open, close, false, false, null, valid.parts());
+    }
+
+    private void stubCreatedDraft() {
+        when(repository.insertTest(anyString(), eq("SCHOOL-001"), eq(42L), eq(9), eq("Five Type Assessment"),
+                eq("quiz"), eq("Mixed assessment"), eq(5))).thenReturn(1000L);
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("draft", 5)));
     }
 
     @Test

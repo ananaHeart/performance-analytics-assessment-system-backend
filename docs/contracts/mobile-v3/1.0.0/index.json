@@ -1,0 +1,711 @@
+{
+  "packVersion": "1.0.0",
+  "wireContractVersion": "3.0",
+  "status": "DESIGN_HANDOFF_NOT_PRODUCTION_READY",
+  "reviewDate": "2026-09-12",
+  "expectedCentralBaseline": {
+    "migration": "V3_014",
+    "tables": 67,
+    "foreignKeys": 163,
+    "checks": 87,
+    "uniqueConstraints": 99,
+    "liveVerified": false
+  },
+  "mobileDraft": {
+    "database": "AssessmentStorageV3.db",
+    "schemaVersion": 3,
+    "declaredTableCount": 39,
+    "productionMigrationAuthorized": false
+  },
+  "schemas": "schemas.json",
+  "routes": [
+    {
+      "id": "login",
+      "method": "POST",
+      "path": "/api/v3/auth/login",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "requestSchema": "LoginRequest",
+      "responseSchema": "LoginSuccess | MfaChallenge",
+      "note": ""
+    },
+    {
+      "id": "mfa-login",
+      "method": "POST",
+      "path": "/api/v3/auth/mfa/login/verify",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "requestSchema": "MfaRequest",
+      "responseSchema": "LoginSuccess",
+      "note": ""
+    },
+    {
+      "id": "me",
+      "method": "GET",
+      "path": "/api/v3/auth/me",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "requestSchema": null,
+      "responseSchema": "MeResponse",
+      "note": ""
+    },
+    {
+      "id": "logout",
+      "method": "POST",
+      "path": "/api/v3/auth/logout",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "requestSchema": null,
+      "responseSchema": "LogoutResponse",
+      "note": ""
+    },
+    {
+      "id": "reference-data",
+      "method": "GET",
+      "path": "/api/v3/mobile/reference-data",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "requestSchema": null,
+      "responseSchema": "CurrentReadEnvelope",
+      "note": "Source-copy abbreviated fixture; data schema is not a complete read DTO schema."
+    },
+    {
+      "id": "download",
+      "method": "GET",
+      "path": "/api/v3/mobile/download",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "requestSchema": null,
+      "responseSchema": "CurrentReadEnvelope",
+      "note": "Source-copy abbreviated fixture; data schema is not a complete read DTO schema."
+    },
+    {
+      "id": "manifest",
+      "method": "GET",
+      "path": "/api/v3/mobile/test-assignments/{assignmentUuid}/answer-sheets/{answerSheetUuid}/manifest",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "requestSchema": null,
+      "responseSchema": "CurrentReadEnvelope",
+      "note": "Source-copy abbreviated fixture; data schema is not a complete read DTO schema."
+    },
+    {
+      "id": "scan-page",
+      "method": "POST",
+      "path": "/api/v3/mobile/scan-pages",
+      "status": "EXISTING_DTO_ONLY",
+      "requestSchema": "ScanMetadata",
+      "responseSchema": "ScanResponse",
+      "note": "multipart metadata + image; no runtime handler"
+    },
+    {
+      "id": "detections",
+      "method": "POST",
+      "path": "/api/v3/mobile/scan-pages/{scanPageUuid}/detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "requestSchema": "DetectionBatch",
+      "responseSchema": "OperationAck",
+      "note": ""
+    },
+    {
+      "id": "attachment",
+      "method": "POST",
+      "path": "/api/v3/mobile/attachments",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "requestSchema": "AttachmentMetadata",
+      "responseSchema": "AttachmentAck",
+      "note": "multipart metadata + file"
+    },
+    {
+      "id": "verification",
+      "method": "POST",
+      "path": "/api/v3/mobile/verification-batches",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "requestSchema": "VerificationBatch",
+      "responseSchema": "VerificationResponse",
+      "note": ""
+    },
+    {
+      "id": "evaluation-reference",
+      "method": "GET",
+      "path": "/api/v3/mobile/test-assignments/{assignmentUuid}/evaluation-reference",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "requestSchema": null,
+      "responseSchema": "EvaluationReference",
+      "note": ""
+    },
+    {
+      "id": "finalize",
+      "method": "POST",
+      "path": "/api/v3/scoring/results/{testResultId}/finalize",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "requestSchema": null,
+      "responseSchema": "FinalizationResponse",
+      "note": "No request body; existing handler does not accept expectedRevision."
+    },
+    {
+      "id": "reopen",
+      "method": "POST",
+      "path": "/api/v3/mobile/results/{resultUuid}/reopen",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "requestSchema": "ReopenRequest",
+      "responseSchema": "LifecycleAck",
+      "note": ""
+    },
+    {
+      "id": "supersede",
+      "method": "POST",
+      "path": "/api/v3/mobile/results/{resultUuid}/supersede",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "requestSchema": "SupersedeRequest",
+      "responseSchema": "LifecycleAck",
+      "note": ""
+    },
+    {
+      "id": "result-readback",
+      "method": "GET",
+      "path": "/api/v3/mobile/results/{resultUuid}",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "requestSchema": null,
+      "responseSchema": "ResultReadback",
+      "note": ""
+    },
+    {
+      "id": "sync-readback",
+      "method": "GET",
+      "path": "/api/v3/mobile/syncs/{syncUuid}",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "requestSchema": null,
+      "responseSchema": "SyncReadback",
+      "note": ""
+    },
+    {
+      "id": "analytics",
+      "method": "GET",
+      "path": "/api/v3/mobile/results/{resultUuid}/analytics",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "requestSchema": null,
+      "responseSchema": "AnalyticsResponse",
+      "note": ""
+    },
+    {
+      "id": "report",
+      "method": "GET",
+      "path": "/api/v3/reports/assessment-results",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "requestSchema": null,
+      "responseSchema": null,
+      "note": "Existing DTO remains authoritative; query testId and classAssignmentId; not redefined here."
+    }
+  ],
+  "fixtures": [
+    {
+      "path": "fixtures/current/mobile/answer-sheet-manifest-response.json",
+      "schema": "CurrentReadEnvelope",
+      "routeId": "manifest",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "source": "src/test/resources/contracts/v3/mobile/answer-sheet-manifest-response.json",
+      "sha256": "66aeae04ff07415d9e20ef9ebb30a225277e90fc8f956437cef71f2aa9d3e160",
+      "note": "Unchanged legacy illustrative excerpt; no binary fixture; placeholder hashes.",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/mobile/download-response.json",
+      "schema": "CurrentReadEnvelope",
+      "routeId": "download",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "source": "src/test/resources/contracts/v3/mobile/download-response.json",
+      "sha256": "050e6c0cb68ad173a0e56588a9923e4042d38d0cea8a95ca7cce0792caea2685",
+      "note": "Unchanged legacy illustrative excerpt; no binary fixture; placeholder hashes.",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/mobile/reference-data-response.json",
+      "schema": "CurrentReadEnvelope",
+      "routeId": "reference-data",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "source": "src/test/resources/contracts/v3/mobile/reference-data-response.json",
+      "sha256": "e29f7133a0ce74f48cb75d3c6f4e3971c83a0e5b35b745142cc5acc7e46f69d9",
+      "note": "Unchanged legacy illustrative excerpt; no binary fixture; placeholder hashes.",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/mobile/scan-page-upload-conflict-response.json",
+      "schema": "ErrorEnvelope",
+      "routeId": "scan-page",
+      "status": "EXISTING_DTO_ONLY",
+      "expectedSchemaValid": true,
+      "source": "src/test/resources/contracts/v3/mobile/scan-page-upload-conflict-response.json",
+      "sha256": "752c4622f6ca6fc1711e769f1815f093ab80ca03402245a53631f71088c07eae",
+      "note": "Unchanged legacy illustrative excerpt; no binary fixture; placeholder hashes.",
+      "httpStatus": 409
+    },
+    {
+      "path": "fixtures/current/mobile/scan-page-upload-created-response.json",
+      "schema": "ScanResponse",
+      "routeId": "scan-page",
+      "status": "EXISTING_DTO_ONLY",
+      "expectedSchemaValid": true,
+      "source": "src/test/resources/contracts/v3/mobile/scan-page-upload-created-response.json",
+      "sha256": "c8f45a0c3b1f85cfb87a3c35979052cc2bff1d3cffeccef5124d5225b3f3c3f2",
+      "note": "Unchanged legacy illustrative excerpt; no binary fixture; placeholder hashes.",
+      "httpStatus": 201
+    },
+    {
+      "path": "fixtures/current/mobile/scan-page-upload-metadata.json",
+      "schema": "ScanMetadata",
+      "routeId": "scan-page",
+      "status": "EXISTING_DTO_ONLY",
+      "expectedSchemaValid": true,
+      "source": "src/test/resources/contracts/v3/mobile/scan-page-upload-metadata.json",
+      "sha256": "5d1406c5fbc3ab3cb20394f20b668c264be213a01e1d4d314fd5cefd0ae6d89c",
+      "note": "Unchanged legacy illustrative excerpt; no binary fixture; placeholder hashes."
+    },
+    {
+      "path": "fixtures/current/mobile/scan-page-upload-replayed-response.json",
+      "schema": "ScanResponse",
+      "routeId": "scan-page",
+      "status": "EXISTING_DTO_ONLY",
+      "expectedSchemaValid": true,
+      "source": "src/test/resources/contracts/v3/mobile/scan-page-upload-replayed-response.json",
+      "sha256": "e69c20c7ec0bd4d62fb78470de4dae584536928e50121e752fbedaade86e510d",
+      "note": "Unchanged legacy illustrative excerpt; no binary fixture; placeholder hashes.",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/auth/login-request.json",
+      "schema": "LoginRequest",
+      "routeId": "login",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": ""
+    },
+    {
+      "path": "fixtures/current/auth/login-success.json",
+      "schema": "LoginSuccess",
+      "routeId": "login",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/auth/login-mfa-required.json",
+      "schema": "MfaChallenge",
+      "routeId": "login",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/auth/mfa-request.json",
+      "schema": "MfaRequest",
+      "routeId": "mfa-login",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": "Dummy OTP, not a functioning challenge."
+    },
+    {
+      "path": "fixtures/current/auth/mfa-success.json",
+      "schema": "LoginSuccess",
+      "routeId": "mfa-login",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/auth/me.json",
+      "schema": "MeResponse",
+      "routeId": "me",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/auth/logout.json",
+      "schema": "LogoutResponse",
+      "routeId": "logout",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/auth/expired-session.json",
+      "schema": "ErrorEnvelope",
+      "routeId": "me",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": "Current filter does not distinguish missing/expired/revoked tokens in its 401 code.",
+      "httpStatus": 401
+    },
+    {
+      "path": "fixtures/proposed/detections-mc.json",
+      "schema": "DetectionBatch",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "One-page observation excerpt; not a complete assessment."
+    },
+    {
+      "path": "fixtures/proposed/detections-tf.json",
+      "schema": "DetectionBatch",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Separate future TF manifest scenario: display F stored B; no template activation."
+    },
+    {
+      "path": "fixtures/proposed/detections-uncertain.json",
+      "schema": "DetectionBatch",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": ""
+    },
+    {
+      "path": "fixtures/proposed/detections-created.json",
+      "schema": "OperationAck",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 201
+    },
+    {
+      "path": "fixtures/proposed/detections-replayed.json",
+      "schema": "OperationAck",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/answer-crop-metadata.json",
+      "schema": "AttachmentMetadata",
+      "routeId": "attachment",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Future written assignment with distinct identities; no image bytes or physical template claim."
+    },
+    {
+      "path": "fixtures/proposed/normalized-page-metadata.json",
+      "schema": "AttachmentMetadata",
+      "routeId": "attachment",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": ""
+    },
+    {
+      "path": "fixtures/proposed/attachment-created.json",
+      "schema": "AttachmentAck",
+      "routeId": "attachment",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 201
+    },
+    {
+      "path": "fixtures/proposed/verification-objective.json",
+      "schema": "VerificationBatch",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Incremental single-answer review; finalization still requires all ten answers."
+    },
+    {
+      "path": "fixtures/proposed/verification-rescan.json",
+      "schema": "VerificationBatch",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": ""
+    },
+    {
+      "path": "fixtures/proposed/verification-manual.json",
+      "schema": "VerificationBatch",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Separate written question with maximum 5. Crop-only NULL-text SQL compatibility remains a release blocker."
+    },
+    {
+      "path": "fixtures/proposed/verification-rubric.json",
+      "schema": "VerificationBatch",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Separate future essay scenario. Criteria maximums are 3 and 2."
+    },
+    {
+      "path": "fixtures/proposed/evaluation-reference.json",
+      "schema": "EvaluationReference",
+      "routeId": "evaluation-reference",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Separate essay scenario; no answer keys or accepted solutions.",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/verification-partial-request.json",
+      "schema": "VerificationBatch",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Second result has missing committed detection dependency; first item may commit."
+    },
+    {
+      "path": "fixtures/proposed/verification-partial-response.json",
+      "schema": "VerificationResponse",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/verification-partial-replayed.json",
+      "schema": "VerificationResponse",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/scoring/finalized-response.json",
+      "schema": "FinalizationResponse",
+      "routeId": "finalize",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": "Separate complete ten-answer scenario; rule labels illustrative, runtime resolves configured rule.",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/current/scoring/finalized-replayed.json",
+      "schema": "FinalizationResponse",
+      "routeId": "finalize",
+      "status": "SOURCE_IMPLEMENTED_UNVERIFIED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/reopen-request.json",
+      "schema": "ReopenRequest",
+      "routeId": "reopen",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Objective lifecycle scenario: reopening permits rescan, never replacement of selected marks."
+    },
+    {
+      "path": "fixtures/proposed/reopen-response.json",
+      "schema": "LifecycleAck",
+      "routeId": "reopen",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/supersede-request.json",
+      "schema": "SupersedeRequest",
+      "routeId": "supersede",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Alternative lifecycle scenario: R2 must already be finalized for same delivery/student."
+    },
+    {
+      "path": "fixtures/proposed/supersede-response.json",
+      "schema": "LifecycleAck",
+      "routeId": "supersede",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/result-pending.json",
+      "schema": "ResultReadback",
+      "routeId": "result-readback",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/result-finalized.json",
+      "schema": "ResultReadback",
+      "routeId": "result-readback",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/result-reopened.json",
+      "schema": "ResultReadback",
+      "routeId": "result-readback",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/sync-page-partial.json",
+      "schema": "SyncReadback",
+      "routeId": "sync-readback",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Separate future two-page scenario; not enabled by current one-page template.",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/analytics-unavailable.json",
+      "schema": "AnalyticsResponse",
+      "routeId": "analytics",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/analytics-ready-score-only.json",
+      "schema": "AnalyticsResponse",
+      "routeId": "analytics",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Ready applies only to present metrics; all advanced modules explicitly unavailable.",
+      "httpStatus": 200
+    },
+    {
+      "path": "fixtures/proposed/errors/hash-mismatch.json",
+      "schema": "ErrorEnvelope",
+      "routeId": "scan-page",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 422
+    },
+    {
+      "path": "fixtures/proposed/errors/revision-conflict.json",
+      "schema": "ErrorEnvelope",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 409
+    },
+    {
+      "path": "fixtures/proposed/errors/storage-unavailable.json",
+      "schema": "ErrorEnvelope",
+      "routeId": "scan-page",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 503
+    },
+    {
+      "path": "fixtures/proposed/errors/lineage-invalid.json",
+      "schema": "ErrorEnvelope",
+      "routeId": "attachment",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 422
+    },
+    {
+      "path": "fixtures/proposed/errors/uuid-conflict.json",
+      "schema": "ErrorEnvelope",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "httpStatus": 409
+    },
+    {
+      "path": "fixtures/negative/detection-client-score.json",
+      "schema": "DetectionBatch",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": false,
+      "note": ""
+    },
+    {
+      "path": "fixtures/negative/tf-display-key.json",
+      "schema": "DetectionBatch",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": false,
+      "note": ""
+    },
+    {
+      "path": "fixtures/negative/crop-source-fk.json",
+      "schema": "AttachmentMetadata",
+      "routeId": "attachment",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": false,
+      "note": ""
+    },
+    {
+      "path": "fixtures/negative/device-path.json",
+      "schema": "AttachmentMetadata",
+      "routeId": "attachment",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": false,
+      "note": ""
+    },
+    {
+      "path": "fixtures/negative/crop-out-of-bounds.json",
+      "schema": "AttachmentMetadata",
+      "routeId": "attachment",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "expectedSemanticError": "CROP_OUT_OF_BOUNDS"
+    },
+    {
+      "path": "fixtures/negative/manual-over-maximum.json",
+      "schema": "VerificationBatch",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Fixture context question maximum is 5.",
+      "expectedSemanticError": "MANUAL_SCORE_OUT_OF_RANGE"
+    },
+    {
+      "path": "fixtures/negative/rubric-incomplete.json",
+      "schema": "VerificationBatch",
+      "routeId": "verification",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "",
+      "expectedSemanticError": "RUBRIC_SCORE_INCOMPLETE"
+    },
+    {
+      "path": "fixtures/negative/uncertain-selected-option.json",
+      "schema": "DetectionBatch",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": false,
+      "note": ""
+    },
+    {
+      "path": "fixtures/proposed/essay-crop-metadata.json",
+      "schema": "AttachmentMetadata",
+      "routeId": "attachment",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "note": "Essay region in future written scenario; references verification-rubric and evaluation-reference."
+    },
+    {
+      "path": "fixtures/negative/detection-uuid-reuse.json",
+      "schema": "DetectionBatch",
+      "routeId": "detections",
+      "status": "PROPOSED_NOT_IMPLEMENTED",
+      "expectedSchemaValid": true,
+      "expectedSemanticError": "IDEMPOTENCY_KEY_REUSE",
+      "note": "Same operation/detection UUIDs as detections-mc but different immutable selected option."
+    }
+  ]
+}

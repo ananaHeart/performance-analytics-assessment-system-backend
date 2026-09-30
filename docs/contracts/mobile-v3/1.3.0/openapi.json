@@ -1,0 +1,288 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SMART Mobile V3 scoring and first finalization",
+    "version": "1.3.0",
+    "description": "Focused supplement to 1.0.0. Existing response DTO unchanged; objective Mobile integration remains release-gated."
+  },
+  "paths": {
+    "/api/v3/scoring/results/{testResultId}/finalize": {
+      "post": {
+        "operationId": "finalizeAssessmentResult",
+        "summary": "Finalize verified objective scan answers using backend keys",
+        "x-mobile-production-enabled": false,
+        "x-required-draft-migrations": [
+          "V3_015",
+          "V3_016",
+          "V3_017",
+          "V3_018"
+        ],
+        "description": "Existing bodyless endpoint. Scan-backed results require the disabled-by-default Mobile finalization flag. First finalization commits scores, audit, revision and receipt atomically. Repeat the same result ID after an uncertain response; a committed receipt returns the original score snapshot with scoreChanged=false. No expectedRevision, client total, syncUuid or operationUuid is accepted by this contract. No reopen or superseding is implemented here.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "testResultId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Official score or unchanged saved replay. Envelope timestamp may change.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinalizationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired authentication"
+          },
+          "403": {
+            "description": "Teacher role, active account or ownership denied"
+          },
+          "404": {
+            "description": "Result or retained original bytes unavailable"
+          },
+          "409": {
+            "description": "Incomplete verification, invalid key, stale sheet, revision exhaustion or official-state conflict"
+          },
+          "500": {
+            "description": "Integrity or persistence failure; an uncertain commit may already have succeeded. Retry the same result ID."
+          },
+          "503": {
+            "description": "MOBILE_FINALIZATION_UNAVAILABLE: scan-backed finalization is disabled awaiting release"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "PartScore": {
+        "type": "object",
+        "properties": {
+          "testPartId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "partOrder": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "partName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "totalScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "maxScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "percentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "itemsEvaluated": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "testPartId",
+          "partOrder",
+          "partName",
+          "totalScore",
+          "maxScore",
+          "percentage",
+          "itemsEvaluated"
+        ],
+        "additionalProperties": false
+      },
+      "OfficialScore": {
+        "type": "object",
+        "properties": {
+          "testResultId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "testAssignmentId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "testId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "classListId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "studentId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "studentName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attemptNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "totalScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "maxScore": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "percentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "performanceStatus": {
+            "type": "string",
+            "minLength": 1
+          },
+          "performanceLabel": {
+            "type": "string",
+            "minLength": 1
+          },
+          "performanceRuleSetId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "itemsEvaluated": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "scoreVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "resultStatus": {
+            "const": "finalized"
+          },
+          "scoredAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "scoreChanged": {
+            "type": "boolean"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PartScore"
+            },
+            "minItems": 1,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "testResultId",
+          "resultUuid",
+          "testAssignmentId",
+          "testId",
+          "classListId",
+          "studentId",
+          "studentName",
+          "attemptNumber",
+          "totalScore",
+          "maxScore",
+          "percentage",
+          "performanceStatus",
+          "performanceLabel",
+          "performanceRuleSetId",
+          "itemsEvaluated",
+          "scoreVersion",
+          "resultStatus",
+          "scoredAt",
+          "scoreChanged",
+          "parts"
+        ],
+        "additionalProperties": false
+      },
+      "FinalizationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "$ref": "#/components/schemas/OfficialScore"
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

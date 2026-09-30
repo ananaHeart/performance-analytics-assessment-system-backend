@@ -24,6 +24,9 @@ import java.util.*;
 @Service
 @Profile("v3")
 public class V3EvaluationReferenceService {
+    static final String CONTRACT_VERSION="3.1";
+    private static final Set<String> OBJECTIVE_TYPES=Set.of("multiple_choice","true_false");
+    private static final Set<String> ACCEPTED_ANSWER_TYPES=Set.of("identification","enumeration");
     private final V3EvaluationReferenceRepository repository;
     private final TransactionTemplate snapshot;
     private final boolean enabled;
@@ -59,6 +62,7 @@ public class V3EvaluationReferenceService {
             if(assignment.version()<1) throw invalid();
             var rows=lock?repository.questions(assignment.testId(),true):repository.questions(assignment.testId());
             if(rows.size()>200) throw limit();
+            var accepted=repository.acceptedAnswers(assignment.testId(),lock);
             var questions=new ArrayList<Question>();var rubrics=new TreeMap<Long,Rubric>();var totals=new HashMap<Long,BigDecimal>();
             for(var row:rows) {
                 validateStrategy(row);
@@ -75,17 +79,24 @@ public class V3EvaluationReferenceService {
                         for(var criterion:criteria) {
                             safeId(criterion.rubricCriterionId());if(criterion.name()==null || criterion.name().isBlank()) throw invalid();
                             var bound=points(criterion.maximumPoints());total=total.add(bound);
-                            normalized.add(new Criterion(criterion.rubricCriterionId(),criterion.name(),bound,criterion.isRequired()));
+                            normalized.add(new Criterion(criterion.rubricCriterionId(),criterion.name(),bound,criterion.isRequired(),
+                                    criterion.description(),criterion.levelDefinition()));
                         }
                         if(total.compareTo(points(rubric.total()))!=0) throw invalid();
                         totals.put(rubric.id(),total);rubrics.put(rubric.id(),new Rubric(rubric.id(),rubric.name(),List.copyOf(normalized)));
                     }
                     if(totals.get(row.rubricId()).compareTo(maximum)!=0) throw invalid();
                 }
-                questions.add(new Question(row.uuid(),maximum,row.rubricId(),row.expectedCount()));
+                // Keys only where the type uses them: an option key for MC/TF, accepted
+                // answers (a teacher guide, not an auto-grader) for identification/enumeration.
+                boolean objective=OBJECTIVE_TYPES.contains(row.type());
+                boolean written=ACCEPTED_ANSWER_TYPES.contains(row.type());
+                questions.add(new Question(row.uuid(),row.type(),maximum,row.rubricId(),row.expectedCount(),
+                        objective?row.correctOptionKey():null,
+                        written?accepted.getOrDefault(row.questionId(),List.of()):List.of()));
             }
             var publicQuestions=List.copyOf(questions);var publicRubrics=List.copyOf(rubrics.values());
-            return new V3EvaluationReference("3.0",uuid,assignment.version(),fingerprint(uuid,assignment.version(),publicQuestions,publicRubrics),publicQuestions,publicRubrics);
+            return new V3EvaluationReference(CONTRACT_VERSION,uuid,assignment.version(),fingerprint(uuid,assignment.version(),publicQuestions,publicRubrics),publicQuestions,publicRubrics);
     }
     private void validateStrategy(QuestionRow q) {
         if(Set.of("multiple_choice","true_false").contains(q.type())) {if(q.rubricId()!=null)throw invalid();return;}
@@ -101,14 +112,20 @@ public class V3EvaluationReferenceService {
         try{return value.setScale(2,RoundingMode.UNNECESSARY);}catch(ArithmeticException e){throw invalid();}
     }
     private void safeId(long id) {if(id<1 || id>9007199254740991L)throw invalid();}
-    /** Hash a fixed ordered projection, with decimal points represented as two-place strings. */
+    /** Hash a fixed ordered projection, with decimal points represented as two-place strings.
+     *  Since 3.1 it covers every answer-key field too, so a key change always changes the hash
+     *  (not only because a draft re-save happens to regenerate question UUIDs). */
     private String fingerprint(String uuid,int version,List<Question> questions,List<Rubric> rubrics) {
-        var root=new LinkedHashMap<String,Object>();root.put("contractVersion","3.0");root.put("assignmentUuid",uuid);root.put("testVersionNumber",version);
+        var root=new LinkedHashMap<String,Object>();root.put("contractVersion",CONTRACT_VERSION);root.put("assignmentUuid",uuid);root.put("testVersionNumber",version);
         var qRows=new ArrayList<Object>();
-        for(var q:questions){var row=new LinkedHashMap<String,Object>();row.put("questionUuid",q.questionUuid());row.put("maximumPoints",q.maximumPoints().toPlainString());row.put("rubricId",q.rubricId());row.put("expectedResponseCount",q.expectedResponseCount());qRows.add(row);}
+        for(var q:questions){var row=new LinkedHashMap<String,Object>();row.put("questionUuid",q.questionUuid());row.put("questionType",q.questionType());row.put("maximumPoints",q.maximumPoints().toPlainString());row.put("rubricId",q.rubricId());row.put("expectedResponseCount",q.expectedResponseCount());
+            row.put("correctOptionKey",q.correctOptionKey());var aRows=new ArrayList<Object>();
+            for(var a:q.acceptedAnswers()){var aRow=new LinkedHashMap<String,Object>();aRow.put("text",a.text());aRow.put("matchingMode",a.matchingMode());aRow.put("caseSensitive",a.caseSensitive());aRow.put("points",a.points()==null?null:a.points().toPlainString());aRows.add(aRow);}
+            row.put("acceptedAnswers",aRows);qRows.add(row);}
         root.put("questions",qRows);var rRows=new ArrayList<Object>();
         for(var r:rubrics){var row=new LinkedHashMap<String,Object>();row.put("rubricId",r.rubricId());row.put("name",r.name());var cRows=new ArrayList<Object>();
-            for(var c:r.criteria()){var cRow=new LinkedHashMap<String,Object>();cRow.put("rubricCriterionId",c.rubricCriterionId());cRow.put("name",c.name());cRow.put("maximumPoints",c.maximumPoints().toPlainString());cRow.put("isRequired",c.isRequired());cRows.add(cRow);}row.put("criteria",cRows);rRows.add(row);}
+            for(var c:r.criteria()){var cRow=new LinkedHashMap<String,Object>();cRow.put("rubricCriterionId",c.rubricCriterionId());cRow.put("name",c.name());cRow.put("maximumPoints",c.maximumPoints().toPlainString());cRow.put("isRequired",c.isRequired());
+                cRow.put("description",c.description());cRow.put("levelDefinition",c.levelDefinition());cRows.add(cRow);}row.put("criteria",cRows);rRows.add(row);}
         root.put("rubrics",rRows);
         try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(new ObjectMapper().writeValueAsBytes(root)));}
         catch(JsonProcessingException | NoSuchAlgorithmException e){throw new IllegalStateException("Cannot fingerprint evaluation reference.",e);}

@@ -1,0 +1,10 @@
+{
+  "success": false,
+  "message": "Illustrative rejected request.",
+  "data": null,
+  "errors": {
+    "code": "STORAGE_UNAVAILABLE",
+    "retryable": true
+  },
+  "timestamp": "2026-09-12T02:00:00Z"
+}

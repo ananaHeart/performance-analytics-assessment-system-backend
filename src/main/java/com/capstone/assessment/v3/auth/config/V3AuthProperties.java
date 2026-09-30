@@ -8,6 +8,10 @@ import java.time.Duration;
 public class V3AuthProperties {
 
     private Duration sessionTtl = Duration.ofHours(8);
+    /** Off by default (school capstone): wrong passwords are still recorded in login_attempts,
+     *  but never lock the account or rate-limit login. Every phone and browser on the laptop
+     *  reaches the backend as 127.0.0.1, so an IP-based throttle locked out everyone at once. */
+    private boolean loginLockoutEnabled = false;
     private int maxFailedAttempts = 5;
     private Duration lockDuration = Duration.ofMinutes(15);
     private Duration otpTtl = Duration.ofMinutes(10);
@@ -26,6 +30,14 @@ public class V3AuthProperties {
 
     public void setSessionTtl(Duration sessionTtl) {
         this.sessionTtl = sessionTtl;
+    }
+
+    public boolean isLoginLockoutEnabled() {
+        return loginLockoutEnabled;
+    }
+
+    public void setLoginLockoutEnabled(boolean loginLockoutEnabled) {
+        this.loginLockoutEnabled = loginLockoutEnabled;
     }
 
     public int getMaxFailedAttempts() {

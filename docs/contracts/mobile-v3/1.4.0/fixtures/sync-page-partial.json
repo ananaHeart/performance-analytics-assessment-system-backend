@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "message": "Illustrative contract response.",
+  "data": {
+    "contractVersion": "3.0",
+    "syncUuid": "00000000-0000-4000-8000-000000000170",
+    "assignmentUuid": "26b14ea2-4383-43f5-bb40-f60683ee46bb",
+    "syncStatus": "partial_success",
+    "items": [
+      {
+        "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+        "status": "pending",
+        "error": null,
+        "pageOutcomes": [
+          {
+            "scanPageUuid": "63113584-7301-478b-a177-6d9f855200cd",
+            "status": "success",
+            "error": null
+          },
+          {
+            "scanPageUuid": "00000000-0000-4000-8000-000000000171",
+            "status": "failed",
+            "error": {
+              "code": "STORAGE_UNAVAILABLE",
+              "message": "Original image was not committed.",
+              "retryable": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

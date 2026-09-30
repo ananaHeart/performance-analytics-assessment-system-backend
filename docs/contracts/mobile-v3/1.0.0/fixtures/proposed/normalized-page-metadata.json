@@ -1,0 +1,16 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "00000000-0000-4000-8000-000000000121",
+  "operationUuid": "00000000-0000-4000-8000-000000010121",
+  "attachmentUuid": "00000000-0000-4000-8000-000000001010",
+  "resultUuid": "00000000-0000-4000-8000-000000002100",
+  "scanPageUuid": "00000000-0000-4000-8000-000000002101",
+  "attachmentType": "normalized_page",
+  "regionUuid": null,
+  "sourceAttachmentUuid": "00000000-0000-4000-8000-000000002103",
+  "crop": null,
+  "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "fileSizeBytes": 1024,
+  "mimeType": "image/jpeg",
+  "capturedAt": "2026-09-12T02:00:00Z"
+}

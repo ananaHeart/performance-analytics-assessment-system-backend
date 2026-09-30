@@ -9,6 +9,7 @@ import com.capstone.assessment.v3.school.dto.V3AcademicYearRequest;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearResponse;
 import com.capstone.assessment.v3.school.dto.V3LifecycleReasonRequest;
 import com.capstone.assessment.v3.school.dto.V3TermPeriodRequest;
+import com.capstone.assessment.v3.school.model.V3AcademicCalendarLayout;
 import com.capstone.assessment.v3.school.model.V3AcademicCalendarModels.AcademicYearRow;
 import com.capstone.assessment.v3.school.model.V3AcademicCalendarModels.TermPeriodRow;
 import com.capstone.assessment.v3.school.repository.V3AcademicCalendarRepository;
@@ -25,7 +26,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -38,9 +38,6 @@ public class V3AcademicCalendarService {
 
     private static final String PRINCIPAL_ROLE = "principal";
     private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Manila");
-    private static final List<String> TERM_NAMES = List.of(
-            "First Quarter", "Second Quarter", "Third Quarter", "Fourth Quarter"
-    );
     private static final Set<String> ACTIVATION_MODES = Set.of("automatic", "manual");
 
     private final V3AcademicCalendarRepository repository;
@@ -86,7 +83,7 @@ public class V3AcademicCalendarService {
             V3RequestMetadata metadata
     ) {
         requirePrincipal(principal);
-        PreparedCalendar prepared = prepare(request);
+        PreparedCalendar prepared = prepare(request, V3AcademicCalendarLayout.THREE_TERMS);
         try {
             long academicYearId = repository.insertAcademicYear(
                     principal.schoolId(),
@@ -112,7 +109,7 @@ public class V3AcademicCalendarService {
                     Long.toString(academicYearId),
                     "success",
                     metadata,
-                    Map.of("yearName", prepared.yearName(), "termCount", 4),
+                    Map.of("yearName", prepared.yearName(), "termCount", prepared.terms().size()),
                     clock.instant()
             );
             return toResponse(requireAcademicYear(principal.schoolId(), Math.toIntExact(academicYearId)));
@@ -136,12 +133,13 @@ public class V3AcademicCalendarService {
             throw conflict("ACADEMIC_YEAR_LOCKED", "Only a planned academic year may be edited.");
         }
         List<TermPeriodRow> existingTerms = repository.listTermPeriods(academicYearId);
-        if (existingTerms.size() != 4 || existingTerms.stream().anyMatch(term -> !"planned".equals(term.status()))) {
+        V3AcademicCalendarLayout existingLayout = requireSupportedLayout(existingTerms);
+        if (existingTerms.stream().anyMatch(term -> !"planned".equals(term.status()))) {
             throw conflict("TERM_PERIODS_LOCKED",
-                    "The four term periods must all be planned before the calendar can be edited.");
+                    "All term periods must be planned before the calendar can be edited.");
         }
 
-        PreparedCalendar prepared = prepare(request);
+        PreparedCalendar prepared = prepare(request, existingLayout);
         try {
             if (repository.updateAcademicYear(
                     academicYearId,
@@ -156,7 +154,8 @@ public class V3AcademicCalendarService {
                 if (repository.updateTermPeriod(
                         academicYearId,
                         term.termOrder(),
-                        term.termName(),
+                        existingTerms.stream().filter(existingTerm -> existingTerm.termOrder() == term.termOrder())
+                                .findFirst().orElseThrow().termName(),
                         term.startAt(),
                         term.endAt(),
                         term.activationMode()
@@ -172,7 +171,7 @@ public class V3AcademicCalendarService {
                     Integer.toString(academicYearId),
                     "success",
                     metadata,
-                    Map.of("yearName", prepared.yearName(), "termCount", 4),
+                    Map.of("yearName", prepared.yearName(), "termCount", prepared.terms().size()),
                     clock.instant()
             );
             return toResponse(requireAcademicYear(principal.schoolId(), academicYearId));
@@ -199,9 +198,7 @@ public class V3AcademicCalendarService {
         if (!"planned".equals(year.status())) {
             throw conflict("ACADEMIC_YEAR_NOT_ACTIVATABLE", "Only a planned academic year may be activated.");
         }
-        if (repository.listTermPeriods(academicYearId).size() != 4) {
-            throw conflict("TERM_PERIODS_INCOMPLETE", "Exactly four term periods are required before activation.");
-        }
+        requireSupportedLayout(repository.listTermPeriods(academicYearId));
         if (repository.anotherActiveAcademicYearExists(principal.schoolId(), academicYearId)) {
             throw conflict("ACTIVE_ACADEMIC_YEAR_EXISTS",
                     "Complete the school's current active academic year before activating another one.");
@@ -236,10 +233,12 @@ public class V3AcademicCalendarService {
         if (!"active".equals(year.status())) {
             throw conflict("ACADEMIC_YEAR_NOT_COMPLETABLE", "Only an active academic year may be completed.");
         }
-        if (repository.listTermPeriods(academicYearId).stream()
+        List<TermPeriodRow> terms = repository.listTermPeriods(academicYearId);
+        requireSupportedLayout(terms);
+        if (terms.stream()
                 .anyMatch(term -> !"completed".equals(term.status()))) {
             throw conflict("TERM_PERIODS_NOT_COMPLETED",
-                    "Complete all four term periods before completing the academic year.");
+                    "Complete all term periods before completing the academic year.");
         }
         if (repository.completeAcademicYear(academicYearId) != 1) {
             throw conflict("ACADEMIC_YEAR_COMPLETION_CONFLICT",
@@ -271,6 +270,7 @@ public class V3AcademicCalendarService {
         if (!"planned".equals(term.status())) {
             throw conflict("TERM_PERIOD_NOT_ACTIVATABLE", "Only a planned term period may be activated.");
         }
+        requireSupportedLayout(repository.listTermPeriods(academicYearId));
         if (repository.anotherActiveTermExists(academicYearId, termPeriodId)) {
             throw conflict("ACTIVE_TERM_PERIOD_EXISTS", "Complete the active term before activating another one.");
         }
@@ -307,6 +307,7 @@ public class V3AcademicCalendarService {
         if (!"active".equals(term.status())) {
             throw conflict("TERM_PERIOD_NOT_COMPLETABLE", "Only an active term period may be completed.");
         }
+        requireSupportedLayout(repository.listTermPeriods(academicYearId));
         if (repository.completeTermPeriod(termPeriodId, principal.userId(), reason, clock.instant()) != 1) {
             throw conflict("TERM_PERIOD_COMPLETION_CONFLICT", "The term changed before completion.");
         }
@@ -314,7 +315,7 @@ public class V3AcademicCalendarService {
         return toResponse(requireAcademicYear(principal.schoolId(), academicYearId));
     }
 
-    private PreparedCalendar prepare(V3AcademicYearRequest request) {
+    private PreparedCalendar prepare(V3AcademicYearRequest request, V3AcademicCalendarLayout expectedLayout) {
         if (request == null) {
             throw invalid("request", "Academic-year request is required.");
         }
@@ -338,28 +339,19 @@ public class V3AcademicCalendarService {
         List<V3TermPeriodRequest> requestedTerms = request.termPeriods() == null
                 ? List.of()
                 : request.termPeriods();
-        if (requestedTerms.size() != 4) {
-            throw invalid("termPeriods", "Exactly four term periods are required.");
+        V3AcademicCalendarLayout requestedLayout = V3AcademicCalendarLayout.detect(
+                requestedTerms, V3TermPeriodRequest::termName, V3TermPeriodRequest::termOrder
+        ).orElseThrow(() -> invalid("termPeriods",
+                "Provide a complete calendar with unique ordered Term 1–3 or legacy Quarter 1–4 names."));
+        if (requestedLayout != expectedLayout) {
+            throw invalid("termPeriods", expectedLayout == V3AcademicCalendarLayout.THREE_TERMS
+                    ? "This calendar requires exactly Term 1, Term 2, and Term 3 in orders 1 through 3."
+                    : "An existing four-quarter calendar must retain all four quarters and their orders.");
         }
         List<PreparedTerm> terms = new ArrayList<>();
-        Set<Integer> orders = new HashSet<>();
         Instant calendarStart = startDate.atStartOfDay(SCHOOL_ZONE).toInstant();
         Instant calendarEndExclusive = endDate.plusDays(1).atStartOfDay(SCHOOL_ZONE).toInstant();
         for (V3TermPeriodRequest term : requestedTerms) {
-            if (term == null) {
-                throw invalid("termPeriods", "Term periods cannot contain null entries.");
-            }
-            if (term.termOrder() < 1 || term.termOrder() > 4) {
-                throw invalid("termPeriods.termOrder", "Term orders must be values from 1 through 4.");
-            }
-            if (!orders.add(term.termOrder())) {
-                throw invalid("termPeriods.termOrder", "Term orders must be unique values from 1 through 4.");
-            }
-            String canonicalName = TERM_NAMES.get(term.termOrder() - 1);
-            if (!canonicalName.equals(term.termName() == null ? null : term.termName().trim())) {
-                throw invalid("termPeriods.termName",
-                        "Term " + term.termOrder() + " must be named " + canonicalName + ".");
-            }
             if (term.startAt() == null || term.endAt() == null || !term.endAt().isAfter(term.startAt())) {
                 throw invalid("termPeriods.endAt", "Each term endAt must be later than startAt.");
             }
@@ -368,11 +360,8 @@ public class V3AcademicCalendarService {
             }
             String mode = normalizeMode(term.activationMode());
             terms.add(new PreparedTerm(
-                    canonicalName, term.termOrder(), term.startAt(), term.endAt(), mode
+                    term.termName().trim(), term.termOrder(), term.startAt(), term.endAt(), mode
             ));
-        }
-        if (orders.size() != 4 || !orders.containsAll(Set.of(1, 2, 3, 4))) {
-            throw invalid("termPeriods.termOrder", "Term orders must contain 1, 2, 3, and 4.");
         }
         terms.sort(Comparator.comparingInt(PreparedTerm::termOrder));
         Instant previousEnd = null;
@@ -385,6 +374,12 @@ public class V3AcademicCalendarService {
         return new PreparedCalendar(
                 request.curriculumId(), yearName, startDate, endDate, List.copyOf(terms)
         );
+    }
+
+    private V3AcademicCalendarLayout requireSupportedLayout(List<TermPeriodRow> terms) {
+        return V3AcademicCalendarLayout.detect(terms, TermPeriodRow::termName, TermPeriodRow::termOrder)
+                .orElseThrow(() -> conflict("TERM_PERIODS_INCOMPLETE",
+                        "A complete three-term or legacy four-quarter calendar is required."));
     }
 
     private V3AcademicYearResponse toResponse(AcademicYearRow year) {

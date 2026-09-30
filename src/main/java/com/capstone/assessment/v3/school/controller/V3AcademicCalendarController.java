@@ -52,7 +52,7 @@ public class V3AcademicCalendarController {
             HttpServletRequest httpRequest
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
-                "V3 academic year and four term periods created successfully.",
+                "V3 academic year and term periods created successfully.",
                 service.createAcademicYear(principal, request, metadata(httpRequest))
         ));
     }

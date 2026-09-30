@@ -1,0 +1,10 @@
+{
+  "success": false,
+  "message": "A stable UUID was reused with different immutable upload data.",
+  "data": null,
+  "errors": {
+    "code": "IDEMPOTENCY_KEY_REUSE",
+    "field": "scanPageUuid"
+  },
+  "timestamp": "2026-08-30T03:36:04Z"
+}

@@ -83,6 +83,7 @@ public record V3AssessmentResultsReportResponse(
             String fullName,
             String enrollmentStatus,
             Long testResultId,
+            String resultUuid,
             String resultStatus,
             Instant submittedAt,
             Instant verifiedAt,

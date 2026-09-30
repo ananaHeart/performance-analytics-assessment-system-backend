@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "message": "Request completed successfully.",
+  "data": {
+    "contractVersion": "3.0",
+    "resultUuid": "5f2ee576-4dec-4ce8-ae22-e45610fc1e2f",
+    "scoreVersion": 1,
+    "status": "ready",
+    "reasonCode": null,
+    "generatedAt": "2026-09-12T14:48:33.029327600Z",
+    "metrics": {
+      "totalScore": 23.5,
+      "maxScore": 28,
+      "percentage": 83.93,
+      "itemAnalysis": null,
+      "mastery": null,
+      "interventions": null,
+      "student360": null
+    },
+    "unavailableModules": [
+      "itemAnalysis",
+      "mastery",
+      "interventions",
+      "student360"
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T14:48:33.063589500Z"
+}

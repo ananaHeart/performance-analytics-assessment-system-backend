@@ -1,0 +1,53 @@
+{
+  "success": true,
+  "message": "V3 answer-sheet manifest retrieved successfully.",
+  "data": {
+    "contractVersion": "3.0",
+    "manifestVersion": 1,
+    "answerSheetUuid": "56d628da-d7fc-4faa-b018-3f740e048bf0",
+    "testAssignment": {"testAssignmentId": 12001, "assignmentUuid": "26b14ea2-4383-43f5-bb40-f60683ee46bb"},
+    "paperSize": {"code": "A4", "widthPt": 595.276, "heightPt": 841.890, "orientation": "portrait"},
+    "testVersionNumber": 1,
+    "totalQuestions": 10,
+    "totalPages": 1,
+    "manifestHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "requiredScannerVersion": "2.0.0",
+    "generatedAt": "2026-08-30T03:30:00Z",
+    "pages": [
+      {
+        "pageUuid": "be42bd22-1f8b-4409-941d-9e689bc271d7",
+        "pageNumber": 1,
+        "totalPages": 1,
+        "template": {"code": "OMR-A4-10-MC-CTX-V2", "version": "2", "geometryHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+        "qr": {"payloadVersion": 2, "payload": "{\"v\":2,\"tv\":\"OMR-A4-10-MC-CTX-V2\",\"t\":1006,\"q\":\"MC\",\"n\":10}", "payloadHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "errorCorrection": "M"},
+        "coordinateSpace": {"unit": "pt", "origin": "pdf_bottom_left", "width": 595.276, "height": 841.890},
+        "regions": [
+          {
+            "regionUuid": "c4eff0ab-8c19-4f56-bd9e-821882281363",
+            "templateRegionCode": "OBJECTIVE_SLOT_01",
+            "questionId": 30001,
+            "questionUuid": "1dd4c493-013f-4251-9d87-ad9be9533298",
+            "testPartId": 21001,
+            "globalItemNumber": 1,
+            "partItemNumber": 1,
+            "questionType": "multiple_choice",
+            "regionType": "objective_bubbles",
+            "responseRegionSize": "none",
+            "expectedResponseCount": null,
+            "responseLineCount": null,
+            "rectangle": {"x": 72.600, "y": 597.934, "width": 84.800, "height": 12.800},
+            "geometryHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "options": [
+              {"key": "A", "storedValue": "A", "centerX": 79.000, "centerY": 604.334},
+              {"key": "B", "storedValue": "B", "centerX": 103.000, "centerY": 604.334},
+              {"key": "C", "storedValue": "C", "centerX": 127.000, "centerY": 604.334},
+              {"key": "D", "storedValue": "D", "centerX": 151.000, "centerY": 604.334}
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-08-31T00:00:00Z"
+}

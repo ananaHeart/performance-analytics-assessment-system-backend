@@ -1,0 +1,146 @@
+{
+  "generatedAtUtc": "2026-09-12T14:54:28.9945139Z",
+  "scope": "Milestone 3 Prompt 13 written/mixed first finalization and workflow validation",
+  "totalTests": 129.0,
+  "newPromptTests": 15,
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 108,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:48:39.5843229Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3MobileFinalizationBaselineTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:48:01.3313250Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.scoring.service.V3ScoringServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:48:39.7303216Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:47:57.3994293Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:48:00.5735312Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3EvaluationReferenceGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:48:00.7257947Z"
+    }
+  ],
+  "hashes": [
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3WrittenFinalizationService.java",
+      "sha256": "8967cf3b2b5ed9402487d429cc55c8a0fe6f5a0470052f8629943c4bd64ce359"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3WrittenFinalizationRepository.java",
+      "sha256": "0cd7e9047e2d8d10ef312415fa2a58af24a62376eb43f7cc11c6824faaa38a9d"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3MobileFinalizationService.java",
+      "sha256": "a38f093bfb96de3c4cd79ccbe41cb729143e55e93d02819a3802fa16458caa05"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3MobileFinalizationRepository.java",
+      "sha256": "fc869e398cdda44ccca9623353b64ac8b20d89a853872b7c6b212f8fc887d11d"
+    },
+    {
+      "file": "src/test/java/com/capstone/assessment/v3/mobile/service/V3ScanUploadMariaDbTest.java",
+      "sha256": "ae50ba0146bb98c1a2bb8b6ee51f895339230384dccfd613a6d89cb7141e0c2b"
+    },
+    {
+      "file": "src/test/java/com/capstone/assessment/v3/mobile/service/V3MobileFinalizationBaselineTest.java",
+      "sha256": "9dd86b126f16e4b75d53e9feb78aa9fcfc45e84392e613aaa0c39e33c4f16d1c"
+    },
+    {
+      "file": "docs/contracts/mobile-v3/1.8.0/openapi.json",
+      "sha256": "b16db77496f7e4d78dea28814b0e822d91aca5b5afb5a86b7535f7dd456ac953"
+    }
+  ],
+  "contract": {
+    "packVersion": "1.8.0",
+    "writtenRequestVersionUnchanged": "3.1",
+    "finalizationRequestBodyAdded": false,
+    "openapi": "3.1.0",
+    "schemas": 13,
+    "fixtures": 4,
+    "syntheticRuntimeSamplesChecked": 4,
+    "allNinePackValidatorsPassed": true,
+    "previousNamedWireSchemasUnchanged": true
+  },
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "draftChain": "V3_020",
+    "tables": 75,
+    "foreignKeys": 182,
+    "checks": 106,
+    "uniqueConstraints": 106,
+    "newMigrationAdded": false,
+    "syntheticRecordsOnly": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true
+  },
+  "validationCases": [
+    "Mixed 10-answer result finalizes to 23.50/28 and 83.93 percent with official result/analytics and written sync readback",
+    "Written-only manual essay and blank finalize to 15.50/28 without objective detections",
+    "Missing written evaluation, changed accepted public reference, altered points/comments/criterion scores and forged snapshots rejected",
+    "Purged, detached, missing and corrupt crop evidence rejected without official score commit",
+    "Missing objective answer keys remain rejected in mixed results with existing error contract",
+    "Successful replay remains frozen after later rubric edits and evidence purge",
+    "Concurrent finalizations yield one immutable receipt; rollback and lost acknowledgement remain retry safe",
+    "Malformed or inconsistent finalization receipt identity rejected",
+    "Concurrent rubric edit waits for reference locks through official scoring commit",
+    "Existing scoring, baseline-only disabled finalization and HTTP/reference release gates pass"
+  ],
+  "release": {
+    "uploadHttpEnabled": false,
+    "configuredBaseline": "V3_014",
+    "writtenFinalizationImplemented": true,
+    "finalizationEnabled": false,
+    "readbackEnabled": false,
+    "mobileCodeChanged": false,
+    "physicalWrittenScannerValidated": false,
+    "completeMobileFlow": false
+  },
+  "milestone": {
+    "number": 3,
+    "prompt": 13,
+    "componentStatus": "COMPLETE_RELEASE_GATED",
+    "milestoneStatus": "BACKEND_COMPONENTS_COMPLETE_RELEASE_GATED",
+    "next": "Milestone 4 audited corrections and reopen"
+  },
+  "limitations": [
+    "Synthetic written question/region metadata validates backend components only, not printed written geometry or physical scanner acceptance.",
+    "Accepted reference fingerprint does not include omitted rubric level descriptors or hidden answer keys.",
+    "Finalized retries return historical official scores; changes require the pending audited correction/reopen workflow.",
+    "Analytics scope is official total/max/percentage; item analysis, mastery, interventions and Student 360 remain unavailable.",
+    "Reviewed draft migration deployment, secure persistent Mobile sessions, production wiring and physical acceptance remain pending."
+  ]
+}

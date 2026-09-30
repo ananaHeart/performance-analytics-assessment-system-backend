@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "message": "Login successful.",
+  "data": {
+    "tokenType": "Bearer",
+    "accessToken": "EXAMPLE_ONLY_NOT_A_REAL_TOKEN",
+    "expiresAt": "2026-09-12T10:00:00Z",
+    "user": {
+      "userId": 42,
+      "schoolId": "SCHOOL-001",
+      "firstName": "Demo",
+      "middleName": null,
+      "lastName": "Teacher",
+      "suffix": null,
+      "email": "teacher@example.com",
+      "role": "teacher",
+      "status": "active",
+      "mfaRequired": true
+    },
+    "mfaRequired": false,
+    "mfaChallenge": null
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

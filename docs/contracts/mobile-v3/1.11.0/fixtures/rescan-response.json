@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "message": "Request completed successfully.",
+  "data": {
+    "syncUuid": "48e2bd2b-3480-4415-ae49-93a2ad47efca",
+    "resultUuid": "42fafd60-2bdf-4ae9-a78a-594763053f51",
+    "scanUuid": "4ef32799-9f84-4e4b-992c-855343d90f76",
+    "scanPageUuid": "db7a7e6f-4448-4ed4-a937-4296128e1411",
+    "backendScanPageId": 110,
+    "uploadStatus": "created",
+    "pageStatus": "captured",
+    "contentHash": "93f6203328d988985874bde966f826a1dab9765e0e5aa6def16242634aa03cec",
+    "acknowledgedAt": "2026-09-12T16:01:56.750098700Z"
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T16:01:57.005808300Z"
+}

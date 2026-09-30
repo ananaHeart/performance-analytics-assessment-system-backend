@@ -12,6 +12,18 @@ import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.StoredVe
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.Template;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.TemplateRegion;
 import com.capstone.assessment.v3.answersheet.repository.V3AnswerSheetRepository;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicCanonicalHash;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetModels.DynamicManifest;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetModels.DynamicOptionInput;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetModels.DynamicPage;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetModels.DynamicPartInput;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetModels.DynamicQuestionInput;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetModels.DynamicRegion;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetModels.DynamicSheetContext;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetModels.DynamicSheetRequest;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetModels.RegionOption;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetPacker;
+import com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetPdfRenderer;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3AuditService;
@@ -36,6 +48,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -46,7 +59,31 @@ public class V3AnswerSheetService {
     static final int MINIMUM_QUESTION_COUNT = 5;
     static final String VALIDATED_TEMPLATE_CODE = "OMR-A4-10-MC-CTX-V2";
     static final String LEGACY_FIXED_TEMPLATE_VERSION = "2";
+    /** Eligibility/lookup key for the mixed-question-type template row. Intentionally the
+     *  same literal value as {@code V3DynamicLayout.CODE} ("OMR-A4-DYNAMIC-CTX-V3") - that
+     *  is also the Mobile-facing QR "tc" value baked into
+     *  {@code DynamicSheetPacker.PAPER_PROFILES} and the exact string
+     *  {@code V3DatabaseBaselineRepository}'s "approved template" readiness check already
+     *  hardcodes (template_version '3', qr_payload_version 3), so it is the correct,
+     *  already-agreed-upon code for this template row, not a coincidence to avoid. What
+     *  must NOT be reused is {@code generateDynamic()} - a different, older, MC-only
+     *  multi-page pagination feature that happens to share this same code constant (see
+     *  {@code V3DynamicStagingTest}) but was never activated in this database. This
+     *  service routes the code to {@link #generateMixedDynamic} instead. */
+    static final String MIXED_DYNAMIC_TEMPLATE_CODE = V3DynamicLayout.CODE;
     private static final List<String> FIXED_OPTIONS = List.of("A", "B", "C", "D");
+    private static final List<String> TRUE_FALSE_OPTIONS = List.of("A", "B");
+    /** multiple_choice and true_false reuse option-based answer keys; identification,
+     *  enumeration and essay are capture-and-teacher-verify only (accepted_text/rubric/manual
+     *  scoring - see V3AssessmentService.prepareEnumeration/prepareEssay), never auto-graded here. */
+    private static final List<String> DYNAMIC_SUPPORTED_QUESTION_TYPES =
+            List.of("multiple_choice", "true_false", "identification", "enumeration", "essay");
+    /** These three never have question_options rows and are validated as fully-formed at
+     *  question-creation time (V3AssessmentService), so eligibility only needs to confirm a
+     *  single answer_keys row exists - unlike multiple_choice/true_false, which also need the
+     *  extra check that the key's target option is still a live active option. */
+    private static final List<String> NON_OPTION_BASED_TYPES =
+            List.of("identification", "enumeration", "essay");
 
     private final V3AnswerSheetRepository repository;
     private final V3AnswerSheetPdfRenderer pdfRenderer;
@@ -101,9 +138,10 @@ public class V3AnswerSheetService {
         return new V3AnswerSheetReferenceDataResponse(
                 MINIMUM_QUESTION_COUNT,
                 V3DynamicLayout.CODE,
-                List.of("multiple_choice"),
+                DYNAMIC_SUPPORTED_QUESTION_TYPES,
                 paperSizes,
-                "Dynamic A4 A-D multiple choice; minimum 5 items. Physical scanner acceptance is separate from backend eligibility."
+                "Dynamic A4 mixed-type sheet (multiple_choice, true_false, identification, enumeration, essay); "
+                        + "minimum 5 items. Physical scanner acceptance is separate from backend eligibility."
         );
     }
 
@@ -139,8 +177,18 @@ public class V3AnswerSheetService {
             );
         }
 
-        if (V3DynamicLayout.CODE.equals(evaluation.template().code())) {
-            return generateDynamic(user, assignment, evaluation, requestMetadata);
+        Optional<StoredVersion> existingReady = repository.findReadyVersion(
+                assignment.testAssignmentId(),
+                evaluation.paperSize().paperSizeId(),
+                user.userId(),
+                user.schoolId()
+        );
+        if (existingReady.isPresent()) {
+            return toResponse(existingReady.get());
+        }
+
+        if (MIXED_DYNAMIC_TEMPLATE_CODE.equals(evaluation.template().code())) {
+            return generateMixedDynamic(user, assignment, evaluation, requestMetadata);
         }
 
         String answerSheetUuid = UUID.randomUUID().toString();
@@ -293,6 +341,151 @@ public class V3AnswerSheetService {
         return toResponse(repository.findOwnedVersion(versionId, user.userId(), user.schoolId()).orElseThrow());
     }
 
+    /**
+     * Generates a mixed-question-type (multiple_choice / true_false / identification)
+     * answer sheet via the verified {@link DynamicSheetPacker}/{@link DynamicSheetPdfRenderer}
+     * engine. Deliberately separate from {@link #generateDynamic}, which is a different,
+     * older, MC-only multi-page pagination feature - see {@link #MIXED_DYNAMIC_TEMPLATE_CODE}.
+     */
+    private V3AnswerSheetVersionResponse generateMixedDynamic(V3AuthenticatedUser user, AssignmentContext assignment,
+            EligibilityEvaluation evaluation, V3RequestMetadata metadata) {
+        String sheetUuid = UUID.randomUUID().toString();
+        Instant now = clock.instant();
+        int generation = repository.nextGenerationNumber(assignment.testAssignmentId(), evaluation.paperSize().paperSizeId());
+
+        List<V3AnswerSheetRepository.QuestionContentRow> contentRows =
+                repository.findQuestionContents(assignment.testId());
+        Map<Long, List<V3AnswerSheetRepository.QuestionOptionRow>> optionsByQuestion =
+                repository.findQuestionOptions(assignment.testId()).stream()
+                        .collect(Collectors.groupingBy(V3AnswerSheetRepository.QuestionOptionRow::questionId,
+                                LinkedHashMap::new, Collectors.toList()));
+        Map<Long, Integer> questionTypeIdByQuestionId = evaluation.questions().stream()
+                .collect(Collectors.toMap(Question::questionId, Question::questionTypeId));
+
+        Map<Integer, List<V3AnswerSheetRepository.QuestionContentRow>> byPart = contentRows.stream()
+                .collect(Collectors.groupingBy(V3AnswerSheetRepository.QuestionContentRow::partOrder,
+                        LinkedHashMap::new, Collectors.toList()));
+        List<DynamicPartInput> parts = new ArrayList<>();
+        for (List<V3AnswerSheetRepository.QuestionContentRow> rows : byPart.values()) {
+            V3AnswerSheetRepository.QuestionContentRow first = rows.get(0);
+            List<DynamicQuestionInput> questions = new ArrayList<>();
+            for (V3AnswerSheetRepository.QuestionContentRow row : rows) {
+                List<DynamicOptionInput> options = optionsByQuestion
+                        .getOrDefault(row.questionId(), List.of()).stream()
+                        .map(option -> new DynamicOptionInput(option.optionKey(), option.optionText()))
+                        .toList();
+                questions.add(new DynamicQuestionInput(
+                        row.questionId(), row.questionUuid(), row.questionType(),
+                        row.partItemNumber(), row.globalItemNumber(), row.maximumPoints(), row.questionText(),
+                        row.responseRegionSize(), row.expectedResponseCount(), row.forcePageBreakBefore(),
+                        options
+                ));
+            }
+            parts.add(new DynamicPartInput(
+                    first.testPartId(), first.partOrder(), first.partName(), first.partInstructions(), questions));
+        }
+
+        double totalPoints = contentRows.stream().mapToDouble(V3AnswerSheetRepository.QuestionContentRow::maximumPoints).sum();
+        DynamicSheetContext context = new DynamicSheetContext(
+                user.schoolId(), assignment.testName(), assignment.subjectName(),
+                "%s - %s".formatted(assignment.gradeLevelName(), assignment.sectionName()), totalPoints);
+        DynamicSheetRequest packerRequest = new DynamicSheetRequest(
+                sheetUuid, assignment.testAssignmentId(), assignment.assignmentUuid(),
+                evaluation.paperSize().code(), assignment.testVersionNumber(),
+                evaluation.template().minimumScannerVersion(), now.toString(), parts, context
+        );
+
+        DynamicManifest manifest;
+        byte[] pdf;
+        try {
+            manifest = DynamicSheetPacker.buildManifest(packerRequest);
+            pdf = new DynamicSheetPdfRenderer().render(manifest, context);
+        } catch (IllegalArgumentException exception) {
+            throw new V3AuthException(
+                    "ANSWER_SHEET_PDF_GENERATION_FAILED",
+                    "The mixed-type Answer Sheet could not be generated: " + exception.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+
+        long versionId = repository.insertGeneratingVersion(sheetUuid, assignment.testAssignmentId(),
+                evaluation.paperSize().paperSizeId(), generation, assignment.testVersionNumber(),
+                evaluation.questions().size(), manifest.manifestHash(), user.userId(),
+                manifest.totalPages(), DynamicSheetPacker.MANIFEST_VERSION);
+
+        long omrTemplateId = evaluation.template().omrTemplateId();
+        int nextRegionOrder = repository.nextTemplateRegionOrder(omrTemplateId);
+        for (DynamicPage page : manifest.pages()) {
+            long pageId = repository.insertPage(page.pageUuid(), versionId, omrTemplateId,
+                    page.qrPayload(), page.qrPayloadHash(), page.pageGeometryHash(),
+                    page.pageNumber(), page.totalPages());
+            for (DynamicRegion region : page.regions()) {
+                Integer questionTypeId = questionTypeIdByQuestionId.get(region.questionId());
+                String geometrySnapshot = DynamicCanonicalHash.canonicalJson(mixedRegionSnapshot(region));
+                long templateRegionId = repository.insertGrowingTemplateRegion(
+                        omrTemplateId, region.regionUuid(), nextRegionOrder++, region.regionType(), questionTypeId,
+                        region.responseRegionSize(),
+                        java.math.BigDecimal.valueOf(region.rectangle().x()),
+                        java.math.BigDecimal.valueOf(region.rectangle().y()),
+                        java.math.BigDecimal.valueOf(region.rectangle().width()),
+                        java.math.BigDecimal.valueOf(region.rectangle().height()),
+                        geometrySnapshot, region.geometryHash()
+                );
+                repository.insertDynamicRegion(
+                        region.regionUuid(), versionId, pageId, templateRegionId,
+                        region.questionId(), region.testPartId(), questionTypeId,
+                        region.globalItemNumber(), region.partItemNumber(), region.regionType(),
+                        region.responseRegionSize(), region.expectedResponseCount(), region.responseLineCount(),
+                        geometrySnapshot, region.geometryHash()
+                );
+            }
+        }
+
+        String storageKey = fileStorage.store(sheetUuid, pdf);
+        registerRollbackCleanup(storageKey);
+        repository.markVersionReady(versionId, storageKey, sha256(pdf), pdf.length, now);
+        auditService.record(user.userId(), "GENERATE_ANSWER_SHEET", "answer_sheet_versions", Long.toString(versionId),
+                "success", metadata, Map.of("testAssignmentId", assignment.testAssignmentId(), "answerSheetUuid", sheetUuid,
+                        "templateCode", MIXED_DYNAMIC_TEMPLATE_CODE, "totalPages", manifest.totalPages(),
+                        "totalQuestions", evaluation.questions().size()), now);
+        return toResponse(repository.findOwnedVersion(versionId, user.userId(), user.schoolId()).orElseThrow());
+    }
+
+    /** Mirrors DynamicSheetPacker's own region geometry map so the persisted snapshot matches
+     *  the geometryHash the packer already computed for this region. */
+    private Map<String, Object> mixedRegionSnapshot(DynamicRegion region) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("regionUuid", region.regionUuid());
+        map.put("templateRegionCode", region.templateRegionCode());
+        map.put("questionId", region.questionId());
+        map.put("questionUuid", region.questionUuid());
+        map.put("testPartId", region.testPartId());
+        map.put("globalItemNumber", region.globalItemNumber());
+        map.put("partItemNumber", region.partItemNumber());
+        map.put("questionType", region.questionType());
+        map.put("regionType", region.regionType());
+        map.put("responseRegionSize", region.responseRegionSize() == null ? "none" : region.responseRegionSize());
+        map.put("expectedResponseCount", region.expectedResponseCount());
+        map.put("responseLineCount", region.responseLineCount());
+        Map<String, Object> rectangle = new LinkedHashMap<>();
+        rectangle.put("x", region.rectangle().x());
+        rectangle.put("y", region.rectangle().y());
+        rectangle.put("width", region.rectangle().width());
+        rectangle.put("height", region.rectangle().height());
+        map.put("rectangle", rectangle);
+        List<Object> options = new ArrayList<>();
+        for (RegionOption option : region.options()) {
+            Map<String, Object> optionMap = new LinkedHashMap<>();
+            optionMap.put("key", option.key());
+            optionMap.put("storedValue", option.storedValue());
+            optionMap.put("centerX", option.centerX());
+            optionMap.put("centerY", option.centerY());
+            options.add(optionMap);
+        }
+        map.put("options", options);
+        return map;
+    }
+
     @Transactional(readOnly = true)
     public V3AnswerSheetVersionResponse getVersion(
             V3AuthenticatedUser user,
@@ -337,7 +530,12 @@ public class V3AnswerSheetService {
                         Map.of("paperSizeCode", paperSizeCode)
                 ));
         List<Question> questions = repository.findQuestions(assignment.testId());
-        Template template = repository.findValidatedTemplate(paperSizeCode).orElse(null);
+        boolean pureFixedEligible = questions.size() == 10
+                && questions.stream().allMatch(q -> "multiple_choice".equals(q.questionType()));
+        Template template = pureFixedEligible
+                ? repository.findValidatedTemplate(paperSizeCode).orElse(null)
+                : repository.findTemplateByCode(MIXED_DYNAMIC_TEMPLATE_CODE, paperSizeCode).orElse(null);
+        boolean usingDynamicTemplate = template != null && MIXED_DYNAMIC_TEMPLATE_CODE.equals(template.code());
         List<Blocker> blockers = new ArrayList<>();
 
         if (!"active".equalsIgnoreCase(assignment.classAssignmentStatus())) {
@@ -376,25 +574,62 @@ public class V3AnswerSheetService {
             addTemplateGeometryBlockers(template, paperSize, blockers);
         }
 
-        for (Question question : questions) {
-            if (!"multiple_choice".equals(question.questionType())) {
-                blockers.add(blocker("UNSUPPORTED_QUESTION_TYPE",
-                        "Current physical validation supports multiple_choice only."));
-                break;
+        if (usingDynamicTemplate) {
+            for (Question question : questions) {
+                if (!DYNAMIC_SUPPORTED_QUESTION_TYPES.contains(question.questionType())) {
+                    blockers.add(blocker("UNSUPPORTED_QUESTION_TYPE",
+                            "The mixed-type template currently supports multiple_choice, true_false, "
+                                    + "identification, enumeration, and essay only."));
+                    break;
+                }
             }
-        }
-        for (Question question : questions) {
-            if (question.activeOptionCount() != 4 || !FIXED_OPTIONS.equals(question.activeOptionKeys())) {
-                blockers.add(blocker("UNSUPPORTED_QUESTION_OPTIONS",
-                        "Every question must contain exactly the active options A, B, C, and D."));
-                break;
+            for (Question question : questions) {
+                boolean optionsValid = switch (question.questionType()) {
+                    case "multiple_choice" ->
+                            question.activeOptionCount() == 4 && FIXED_OPTIONS.equals(question.activeOptionKeys());
+                    case "true_false" ->
+                            question.activeOptionCount() == 2 && TRUE_FALSE_OPTIONS.equals(question.activeOptionKeys());
+                    case "identification", "enumeration", "essay" -> question.activeOptionCount() == 0;
+                    default -> false;
+                };
+                if (!optionsValid) {
+                    blockers.add(blocker("UNSUPPORTED_QUESTION_OPTIONS",
+                            "multiple_choice requires options A-D, true_false requires options A-B, and "
+                                    + "identification/enumeration/essay must have no options."));
+                    break;
+                }
             }
-        }
-        for (Question question : questions) {
-            if (question.answerKeyCount() != 1 || question.validOptionAnswerKeyCount() != 1) {
-                blockers.add(blocker("INCOMPLETE_ANSWER_KEYS",
-                        "Every question must have exactly one valid option answer key."));
-                break;
+            for (Question question : questions) {
+                boolean answerKeyValid = NON_OPTION_BASED_TYPES.contains(question.questionType())
+                        ? question.answerKeyCount() == 1
+                        : question.answerKeyCount() == 1 && question.validOptionAnswerKeyCount() == 1;
+                if (!answerKeyValid) {
+                    blockers.add(blocker("INCOMPLETE_ANSWER_KEYS",
+                            "Every question must have exactly one valid answer key for its question type."));
+                    break;
+                }
+            }
+        } else {
+            for (Question question : questions) {
+                if (!"multiple_choice".equals(question.questionType())) {
+                    blockers.add(blocker("UNSUPPORTED_QUESTION_TYPE",
+                            "Current physical validation supports multiple_choice only."));
+                    break;
+                }
+            }
+            for (Question question : questions) {
+                if (question.activeOptionCount() != 4 || !FIXED_OPTIONS.equals(question.activeOptionKeys())) {
+                    blockers.add(blocker("UNSUPPORTED_QUESTION_OPTIONS",
+                            "Every question must contain exactly the active options A, B, C, and D."));
+                    break;
+                }
+            }
+            for (Question question : questions) {
+                if (question.answerKeyCount() != 1 || question.validOptionAnswerKeyCount() != 1) {
+                    blockers.add(blocker("INCOMPLETE_ANSWER_KEYS",
+                            "Every question must have exactly one valid option answer key."));
+                    break;
+                }
             }
         }
         for (Question question : questions) {
@@ -458,10 +693,20 @@ public class V3AnswerSheetService {
                         && region.xPoints().add(region.widthPoints()).compareTo(paperSize.widthPoints()) <= 0
                         && region.yPoints().add(region.heightPoints()).compareTo(paperSize.heightPoints()) <= 0
         );
-        boolean objectiveGeometryValid = objectiveRegions.stream().allMatch(this::validObjectiveGeometry);
+        boolean isMixedDynamicTemplate = MIXED_DYNAMIC_TEMPLATE_CODE.equals(template.code());
+        // validObjectiveGeometry() checks the fixed A-D bubble-center schema used by the
+        // physically validated 10-item template; it does not apply to the mixed-type
+        // template's per-question regions (computed live by DynamicSheetPacker).
+        // Likewise, that template's omr_template_regions catalog grows by one row per
+        // printed region across every real generation (each carrying that region's own
+        // real geometry - see generateMixedDynamic/insertGrowingTemplateRegion), so it has
+        // no fixed expected count. Only markers/QR/page-bounds/print-scale apply to it.
+        boolean objectiveGeometryValid = isMixedDynamicTemplate
+                || objectiveRegions.stream().allMatch(this::validObjectiveGeometry);
+        int expectedObjectiveRegionCount = isMixedDynamicTemplate ? objectiveRegions.size() : 10;
         if (markerCount != 4
                 || qrCount != 1
-                || objectiveRegions.size() != (V3DynamicLayout.CODE.equals(template.code()) ? V3DynamicLayout.PAGE_CAPACITY : 10)
+                || objectiveRegions.size() != expectedObjectiveRegionCount
                 || !pageMatches
                 || !regionsInsidePage
                 || !objectiveGeometryValid

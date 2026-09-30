@@ -88,8 +88,12 @@ public final class V3AssessmentModels {
             int academicYearId,
             Instant startAt,
             Instant endAt,
-            String status
+            String status,
+            boolean endExclusive
     ) {
+        public TermWindow(int termPeriodId, int academicYearId, Instant startAt, Instant endAt, String status) {
+            this(termPeriodId, academicYearId, startAt, endAt, status, false);
+        }
     }
 
     public record ClassScheduleWindow(

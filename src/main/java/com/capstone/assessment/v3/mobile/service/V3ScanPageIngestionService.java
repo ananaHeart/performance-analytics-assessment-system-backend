@@ -131,8 +131,10 @@ public class V3ScanPageIngestionService {
                 return new Completion(pageId, "created", "captured");
             });
             if (completed == null) throw new IllegalStateException("Missing committed upload receipt.");
+            String originalAttachmentUuid = repository.findOriginalAttachmentUuid(completed.pageId());
             return new V3ScanPageUploadResponse(request.syncUuid(), request.resultUuid(), request.scanUuid(),
-                    request.scanPageUuid(), completed.pageId(), completed.status(), completed.pageStatus(), request.imageHash(), Instant.now());
+                    request.scanPageUuid(), completed.pageId(), completed.status(), completed.pageStatus(),
+                    request.imageHash(), originalAttachmentUuid, Instant.now());
         } catch (RuntimeException failure) {
             // Separate transaction: preserve diagnostics even when scan insertion rolls back. Never overwrite a committed receipt.
             String code = failure instanceof V3AuthException auth ? auth.getCode()
@@ -162,10 +164,7 @@ public class V3ScanPageIngestionService {
         if (!replay) {
             validateContext(request, context);
             var content = repository.contentSnapshot(context);
-            if (content.count() != context.totalQuestions() || content.multipleChoiceCount() != content.count()
-                    || repository.mappedQuestions(context) != (V3DynamicLayout.CODE.equals(context.templateCode())
-                        ? V3DynamicLayout.pageQuestions(content.count(), context.pageNumber()) : content.count())
-                    || (V3DynamicLayout.CODE.equals(context.templateCode()) && !repository.completeDynamicMapping(context))) {
+            if (!contentMatchesPage(context, content)) {
                 throw conflict("ASSESSMENT_SNAPSHOT_MISMATCH", "The stored sheet does not match the current assessment questions.");
             }
         }
@@ -215,10 +214,7 @@ public class V3ScanPageIngestionService {
                         HttpStatus.NOT_FOUND));
         validateContext(request, context);
         var content = repository.contentSnapshot(context);
-        if (content.count() != context.totalQuestions() || content.multipleChoiceCount() != content.count()
-                || repository.mappedQuestions(context) != (V3DynamicLayout.CODE.equals(context.templateCode())
-                        ? V3DynamicLayout.pageQuestions(content.count(), context.pageNumber()) : content.count())
-                    || (V3DynamicLayout.CODE.equals(context.templateCode()) && !repository.completeDynamicMapping(context))) {
+        if (!contentMatchesPage(context, content)) {
             throw conflict("ASSESSMENT_SNAPSHOT_MISMATCH", "The stored sheet does not match the current assessment questions.");
         }
         if (repository.scanPageExists(request.scanPageUuid())) {
@@ -276,6 +272,39 @@ public class V3ScanPageIngestionService {
         return pageId;
     }
 
+    /**
+     * Two different generators can produce a template_code == V3DynamicLayout.CODE sheet:
+     * the older MC-only multi-page pagination feature (V3DynamicLayout / generateDynamic,
+     * never activated in this database) and the mixed-question-type engine
+     * (DynamicSheetPacker / generateMixedDynamic, the one actually in use). They deliberately
+     * share that template_code (see V3AnswerSheetService.MIXED_DYNAMIC_TEMPLATE_CODE), so it
+     * cannot distinguish them here. minimum_scanner_version can: V3DynamicLayout always
+     * stores exactly "3.0.0" (SCANNER_VERSION); the mixed-type template's omr_templates row
+     * uses a different value. Anywhere below that re-derives an expected value using
+     * V3DynamicLayout's own formulas (page count, QR payload) only applies to a real
+     * V3DynamicLayout sheet - the packer computes its own geometry per generation, with no
+     * fixed formula to re-derive against, so those checks are skipped for it in favor of the
+     * generic, already-stored-value self-consistency checks in completeDynamicMapping().
+     */
+    private boolean isMixedPackerTemplate(CaptureContext context) {
+        return V3DynamicLayout.CODE.equals(context.templateCode())
+                && !V3DynamicLayout.SCANNER_VERSION.equals(context.minimumScannerVersion());
+    }
+
+    private boolean contentMatchesPage(CaptureContext context, V3ScanPageRepository.ContentSnapshot content) {
+        if (content.count() != context.totalQuestions()) {
+            return false;
+        }
+        if (isMixedPackerTemplate(context)) {
+            return repository.mappedQuestions(context) > 0 && repository.completeDynamicMapping(context);
+        }
+        boolean dynamic = V3DynamicLayout.CODE.equals(context.templateCode());
+        int expectedOnPage = dynamic ? V3DynamicLayout.pageQuestions(content.count(), context.pageNumber()) : content.count();
+        return content.multipleChoiceCount() == content.count()
+                && repository.mappedQuestions(context) == expectedOnPage
+                && (!dynamic || repository.completeDynamicMapping(context));
+    }
+
     private void validateContext(V3ScanPageUploadMetadata request, CaptureContext context) {
         Instant now = Instant.now();
         if (request.capturedAt().isAfter(now.plusSeconds(300))
@@ -285,9 +314,14 @@ public class V3ScanPageIngestionService {
                     || context.closeAt() != null && request.capturedAt().isAfter(context.closeAt()))) {
             throw conflict("CAPTURE_NOT_ALLOWED", "The capture falls outside the assignment's permitted capture policy.");
         }
+        boolean mixedPacker = isMixedPackerTemplate(context);
+        boolean anyDynamic = V3DynamicLayout.CODE.equals(context.templateCode());
         if (context.sheetTestVersion() != context.testVersion()
-                || context.totalQuestions() != context.testTotalItems() || (V3DynamicLayout.CODE.equals(context.templateCode()) ? context.totalQuestions() < 5 || context.totalQuestions() > V3DynamicLayout.MAX_QUESTIONS : context.totalQuestions() != 10)
-                || (V3DynamicLayout.CODE.equals(context.templateCode()) ? context.totalPages() != V3DynamicLayout.pages(context.totalQuestions()) : context.totalPages() != 1) || context.pageTotalPages() != context.totalPages()
+                || context.totalQuestions() != context.testTotalItems()
+                || (anyDynamic ? context.totalQuestions() < 5 || context.totalQuestions() > V3DynamicLayout.MAX_QUESTIONS : context.totalQuestions() != 10)
+                || (!mixedPacker && anyDynamic && context.totalPages() != V3DynamicLayout.pages(context.totalQuestions()))
+                || (!anyDynamic && context.totalPages() != 1)
+                || context.pageTotalPages() != context.totalPages()
                 || context.pageNumber() != request.pageNumber() || context.pageNumber() < 1 || context.pageNumber() > context.totalPages()) {
             throw conflict("ASSESSMENT_SNAPSHOT_MISMATCH", "The sheet, page and assessment snapshots do not match.");
         }
@@ -295,7 +329,7 @@ public class V3ScanPageIngestionService {
                 || !"A4".equals(context.paperSize()) || !scannerAtLeast(request.scannerVersion(), context.minimumScannerVersion())) {
             throw conflict("SCANNER_TEMPLATE_UNSUPPORTED", "This template or scanner version is not eligible for this capture slice.");
         }
-        if (V3DynamicLayout.CODE.equals(context.templateCode())) {
+        if (V3DynamicLayout.CODE.equals(context.templateCode()) && !mixedPacker) {
             try {
                 var qr = mapper.readTree(context.qrPayload());
                 String pageGeometry = java.util.HexFormat.of().formatHex(java.util.Base64.getUrlDecoder().decode(qr.path("gh").asText()));
@@ -310,17 +344,33 @@ public class V3ScanPageIngestionService {
         }
     }
 
+    private static final java.util.regex.Pattern VERSION_CORE =
+            java.util.regex.Pattern.compile("^([0-9]{1,6}(?:\\.[0-9]{1,6}){0,2})");
+
     private static boolean scannerAtLeast(String actual, String minimum) {
-        if (actual == null || minimum == null || !actual.matches("[0-9]{1,6}(\\.[0-9]{1,6}){0,2}")
-                || !minimum.matches("[0-9]{1,6}(\\.[0-9]{1,6}){0,2}")) return false;
-        String[] left = actual.split("\\.");
-        String[] right = minimum.split("\\.");
+        String left = numericCore(actual);
+        String right = numericCore(minimum);
+        if (left == null || right == null) return false;
+        String[] leftParts = left.split("\\.");
+        String[] rightParts = right.split("\\.");
         for (int i = 0; i < 3; i++) {
-            int difference = Integer.parseInt(i < left.length ? left[i] : "0")
-                    - Integer.parseInt(i < right.length ? right[i] : "0");
+            int difference = Integer.parseInt(i < leftParts.length ? leftParts[i] : "0")
+                    - Integer.parseInt(i < rightParts.length ? rightParts[i] : "0");
             if (difference != 0) return difference > 0;
         }
         return true;
+    }
+
+    /**
+     * Compares only the numeric MAJOR.MINOR.PATCH prefix. Some template rows carry a
+     * pre-release suffix in minimum_scanner_version (e.g. "3.0.0-prototype.2") that is used
+     * elsewhere as an exact-string discriminator between producers sharing the same template
+     * code; that suffix must not make every scan against those templates fail eligibility.
+     */
+    private static String numericCore(String value) {
+        if (value == null) return null;
+        var matcher = VERSION_CORE.matcher(value);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     private static String hash(String value) {

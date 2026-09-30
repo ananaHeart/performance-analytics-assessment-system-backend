@@ -1,0 +1,223 @@
+{
+  "success": true,
+  "message": "Request completed successfully.",
+  "data": {
+    "contractVersion": "3.0",
+    "resultUuid": "d5c36d5f-1e04-4128-bff3-3737c311558f",
+    "testResultId": 1169,
+    "assignmentUuid": "1c2282b3-1d28-42b0-be25-9862e172150b",
+    "classListId": 1186,
+    "studentId": 1172,
+    "resultStatus": "superseded",
+    "revision": 5,
+    "scoreVersion": 1,
+    "pendingReasons": [
+      "RESULT_SUPERSEDED"
+    ],
+    "idMappings": [
+      {
+        "entityType": "answer_attachment",
+        "uuid": "d5edb3e3-6915-4713-8f1e-bec76d02f29f",
+        "centralId": 210
+      },
+      {
+        "entityType": "answer_sheet_page",
+        "uuid": "59fa959d-375b-4b6b-a63e-a852fdffc1a7",
+        "centralId": 155
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "5d0cc381-0cbe-46a0-aa7a-d44b6fcb1432",
+        "centralId": 1549
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "60b68d47-2e80-42d8-beda-857c1735bde4",
+        "centralId": 1546
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "6a4934ba-6b28-4f34-a9ef-23663dd9827b",
+        "centralId": 1544
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "6cdcc3e2-ab5f-4713-8617-a60ee74e9360",
+        "centralId": 1547
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "752f2727-4f0c-4f4f-ab2b-b1b91a9f7874",
+        "centralId": 1542
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "7f6f8f98-1b6d-4c50-bf84-9a27fa02b4de",
+        "centralId": 1545
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "ad9c70ca-93f9-42f2-b291-2ee85471e651",
+        "centralId": 1543
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "d0f486cc-5b83-4123-b231-184dfa79c92b",
+        "centralId": 1550
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "e0dc9cbd-480a-4d3d-a1d1-b23afb5cb79c",
+        "centralId": 1548
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "e16f50f5-0f43-449f-a711-7a8ecc28c73b",
+        "centralId": 1541
+      },
+      {
+        "entityType": "answer_sheet_version",
+        "uuid": "23920fd5-a841-4337-b6a6-3e965f266a27",
+        "centralId": 155
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "111748cd-7ab6-4e19-9a8f-b609956fb10e",
+        "centralId": 1993
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "1af005b6-eddb-4977-bb93-ed7108a2a3b6",
+        "centralId": 1994
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "34f2bb67-2e49-4a0a-880f-71950ab61937",
+        "centralId": 1995
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "41a717c3-8c29-4c62-8d85-282e1e2f4ef9",
+        "centralId": 1996
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "4620e7ba-323d-441f-9842-5a8ac06d3ee6",
+        "centralId": 1997
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "5d635fe7-ee83-4364-bef1-e607b1fdd32a",
+        "centralId": 1998
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "6c3a3323-4c40-4cbd-b444-4c5543f6699d",
+        "centralId": 1999
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "8b90ae8c-171c-4baa-b679-20b7b191fdae",
+        "centralId": 2000
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "ae09fa00-c5a9-4369-8507-90286ab2384c",
+        "centralId": 2001
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "cb44e6bd-ef41-4154-8488-3e4d20ce8c6c",
+        "centralId": 2002
+      },
+      {
+        "entityType": "scan_page",
+        "uuid": "e43ff8e9-722b-4f61-bccf-a4d1d3969a1d",
+        "centralId": 164
+      },
+      {
+        "entityType": "scan_session",
+        "uuid": "3a420947-03cd-497a-b01a-a89d3772dcf5",
+        "centralId": 1171
+      },
+      {
+        "entityType": "scan_verification",
+        "uuid": "1a7059d7-fb88-4273-b57b-85e1877de617",
+        "centralId": 334
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "30c41b77-873f-42b3-a4e2-eae5ddfaf09b",
+        "centralId": 2061
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "39db4ba5-7639-4665-958d-805d82fc3281",
+        "centralId": 2062
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "7d41265a-8108-458e-83fc-67b8c59ee8d6",
+        "centralId": 2063
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "a25ce6c6-3030-45de-91a4-5581ec4b6c0c",
+        "centralId": 2064
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "a3f0e713-2639-43d9-93b6-4fe7bc04e825",
+        "centralId": 2065
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "b903e229-7e34-4da4-9a84-f3adc9bdf83c",
+        "centralId": 2066
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "bb4f443c-5cab-431d-bb3c-e70db44ed374",
+        "centralId": 2067
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "c9993329-0e86-4d66-8fb7-5e84ab8aaeb9",
+        "centralId": 2068
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "f0852bb9-52a3-4acd-8828-5aa6c5df1083",
+        "centralId": 2069
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "ff232c5d-3f92-47f7-9a51-86b6c243aad4",
+        "centralId": 2070
+      },
+      {
+        "entityType": "test_result",
+        "uuid": "d5c36d5f-1e04-4128-bff3-3737c311558f",
+        "centralId": 1169
+      }
+    ],
+    "pages": [
+      {
+        "scanUuid": "3a420947-03cd-497a-b01a-a89d3772dcf5",
+        "scanPageUuid": "e43ff8e9-722b-4f61-bccf-a4d1d3969a1d",
+        "pageUuid": "59fa959d-375b-4b6b-a63e-a852fdffc1a7",
+        "pageStatus": "accepted",
+        "originalAttachmentUuid": "d5edb3e3-6915-4713-8f1e-bec76d02f29f"
+      }
+    ],
+    "rubricScoreMappings": [],
+    "officialScore": null,
+    "analytics": {
+      "status": "stale",
+      "scoreVersion": 1,
+      "reasonCode": "RESULT_SUPERSEDED"
+    }
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T16:02:19.018396900Z"
+}

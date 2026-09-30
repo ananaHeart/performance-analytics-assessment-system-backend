@@ -28,7 +28,7 @@ import java.util.Optional;
 @Repository
 public class V3AnswerSheetRepository {
 
-    private static final String VALIDATED_TEMPLATE_CODE = com.capstone.assessment.v3.answersheet.service.V3DynamicLayout.CODE;
+    private static final String VALIDATED_TEMPLATE_CODE = "OMR-A4-10-MC-CTX-V2";
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -214,6 +214,11 @@ public class V3AnswerSheetRepository {
     }
 
     public Optional<Template> findValidatedTemplate(String paperSizeCode) {
+        return findTemplateByCode(VALIDATED_TEMPLATE_CODE, paperSizeCode);
+    }
+
+    /** Same lookup as {@link #findValidatedTemplate}, but for a caller-chosen template code (e.g. the dynamic mixed-type layout). */
+    public Optional<Template> findTemplateByCode(String templateCode, String paperSizeCode) {
         List<Template> templates = jdbcTemplate.query(
                 """
                 SELECT template.omr_template_id, template.template_code,
@@ -252,7 +257,7 @@ public class V3AnswerSheetRepository {
                             rs.getString("geometry_hash"),
                             List.of()
                     ),
-                VALIDATED_TEMPLATE_CODE,
+                templateCode,
                 paperSizeCode
         );
         if (templates.isEmpty()) {
@@ -294,6 +299,65 @@ public class V3AnswerSheetRepository {
                 paperSizeId
         );
         return value == null ? 1 : value;
+    }
+
+    public Optional<StoredVersion> findReadyVersion(
+            long testAssignmentId,
+            int paperSizeId,
+            long teacherUserId,
+            String schoolId
+    ) {
+        return first(jdbcTemplate.query(
+                """
+                SELECT sheet.answer_sheet_version_id, sheet.answer_sheet_uuid,
+                       sheet.test_assignment_id, delivery.assignment_uuid,
+                       size.paper_size_code, sheet.generation_number,
+                       sheet.test_version_number, sheet.total_questions,
+                       sheet.total_pages, sheet.manifest_version,
+                       sheet.manifest_hash, sheet.generation_status,
+                       sheet.pdf_storage_key, sheet.pdf_content_hash,
+                       sheet.pdf_file_size_bytes, sheet.generated_at
+                  FROM answer_sheet_versions sheet
+                  JOIN paper_sizes size ON size.paper_size_id = sheet.paper_size_id
+                  JOIN test_assignments delivery
+                    ON delivery.test_assignment_id = sheet.test_assignment_id
+                  JOIN class_assignments assignment
+                    ON assignment.class_assignment_id = delivery.class_assignment_id
+                  JOIN users teacher ON teacher.user_id = assignment.user_id
+                  JOIN tests assessment ON assessment.test_id = delivery.test_id
+                 WHERE sheet.test_assignment_id = ?
+                   AND sheet.paper_size_id = ?
+                   AND sheet.generation_status = 'ready'
+                   AND assignment.user_id = ?
+                   AND teacher.school_id = ?
+                   AND assessment.school_id = ?
+                 ORDER BY sheet.generation_number DESC
+                 LIMIT 1
+                """,
+                (rs, rowNumber) -> new StoredVersion(
+                        rs.getLong("answer_sheet_version_id"),
+                        rs.getString("answer_sheet_uuid"),
+                        rs.getLong("test_assignment_id"),
+                        rs.getString("assignment_uuid"),
+                        rs.getString("paper_size_code"),
+                        rs.getInt("generation_number"),
+                        rs.getInt("test_version_number"),
+                        rs.getInt("total_questions"),
+                        rs.getInt("total_pages"),
+                        rs.getInt("manifest_version"),
+                        rs.getString("manifest_hash"),
+                        rs.getString("generation_status"),
+                        rs.getString("pdf_storage_key"),
+                        rs.getString("pdf_content_hash"),
+                        rs.getLong("pdf_file_size_bytes"),
+                        toInstant(rs.getTimestamp("generated_at"))
+                ),
+                testAssignmentId,
+                paperSizeId,
+                teacherUserId,
+                schoolId,
+                schoolId
+        ));
     }
 
     public long insertGeneratingVersion(
@@ -414,6 +478,206 @@ public class V3AnswerSheetRepository {
                 question.partItemNumber(),
                 templateRegion.geometryJson(),
                 templateRegion.geometryHash()
+        );
+    }
+
+    public record QuestionContentRow(
+            long questionId,
+            String questionUuid,
+            long testPartId,
+            int partOrder,
+            String partName,
+            String partInstructions,
+            int partItemNumber,
+            int globalItemNumber,
+            String questionType,
+            String questionText,
+            String responseRegionSize,
+            Integer expectedResponseCount,
+            boolean forcePageBreakBefore,
+            double maximumPoints
+    ) {
+    }
+
+    public record QuestionOptionRow(
+            long questionId,
+            String optionKey,
+            String optionText,
+            int optionOrder
+    ) {
+    }
+
+    /** Real question/option content (text, not just counts) for the mixed-type PDF renderer. */
+    public List<QuestionContentRow> findQuestionContents(long testId) {
+        return jdbcTemplate.query(
+                """
+                SELECT question.question_id, question.question_uuid,
+                       part.test_part_id, part.part_order, part.part_name, part.part_instructions,
+                       question.item_number AS part_item_number,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY part.test_id
+                           ORDER BY part.part_order, question.item_number
+                       ) AS global_item_number,
+                       type.question_type_code, question.question_text,
+                       question.response_region_size, question.expected_response_count,
+                       question.force_page_break_before, question.maximum_points
+                  FROM questions question
+                  JOIN test_parts part ON part.test_part_id = question.test_part_id
+                  JOIN question_types type ON type.question_type_id = question.question_type_id
+                 WHERE part.test_id = ?
+                 ORDER BY part.part_order, question.item_number
+                """,
+                (rs, rowNumber) -> new QuestionContentRow(
+                        rs.getLong("question_id"),
+                        rs.getString("question_uuid"),
+                        rs.getLong("test_part_id"),
+                        rs.getInt("part_order"),
+                        rs.getString("part_name"),
+                        rs.getString("part_instructions"),
+                        rs.getInt("part_item_number"),
+                        rs.getInt("global_item_number"),
+                        rs.getString("question_type_code"),
+                        rs.getString("question_text"),
+                        rs.getString("response_region_size"),
+                        rs.getObject("expected_response_count", Integer.class),
+                        rs.getBoolean("force_page_break_before"),
+                        rs.getDouble("maximum_points")
+                ),
+                testId
+        );
+    }
+
+    public List<QuestionOptionRow> findQuestionOptions(long testId) {
+        return jdbcTemplate.query(
+                """
+                SELECT option_row.question_id, option_row.option_key,
+                       option_row.option_text, option_row.option_order
+                  FROM question_options option_row
+                  JOIN questions question ON question.question_id = option_row.question_id
+                  JOIN test_parts part ON part.test_part_id = question.test_part_id
+                 WHERE part.test_id = ? AND option_row.is_active = TRUE
+                 ORDER BY question.item_number, option_row.option_order
+                """,
+                (rs, rowNumber) -> new QuestionOptionRow(
+                        rs.getLong("question_id"),
+                        rs.getString("option_key"),
+                        rs.getString("option_text"),
+                        rs.getInt("option_order")
+                ),
+                testId
+        );
+    }
+
+    /** Next free {@code region_order} for a template's catalog, for the mixed-type template's
+     *  growing per-region catalog (see {@code insertGrowingTemplateRegion}). Callers within
+     *  the same transaction must increment their own copy between successive inserts. */
+    public int nextTemplateRegionOrder(long omrTemplateId) {
+        Integer max = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(MAX(region_order), 0) FROM omr_template_regions WHERE omr_template_id = ?",
+                Integer.class,
+                omrTemplateId
+        );
+        return (max == null ? 0 : max) + 1;
+    }
+
+    /** Inserts a new mixed-type catalog row carrying this region's own real, live-computed
+     *  geometry (unlike the physically validated template's fixed pre-made slots, the mixed
+     *  template has no fixed slot catalog to reuse - every printed region gets its own row,
+     *  keyed by its globally unique region UUID so it can never collide across generations). */
+    public long insertGrowingTemplateRegion(
+            long omrTemplateId,
+            String regionUuid,
+            int regionOrder,
+            String regionType,
+            Integer questionTypeId,
+            String responseRegionSize,
+            java.math.BigDecimal xPoints,
+            java.math.BigDecimal yPoints,
+            java.math.BigDecimal widthPoints,
+            java.math.BigDecimal heightPoints,
+            String geometryDefinitionJson,
+            String geometryHash
+    ) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement(
+                    """
+                    INSERT INTO omr_template_regions (
+                        region_uuid, omr_template_id, region_code, region_order, region_type,
+                        question_type_id, layout_variant, response_region_size,
+                        x_points, y_points, width_points, height_points,
+                        geometry_definition, geometry_hash, is_required
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'dynamic_context_v3', ?, ?, ?, ?, ?, ?, ?, 0)
+                    """,
+                    Statement.RETURN_GENERATED_KEYS);
+            statement.setString(1, regionUuid);
+            statement.setLong(2, omrTemplateId);
+            statement.setString(3, "MIXED_" + regionUuid);
+            statement.setInt(4, regionOrder);
+            statement.setString(5, regionType);
+            statement.setObject(6, questionTypeId);
+            statement.setString(7, responseRegionSize);
+            statement.setBigDecimal(8, xPoints);
+            statement.setBigDecimal(9, yPoints);
+            statement.setBigDecimal(10, widthPoints);
+            statement.setBigDecimal(11, heightPoints);
+            statement.setString(12, geometryDefinitionJson);
+            statement.setString(13, geometryHash);
+            return statement;
+        }, keyHolder);
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new IllegalStateException("The generated omr_template_region ID was not returned.");
+        }
+        return key.longValue();
+    }
+
+    /** Persists a per-instance mixed-type region (objective_bubbles or written_response),
+     *  with the real live-computed geometry snapshot rather than the catalog's placeholder. */
+    public void insertDynamicRegion(
+            String regionUuid,
+            long answerSheetVersionId,
+            long answerSheetPageId,
+            long omrTemplateRegionId,
+            long questionId,
+            long testPartId,
+            Integer questionTypeId,
+            int globalItemNumber,
+            int partItemNumber,
+            String regionType,
+            String responseRegionSize,
+            Integer expectedResponseCount,
+            Integer responseLineCount,
+            String geometrySnapshotJson,
+            String geometryHash
+    ) {
+        jdbcTemplate.update(
+                """
+                INSERT INTO answer_sheet_regions (
+                    region_uuid, answer_sheet_version_id, answer_sheet_page_id,
+                    omr_template_region_id, question_id, test_part_id,
+                    question_type_id, global_item_number, part_item_number,
+                    region_sequence, region_type, response_region_size,
+                    expected_response_count_snapshot, response_line_count,
+                    geometry_snapshot, geometry_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?,
+                          ?, ?, ?, ?, ?)
+                """,
+                regionUuid,
+                answerSheetVersionId,
+                answerSheetPageId,
+                omrTemplateRegionId,
+                questionId,
+                testPartId,
+                questionTypeId,
+                globalItemNumber,
+                partItemNumber,
+                regionType,
+                responseRegionSize == null ? "none" : responseRegionSize,
+                expectedResponseCount,
+                responseLineCount,
+                geometrySnapshotJson,
+                geometryHash
         );
     }
 

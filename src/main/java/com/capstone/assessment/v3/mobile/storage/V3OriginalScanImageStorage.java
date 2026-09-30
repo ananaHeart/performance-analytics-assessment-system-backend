@@ -270,6 +270,13 @@ public class V3OriginalScanImageStorage {
         return size;
     }
 
+    /**
+     * Some camera stacks append a large proprietary trailer after a fully valid JPEG (e.g.
+     * Honor's HDR gainmap blob observed at ~56KB, tagged "HiHonor_EhdrEn"). Trailer size isn't
+     * predictable across OEMs/HDR modes, so this scans the whole file for the LAST FFD9
+     * occurrence rather than assuming any fixed window; a marker that isn't found anywhere
+     * means the file is genuinely truncated or not a JPEG.
+     */
     private static int[] validateJpeg(Path file, long size) {
         ImageReader reader = ImageIO.getImageReadersByFormatName("JPEG").next();
         boolean[] warned = {false};
@@ -278,9 +285,16 @@ public class V3OriginalScanImageStorage {
             if (size < 4 || input.readUnsignedShort() != 0xffd8) {
                 throw invalid("Original image bytes must be a complete JPEG.");
             }
-            input.seek(size - 2);
-            if (input.readUnsignedShort() != 0xffd9) {
+            byte[] bytes = Files.readAllBytes(file);
+            long eoiOffset = findTrailingEoiMarker(bytes);
+            if (eoiOffset < 0) {
+                logTrailingBytes(bytes);
                 throw invalid("The original JPEG must end with its end-of-image marker.");
+            }
+            long trailingByteCount = size - 2 - eoiOffset;
+            if (trailingByteCount > 0) {
+                LOG.warn("Accepted JPEG with {} trailing byte(s) after the EOI marker (likely an OEM camera trailer)",
+                        trailingByteCount);
             }
             input.seek(0);
             reader.setInput(input);
@@ -305,6 +319,23 @@ public class V3OriginalScanImageStorage {
         } finally {
             reader.dispose();
         }
+    }
+
+    /** Returns the byte offset of the LAST 0xFFD9 occurrence in the file, or -1 if none exists. */
+    private static long findTrailingEoiMarker(byte[] bytes) {
+        for (int offset = bytes.length - 2; offset >= 0; offset--) {
+            if ((bytes[offset] & 0xFF) == 0xFF && (bytes[offset + 1] & 0xFF) == 0xD9) {
+                return offset;
+            }
+        }
+        return -1;
+    }
+
+    private static void logTrailingBytes(byte[] bytes) {
+        int count = Math.min(16, bytes.length);
+        byte[] tail = java.util.Arrays.copyOfRange(bytes, bytes.length - count, bytes.length);
+        LOG.warn("Rejected JPEG with no EOI marker anywhere in {} byte(s); final {} byte(s): {}",
+                bytes.length, count, HexFormat.of().formatHex(tail));
     }
 
     private static int[] validatePng(Path file, long size) {

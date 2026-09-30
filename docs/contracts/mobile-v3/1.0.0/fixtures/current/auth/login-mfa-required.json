@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "message": "Authenticator verification required.",
+  "data": {
+    "tokenType": null,
+    "accessToken": null,
+    "expiresAt": null,
+    "user": null,
+    "mfaRequired": true,
+    "mfaChallenge": {
+      "challengeUuid": "00000000-0000-4000-8000-000000000099",
+      "expiresAt": "2026-09-12T02:05:00Z",
+      "maximumAttempts": 5,
+      "verificationMethods": [
+        "authenticator",
+        "recovery_code"
+      ],
+      "emailMasked": "t***@example.com"
+    }
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

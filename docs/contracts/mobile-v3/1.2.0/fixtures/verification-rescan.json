@@ -1,0 +1,23 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "00000000-0000-4000-8000-000000000131",
+  "operationUuid": "00000000-0000-4000-8000-000000010131",
+  "assignmentUuid": "26b14ea2-4383-43f5-bb40-f60683ee46bb",
+  "items": [
+    {
+      "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+      "expectedRevision": 2,
+      "pageDecisions": [
+        {
+          "verificationUuid": "00000000-0000-4000-8000-000000000141",
+          "scanPageUuid": "63113584-7301-478b-a177-6d9f855200cd",
+          "action": "rescan_requested",
+          "reasonCode": "UNCERTAIN_MARK",
+          "comment": "Capture a clearer original page.",
+          "clientDecidedAt": "2026-09-12T02:00:00Z"
+        }
+      ],
+      "answers": []
+    }
+  ]
+}

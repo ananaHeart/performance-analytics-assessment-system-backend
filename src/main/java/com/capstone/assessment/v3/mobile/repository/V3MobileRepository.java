@@ -138,6 +138,7 @@ public class V3MobileRepository {
                   LEFT JOIN question_types type
                     ON type.question_type_id = region.question_type_id
                  WHERE region.omr_template_id = ?
+                   AND region.is_required = TRUE
                  ORDER BY region.region_order
                 """,
                 (rs, rowNumber) -> new V3MobileReferenceDataResponse.TemplateRegion(
@@ -346,6 +347,7 @@ public class V3MobileRepository {
                   FROM term_periods term
                   JOIN tests assessment ON assessment.term_period_id = term.term_period_id
                  WHERE assessment.school_id = ?
+                   AND assessment.status IN ('active', 'completed')
                    AND EXISTS (
                        SELECT 1
                          FROM test_assignments delivery
@@ -462,6 +464,7 @@ public class V3MobileRepository {
                   FROM test_parts part
                   JOIN tests assessment ON assessment.test_id = part.test_id
                  WHERE assessment.school_id = ?
+                   AND assessment.status IN ('active', 'completed')
                    AND EXISTS (
                        SELECT 1
                          FROM test_assignments delivery
@@ -516,6 +519,7 @@ public class V3MobileRepository {
                   JOIN test_parts part ON part.test_part_id = question.test_part_id
                   JOIN tests assessment ON assessment.test_id = part.test_id
                  WHERE assessment.school_id = ?
+                   AND assessment.status IN ('active', 'completed')
                    AND EXISTS (
                        SELECT 1
                          FROM test_assignments delivery
@@ -567,6 +571,7 @@ public class V3MobileRepository {
                   JOIN tests assessment ON assessment.test_id = part.test_id
                  WHERE question_option.is_active = TRUE
                    AND assessment.school_id = ?
+                   AND assessment.status IN ('active', 'completed')
                    AND EXISTS (
                        SELECT 1
                          FROM test_assignments delivery
@@ -607,6 +612,7 @@ public class V3MobileRepository {
                   JOIN test_parts part ON part.test_part_id = mapping.test_part_id
                   JOIN tests assessment ON assessment.test_id = part.test_id
                  WHERE assessment.school_id = ?
+                   AND assessment.status IN ('active', 'completed')
                    AND EXISTS (
                        SELECT 1
                          FROM test_assignments delivery
@@ -651,6 +657,7 @@ public class V3MobileRepository {
                   JOIN test_parts part ON part.test_part_id = mapping.test_part_id
                   JOIN tests assessment ON assessment.test_id = part.test_id
                  WHERE assessment.school_id = ?
+                   AND assessment.status IN ('active', 'completed')
                    AND EXISTS (
                        SELECT 1
                          FROM test_assignments delivery

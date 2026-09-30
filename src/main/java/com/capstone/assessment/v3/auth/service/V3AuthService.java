@@ -102,7 +102,10 @@ public class V3AuthService {
                 normalizeNullable(request.deviceIdentifier())
         );
 
-        enforceRateLimit(email, normalizedMetadata, now);
+        boolean lockout = properties.isLoginLockoutEnabled();
+        if (lockout) {
+            enforceRateLimit(email, normalizedMetadata, now);
+        }
         Optional<V3UserAccount> optionalUser = authRepository.findUserByEmail(email);
         if (optionalUser.isEmpty()) {
             passwordEncoder.matches(request.password(), DUMMY_BCRYPT_HASH);
@@ -113,7 +116,7 @@ public class V3AuthService {
         V3UserAccount user = optionalUser.get();
         if (!passwordEncoder.matches(request.password(), user.passwordHash())) {
             int nextFailureCount = user.failedLoginCount() + 1;
-            Instant lockedUntil = nextFailureCount >= properties.getMaxFailedAttempts()
+            Instant lockedUntil = lockout && nextFailureCount >= properties.getMaxFailedAttempts()
                     ? now.plus(properties.getLockDuration())
                     : null;
             authRepository.recordFailedLogin(user.userId(), nextFailureCount, lockedUntil);
@@ -130,7 +133,8 @@ public class V3AuthService {
             throw unauthorized("INVALID_CREDENTIALS", INVALID_CREDENTIALS);
         }
 
-        if (user.lockedUntilAt() != null && user.lockedUntilAt().isAfter(now)) {
+        // With lockout off, an old lock (set before it was turned off) no longer blocks either.
+        if (lockout && user.lockedUntilAt() != null && user.lockedUntilAt().isAfter(now)) {
             recordFailedAttempt(user.userId(), email, "locked_account", normalizedMetadata, now);
             throw new V3AuthException(
                     "ACCOUNT_LOCKED",

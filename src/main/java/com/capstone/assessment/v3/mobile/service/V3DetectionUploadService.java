@@ -11,7 +11,10 @@ import com.capstone.assessment.v3.mobile.repository.V3DetectionRepository;
 import com.capstone.assessment.v3.mobile.repository.V3ScanUploadLedgerRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
@@ -32,6 +35,7 @@ import java.util.*;
 @Service
 @Profile("v3")
 public class V3DetectionUploadService {
+    private static final Logger LOG = LoggerFactory.getLogger(V3DetectionUploadService.class);
     private final V3DetectionRepository repository;
     private final V3ScanUploadLedgerRepository owners;
     private final Validator validator;
@@ -105,9 +109,19 @@ public class V3DetectionUploadService {
     }
 
     private void validate(String pageUuid,V3DetectionBatch batch) {
-        if(pageUuid==null || !pageUuid.matches(V3ScanPageUploadMetadata.UUID_PATTERN)
-                || batch==null || !validator.validate(batch).isEmpty())
+        if(pageUuid==null || !pageUuid.matches(V3ScanPageUploadMetadata.UUID_PATTERN)) {
+            LOG.warn("Rejected detection batch: pageUuid '{}' failed the UUID pattern.", pageUuid);
             throw invalid("The detection batch is invalid; supply 1..200 observations and canonical identities.");
+        }
+        if(batch==null) throw invalid("The detection batch is invalid; supply 1..200 observations and canonical identities.");
+        Set<ConstraintViolation<V3DetectionBatch>> violations = validator.validate(batch);
+        if(!violations.isEmpty()) {
+            for (ConstraintViolation<V3DetectionBatch> violation : violations) {
+                LOG.warn("Rejected detection batch: {} = '{}' ({})",
+                        violation.getPropertyPath(), violation.getInvalidValue(), violation.getMessage());
+            }
+            throw invalid("The detection batch is invalid; supply 1..200 observations and canonical identities.");
+        }
         Set<String> ids=new HashSet<>(),regions=new HashSet<>();
         for(Detection d:batch.detections()) {
             if(!ids.add(d.detectionUuid()) || !regions.add(d.regionUuid()))
@@ -123,11 +137,23 @@ public class V3DetectionUploadService {
         Set<String> keys=new HashSet<>();
         try {
             var geometry=mapper.readTree(region.geometry());
-            var options=geometry.get("option_keys");
-            if(options==null || !options.isArray()) throw invalid("The stored region has no option keys.");
-            for(var option:options) {
-                if(!option.isTextual() || !option.textValue().matches("[A-D]") || !keys.add(option.textValue()))
-                    throw invalid("The stored region option keys are invalid.");
+            // Fixed-template rows (option_keys: ["A","B",...]) and growing-catalog mixed/dynamic
+            // rows (options: [{"key":"A",...}, ...]) store the option key list differently.
+            var flatKeys=geometry.get("option_keys");
+            var objectOptions=geometry.get("options");
+            if(flatKeys!=null && flatKeys.isArray()) {
+                for(var option:flatKeys) {
+                    if(!option.isTextual() || !option.textValue().matches("[A-D]") || !keys.add(option.textValue()))
+                        throw invalid("The stored region option keys are invalid.");
+                }
+            } else if(objectOptions!=null && objectOptions.isArray()) {
+                for(var option:objectOptions) {
+                    var key=option.get("key");
+                    if(key==null || !key.isTextual() || !key.textValue().matches("[A-D]") || !keys.add(key.textValue()))
+                        throw invalid("The stored region option keys are invalid.");
+                }
+            } else {
+                throw invalid("The stored region has no option keys.");
             }
         } catch(JsonProcessingException e) { throw invalid("The stored region geometry cannot be decoded."); }
         var active=new HashSet<>(repository.options(region.questionId()));

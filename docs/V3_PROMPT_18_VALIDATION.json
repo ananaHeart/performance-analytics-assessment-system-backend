@@ -1,0 +1,251 @@
+{
+  "milestone": 5,
+  "prompt": 18,
+  "validatedAt": "2026-09-14T11:20:26.8103578+08:00",
+  "status": "SYNTHETIC_LOCAL_STAGING_READY_CLIENT_ACCEPTANCE_PENDING",
+  "baseUrl": "http://127.0.0.1:18082",
+  "deploymentMode": "development_android_usb",
+  "database": "v3_scan_validation_full_110003",
+  "baselineBefore": {
+    "checks": 87,
+    "tables": 67,
+    "foreignKeys": 163,
+    "migration": "V3_014",
+    "uniqueConstraints": 99
+  },
+  "baselineAfter": {
+    "checks": 131,
+    "tables": 79,
+    "foreignKeys": 200,
+    "migration": "V3_023",
+    "uniqueConstraints": 118
+  },
+  "backupRestore": {
+    "scope": "synthetic baseline schema and seed restore with constraint/table count comparison",
+    "status": "PASS",
+    "sha256": "8FEEB7CEB6EC7B41AD3E88CFC8302BE79960A92CFF4FC2B431F12FDF400DCB1F"
+  },
+  "migrationHashes": [
+    {
+      "File": "V3_015_mobile_scan_upload_receipts_DRAFT.sql",
+      "Sha256": "566964ADE3635DB6B1968852E7632CD1DFBDCEFA4A57B7150AC81A6880B9D3F6"
+    },
+    {
+      "File": "V3_016_mobile_detection_receipts_DRAFT.sql",
+      "Sha256": "B4A8CF63F98408F6F96F94B128BB57C14375D1D0D2958CA2D72BFB7D2EDF59A2"
+    },
+    {
+      "File": "V3_017_mobile_teacher_verification_DRAFT.sql",
+      "Sha256": "A470E6955EBF1D84C78767F80D4E63FF1918B19EB8D92F03557C81B3520AA796"
+    },
+    {
+      "File": "V3_018_mobile_result_finalization_DRAFT.sql",
+      "Sha256": "8CA6A49D2B1297753C3A5D834973EFBB029096BAE229D18B32275289B50687FF"
+    },
+    {
+      "File": "V3_019_mobile_attachment_uploads_DRAFT.sql",
+      "Sha256": "0D51F456C9A43CAC8F71AFF196CFA4320A15657DC3E70431D5C78A29C3D734F6"
+    },
+    {
+      "File": "V3_020_mobile_written_verification_DRAFT.sql",
+      "Sha256": "AABB1B181C125ED954FDE8D3B8CF2FC5C3DB833193E00D4B6888810E3F03A2D5"
+    },
+    {
+      "File": "V3_021_mobile_result_reopen_DRAFT.sql",
+      "Sha256": "AD6BB19FD52629B764E9A868CFC08DE2BFC4958D25455E81060D3A4EE27D1F52"
+    },
+    {
+      "File": "V3_022_mobile_result_corrections_DRAFT.sql",
+      "Sha256": "5143D849CACBFFB2A32B1637945E78FF25CD219F2D97BD4741D1496D787378FC"
+    },
+    {
+      "File": "V3_023_mobile_result_supersession_DRAFT.sql",
+      "Sha256": "8DDFB88A385DF51DDCBACD2A4B5265A66F3B77A920EA895861B430146E00B6CB"
+    }
+  ],
+  "focusedRegression": {
+    "failures": 0,
+    "passed": 222,
+    "skipped": 1,
+    "executedMariaDbTests": 156,
+    "errors": 0,
+    "discovered": 223
+  },
+  "defaultSuite": {
+    "v3Passed": 431,
+    "v3Skipped": 157,
+    "v3Errors": 0,
+    "discovered": 669,
+    "v3Failures": 0,
+    "errors": 1,
+    "skipped": 157,
+    "failure": "AssessmentApplicationTests.contextLoads: default datasource connection refused",
+    "passed": 511
+  },
+  "package": {
+    "jarSha256": "74CC29013264EDB9212746164898BE881D5D840DD602B6E9C741943611644E1C",
+    "command": "mvn -q -DskipTests package after recorded test runs",
+    "status": "PASS"
+  },
+  "liveHttp": {
+    "frontendOfficialScore": 20.0,
+    "status": "PASS",
+    "analytics": {
+      "contractVersion": "3.0",
+      "resultUuid": "db1ba4bc-5813-4f81-b1a9-70544fa6ff6f",
+      "scoreVersion": 1,
+      "status": "ready",
+      "reasonCode": null,
+      "generatedAt": "2026-09-14T03:16:55.005433900Z",
+      "metrics": {
+        "totalScore": 20.0,
+        "maxScore": 20.0,
+        "percentage": 100.0,
+        "itemAnalysis": null,
+        "mastery": null,
+        "interventions": null,
+        "student360": null
+      },
+      "unavailableModules": [
+        "itemAnalysis",
+        "mastery",
+        "interventions",
+        "student360"
+      ]
+    },
+    "stages": [
+      {
+        "method": "GET",
+        "path": "/api/v3/system/mobile-release-readiness",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/auth/me",
+        "status": 401
+      },
+      {
+        "method": "POST",
+        "path": "/api/v3/auth/login",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/auth/me",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/mobile/reference-data",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/mobile/download",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/mobile/test-assignments/828710d8-8654-4b47-a2bf-6d9965fa0c7d/answer-sheets/4bc049c8-f69d-43bd-bcc2-fdf808873138/manifest",
+        "status": 200
+      },
+      {
+        "stage": "frontend_cors_preflight",
+        "status": 200
+      },
+      {
+        "stage": "scan_upload",
+        "status": 201
+      },
+      {
+        "stage": "scan_upload_replay",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/v3/mobile/scan-pages/16bf1845-82c7-4d50-aa0e-669bb313eb40/detections",
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/api/v3/mobile/scan-pages/16bf1845-82c7-4d50-aa0e-669bb313eb40/detections",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/v3/mobile/verification-batches",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/v3/scoring/results/1012/finalize",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/v3/scoring/results/1012/finalize",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/mobile/results/db1ba4bc-5813-4f81-b1a9-70544fa6ff6f",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/mobile/results/db1ba4bc-5813-4f81-b1a9-70544fa6ff6f/analytics",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/mobile/syncs/a553ab51-52d8-4d69-95a1-7e31f3a3ceed",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/reports/reference-data",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/reports/assessment-results?testId=1011&classAssignmentId=910016",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/v3/auth/logout",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/v3/auth/me",
+        "status": 401
+      }
+    ]
+  },
+  "fixedUrlRestart": {
+    "checkedAt": "2026-09-14T11:19:55.9533393+08:00",
+    "baseUrl": "http://127.0.0.1:18082",
+    "backendReady": true,
+    "fullyConnected": false,
+    "loginMeAndPersistedReadback": "PASS",
+    "frontendOfficialScore": 20,
+    "phoneVerified": false
+  },
+  "backendReady": true,
+  "phoneAttached": false,
+  "adbReverseVerified": false,
+  "mobileWiringVerified": false,
+  "frontendUiVerified": false,
+  "physicalScannerVerified": false,
+  "fullyConnected": false,
+  "schoolMigrationPerformed": false,
+  "limitations": [
+    "Live full HTTP capture fixture is one-page A4 ten-MC",
+    "Written/MFA/audit component tests are not client or physical acceptance",
+    "Mobile secure session and active SQLite/queue wiring pending",
+    "Frontend report row has no resultUuid for direct detail navigation",
+    "No reviewed V3 Mobile secure evidence image download route",
+    "Advanced Mobile analytics unavailable"
+  ]
+}

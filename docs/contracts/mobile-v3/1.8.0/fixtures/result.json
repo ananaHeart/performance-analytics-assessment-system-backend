@@ -1,0 +1,270 @@
+{
+  "success": true,
+  "message": "Request completed successfully.",
+  "data": {
+    "contractVersion": "3.0",
+    "resultUuid": "5f2ee576-4dec-4ce8-ae22-e45610fc1e2f",
+    "testResultId": 1184,
+    "assignmentUuid": "af3bc8d6-4219-4e6e-8960-d09bf1bf27e3",
+    "classListId": 1219,
+    "studentId": 1205,
+    "resultStatus": "finalized",
+    "revision": 6,
+    "scoreVersion": 1,
+    "pendingReasons": [],
+    "idMappings": [
+      {
+        "entityType": "answer_attachment",
+        "uuid": "4568541d-f638-4a96-b609-bf6786feba8a",
+        "centralId": 246
+      },
+      {
+        "entityType": "answer_attachment",
+        "uuid": "a1adbe8c-fdde-4593-b45d-42698ad6c780",
+        "centralId": 245
+      },
+      {
+        "entityType": "answer_sheet_page",
+        "uuid": "cfbe5403-fbaf-46ee-ac48-aed171a6e7e9",
+        "centralId": 188
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "084f384b-c54a-45ea-925d-e0650d5022dd",
+        "centralId": 1871
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "0efabe10-b982-4fe2-be8b-de64ab30dcd6",
+        "centralId": 1880
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "31025fc9-67fd-4206-9559-46e911a4e328",
+        "centralId": 1878
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "4dd93927-f941-4069-8cff-96d0ef5aea54",
+        "centralId": 1875
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "668df793-9f21-4796-84e1-67b29afe882b",
+        "centralId": 1874
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "90b08412-ab74-4d7b-ba09-bc7969a18dba",
+        "centralId": 1873
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "9ae1100b-1c81-497b-a97f-f1d8502cfb6c",
+        "centralId": 1879
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "a3271d98-2d57-4b13-b35c-715eb6d963db",
+        "centralId": 1877
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "a7225842-adc4-44e3-8847-a7e8332b404f",
+        "centralId": 1876
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "cf15b4de-6e82-4174-93c3-e048d4525c6b",
+        "centralId": 1872
+      },
+      {
+        "entityType": "answer_sheet_version",
+        "uuid": "f5343561-34f9-449e-bfed-f9ba71bfee67",
+        "centralId": 188
+      },
+      {
+        "entityType": "answer_verification",
+        "uuid": "42b8cf2a-5967-4f19-839d-4ca916474c33",
+        "centralId": 116
+      },
+      {
+        "entityType": "answer_verification",
+        "uuid": "7a11c8a6-ef74-4679-9087-68479195b3e3",
+        "centralId": 117
+      },
+      {
+        "entityType": "answer_verification",
+        "uuid": "95ab75b0-c98a-461d-a178-d9fe94458551",
+        "centralId": 115
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "1bd26f7a-bd60-454b-af49-89a488da8420",
+        "centralId": 1740
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "2f3dda7e-6c2d-4e3a-8aa2-d976707ea971",
+        "centralId": 1741
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "663fd302-2a09-4ae4-9bd2-27ada34ec9f8",
+        "centralId": 1742
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "6a3150dc-ee9f-4b02-a404-c3074dfab008",
+        "centralId": 1743
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "8b6f9b52-92b4-47c1-872c-27fb08807815",
+        "centralId": 1744
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "b1b4574f-38c2-417c-823e-cf738a3713db",
+        "centralId": 1745
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "f2f6e422-03a5-4da0-b97b-d17aad3b5672",
+        "centralId": 1746
+      },
+      {
+        "entityType": "scan_page",
+        "uuid": "cbf02342-d5d2-4403-bbab-31721c7f6893",
+        "centralId": 174
+      },
+      {
+        "entityType": "scan_session",
+        "uuid": "7ab16fb9-15c9-4968-b71d-7eb4b4bfc9c7",
+        "centralId": 1186
+      },
+      {
+        "entityType": "scan_verification",
+        "uuid": "940d1373-abc6-4ff8-bf25-153a99107256",
+        "centralId": 530
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "2191caa7-9561-4b02-98b9-ebe4308e836a",
+        "centralId": 1831
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "3082531b-b6aa-4f1f-927d-f7dfac9b25b5",
+        "centralId": 1838
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "32d0a527-2de7-4af7-b05d-3aaa152f43c7",
+        "centralId": 1832
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "54292fe8-0f10-449a-9043-6f85f021cd51",
+        "centralId": 1833
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "7d804090-3ef8-4d37-be47-fd6e1a14e6af",
+        "centralId": 1839
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "833b9d1e-7386-4ba3-9ab9-b3c244ab430b",
+        "centralId": 1834
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "8ef6ee5f-0ddd-4603-ba26-6a6f200a09ea",
+        "centralId": 1835
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "a7bbb786-9b42-4b4f-9058-b9fdec768799",
+        "centralId": 1840
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "bf68d478-d73d-4f68-8fa0-142559bfc327",
+        "centralId": 1836
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "e61928ea-2e42-428e-84b2-4358d56c9eed",
+        "centralId": 1837
+      },
+      {
+        "entityType": "test_result",
+        "uuid": "5f2ee576-4dec-4ce8-ae22-e45610fc1e2f",
+        "centralId": 1184
+      }
+    ],
+    "pages": [
+      {
+        "scanUuid": "7ab16fb9-15c9-4968-b71d-7eb4b4bfc9c7",
+        "scanPageUuid": "cbf02342-d5d2-4403-bbab-31721c7f6893",
+        "pageUuid": "cfbe5403-fbaf-46ee-ac48-aed171a6e7e9",
+        "pageStatus": "accepted",
+        "originalAttachmentUuid": "a1adbe8c-fdde-4593-b45d-42698ad6c780"
+      }
+    ],
+    "rubricScoreMappings": [
+      {
+        "answerUuid": "a7bbb786-9b42-4b4f-9058-b9fdec768799",
+        "rubricCriterionId": 363,
+        "scoreVersion": 1,
+        "centralAnswerRubricScoreId": 67
+      },
+      {
+        "answerUuid": "a7bbb786-9b42-4b4f-9058-b9fdec768799",
+        "rubricCriterionId": 364,
+        "scoreVersion": 1,
+        "centralAnswerRubricScoreId": 68
+      }
+    ],
+    "officialScore": {
+      "testResultId": 1184,
+      "resultUuid": "5f2ee576-4dec-4ce8-ae22-e45610fc1e2f",
+      "testAssignmentId": 188,
+      "testId": 1197,
+      "classListId": 1219,
+      "studentId": 1205,
+      "studentName": "Synthetic Learner",
+      "attemptNumber": 1,
+      "totalScore": 23.5,
+      "maxScore": 28,
+      "percentage": 83.93,
+      "performanceStatus": "maintain",
+      "performanceLabel": "Maintain",
+      "performanceRuleSetId": 1,
+      "itemsEvaluated": 10,
+      "scoreVersion": 1,
+      "resultStatus": "finalized",
+      "scoredAt": "2026-09-12T14:48:33.029327600Z",
+      "scoreChanged": false,
+      "parts": [
+        {
+          "testPartId": 1202,
+          "partOrder": 1,
+          "partName": "MC",
+          "totalScore": 23.5,
+          "maxScore": 28,
+          "percentage": 83.93,
+          "itemsEvaluated": 10
+        }
+      ]
+    },
+    "analytics": {
+      "status": "ready",
+      "scoreVersion": 1,
+      "reasonCode": null
+    }
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T14:48:33.062589500Z"
+}

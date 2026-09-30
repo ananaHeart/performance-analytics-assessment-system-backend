@@ -1,0 +1,122 @@
+{
+  "generatedAtUtc": "2026-09-12T13:38:21.1771048Z",
+  "scope": "Milestone 2 Prompt 9 result/analytics readback and reconciliation",
+  "totalTests": 71.0,
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 48,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:36:51.5394176Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3MobileReadbackControllerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:31:44.1301535Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3MobileReadbackGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:34:04.9794040Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.scoring.service.V3ScoringServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:32:03.6691221Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:31:40.2309945Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:31:44.3185948Z"
+    }
+  ],
+  "hashes": [
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3MobileReadbackService.java",
+      "sha256": "9ca1bd6b4571242cf419d53865770ef00d046fe1ac711d11fc6b254db325be85"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3MobileReadbackRepository.java",
+      "sha256": "44f3e9f5e936fd53fa93bb61918e7a3799ad9b36124328d0344f418b51a4dd0e"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/controller/V3MobileReadbackController.java",
+      "sha256": "a36b799af7a0abaee76f6596986bd8d145dd71c180dd4e46b49a55eb2359082e"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/dto/V3MobileReadback.java",
+      "sha256": "494611727b7bb1a21a38c757a23259ce4ce295cf22eda694c20e689269d93238"
+    },
+    {
+      "file": "docs/contracts/mobile-v3/1.4.0/openapi.json",
+      "sha256": "5d2b71254c10380e1f4e308c03474b8ee45882b42151026e315fc3ebd80d1d53"
+    }
+  ],
+  "contract": {
+    "packVersion": "1.4.0",
+    "wireVersion": "3.0",
+    "openapi": "3.1.0",
+    "schemas": 12,
+    "fixtures": 6,
+    "syntheticRuntimeSamplesChecked": 3,
+    "allFivePackValidatorsPassed": true,
+    "parentWireSchemasUnchanged": true
+  },
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "existingDraftChain": "V3_018",
+    "tables": 73,
+    "foreignKeys": 175,
+    "checks": 98,
+    "uniqueConstraints": 104,
+    "newMigrationAdded": false,
+    "syntheticRecordsOnly": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true
+  },
+  "release": {
+    "readbackEnabled": false,
+    "mobileWriteRoutesEnabled": false,
+    "configuredBaseline": "V3_014",
+    "draftMigrationsDeployedToSchool": false,
+    "physicalScannerValidated": false,
+    "completeMobileFlow": false
+  },
+  "milestone": {
+    "number": 2,
+    "prompt": 9,
+    "status": "OBJECTIVE_BACKEND_COMPONENTS_COMPLETE_RELEASE_GATED",
+    "next": "Milestone 3 Prompt 10 written-answer contract and evaluation-reference"
+  },
+  "limitations": [
+    "Fifteen new MariaDB readback tests plus thirty-three prior regression cases passed. The existing partial-result test also checks readback before and after retry.",
+    "The affected persistence and gate suites were rerun after the synthetic fixture fix; persistence reran again after final identity/malformed-receipt checks.",
+    "Analytics return official total/max/percentage only. Item analysis, mastery, interventions and Student 360 remain unavailable.",
+    "Current single-page capture scope remains unchanged; a multi-page fixture is illustrative only.",
+    "No production HTTP, phone/scanner acceptance, power-loss test or Mobile SQLite wiring was performed.",
+    "Written upload, correction/reopen/superseding and reviewed production deployment remain separate milestones."
+  ]
+}

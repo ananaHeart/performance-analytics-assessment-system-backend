@@ -1,0 +1,102 @@
+{
+  "success": true,
+  "message": "Illustrative contract response.",
+  "data": {
+    "contractVersion": "3.0",
+    "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+    "testResultId": 87001,
+    "assignmentUuid": "26b14ea2-4383-43f5-bb40-f60683ee46bb",
+    "classListId": 41001,
+    "studentId": 500,
+    "resultStatus": "finalized",
+    "revision": 4,
+    "scoreVersion": 1,
+    "pendingReasons": [],
+    "idMappings": [
+      {
+        "entityType": "test_result",
+        "uuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+        "centralId": 87001
+      },
+      {
+        "entityType": "scan_session",
+        "uuid": "e4c78a06-3c3a-4455-80bf-a57d098a9404",
+        "centralId": 86001
+      },
+      {
+        "entityType": "scan_page",
+        "uuid": "63113584-7301-478b-a177-6d9f855200cd",
+        "centralId": 88001
+      },
+      {
+        "entityType": "answer_attachment",
+        "uuid": "00000000-0000-4000-8000-000000001002",
+        "centralId": 90000
+      },
+      {
+        "entityType": "answer_sheet_version",
+        "uuid": "56d628da-d7fc-4faa-b018-3f740e048bf0",
+        "centralId": 81001
+      },
+      {
+        "entityType": "answer_sheet_page",
+        "uuid": "be42bd22-1f8b-4409-941d-9e689bc271d7",
+        "centralId": 82001
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "c4eff0ab-8c19-4f56-bd9e-821882281363",
+        "centralId": 83001
+      }
+    ],
+    "pages": [
+      {
+        "scanUuid": "e4c78a06-3c3a-4455-80bf-a57d098a9404",
+        "scanPageUuid": "63113584-7301-478b-a177-6d9f855200cd",
+        "pageUuid": "be42bd22-1f8b-4409-941d-9e689bc271d7",
+        "pageStatus": "accepted",
+        "originalAttachmentUuid": "00000000-0000-4000-8000-000000001002"
+      }
+    ],
+    "rubricScoreMappings": [],
+    "officialScore": {
+      "testResultId": 87001,
+      "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+      "testAssignmentId": 12001,
+      "testId": 1006,
+      "classListId": 41001,
+      "studentId": 500,
+      "studentName": "Demo Learner",
+      "attemptNumber": 1,
+      "totalScore": 8,
+      "maxScore": 10,
+      "percentage": 80,
+      "performanceStatus": "maintain",
+      "performanceLabel": "Maintain",
+      "performanceRuleSetId": 1,
+      "itemsEvaluated": 10,
+      "scoreVersion": 1,
+      "resultStatus": "finalized",
+      "scoredAt": "2026-09-12T02:00:00Z",
+      "scoreChanged": true,
+      "parts": [
+        {
+          "testPartId": 21001,
+          "partOrder": 1,
+          "partName": "Multiple Choice",
+          "totalScore": 8,
+          "maxScore": 10,
+          "percentage": 80,
+          "itemsEvaluated": 10
+        }
+      ]
+    },
+    "analytics": {
+      "status": "pending",
+      "scoreVersion": 1,
+      "reasonCode": "ANALYTICS_NOT_COMPUTED"
+    }
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

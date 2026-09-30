@@ -1,0 +1,9 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "00000000-0000-4000-8000-000000000160",
+  "operationUuid": "00000000-0000-4000-8000-000000010160",
+  "expectedRevision": 4,
+  "expectedScoreVersion": 1,
+  "reasonCode": "TEACHER_REVIEW_REQUEST",
+  "comment": "Request a new objective rescan while preserving the previous score."
+}

@@ -92,7 +92,7 @@ public class V3WrittenVerificationService {
                     BigDecimal points=points(value,question,reference,region.type());
                     var attachmentIds=new ArrayList<Long>();
                     for(String uuid:value.attachmentUuids())attachmentIds.add(evidence.evidenceForScoring(page,uuid,region.id()));
-                    long id=written.answer(user,page,region.questionId(),receipt.id(),answer,points,attachmentIds,json(answer));
+                    long id=written.answer(user,page,region.questionId(),receipt.id(),answer,points,question.maximumPoints(),attachmentIds,json(answer));
                     if(id>9007199254740991L)throw conflict("IDENTITY_LIMIT","Answer ID exceeds the Mobile range.");
                     mappings.add(new IdMapping("student_answer",answer.answerUuid(),id));scans.add(page.scanId());
                 }

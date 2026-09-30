@@ -1,0 +1,87 @@
+{
+  "generatedAtUtc": "2026-09-12T11:52:14.6142655Z",
+  "scope": "Milestone 2 Prompt 5 upload retries and recovery",
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T11:42:00.1164093Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T11:42:04.1743421Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageUploadControllerTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T11:42:05.1261313Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3MobileServiceTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T11:42:05.361529Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanPageIngestionPersistenceTest",
+      "tests": 50,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T11:48:22.7064467Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T11:48:26.1144162Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.storage.V3OriginalScanImageStorageTest",
+      "tests": 36,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T11:42:21.1917954Z"
+    }
+  ],
+  "totalTests": 116.0,
+  "migration": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql",
+  "migrationSha256": "566964ade3635db6b1968852e7632cd1dfbdcefa4a57b7150ac81a6880b9d3f6",
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "tables": 68,
+    "foreignKeys": 165,
+    "checks": 91,
+    "uniqueConstraints": 101,
+    "usesSyntheticRecords": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true
+  },
+  "release": {
+    "productionPostEnabled": false,
+    "recoveryEnabledByDefault": false,
+    "configuredBaseline": "V3_014",
+    "draftMigrationDeployedToSchool": false
+  },
+  "limitations": [
+    "Latest successful suite reports include focused reruns after the final code change.",
+    "Fault injection and fresh service instances do not prove process-kill or power-loss durability.",
+    "No physical phone or production endpoint acceptance was performed."
+  ]
+}

@@ -1,0 +1,164 @@
+{
+  "contractVersion": "3.2",
+  "syncUuid": "bb78af5f-f34d-4a92-b056-8402a71990de",
+  "operationUuid": "d11f7ff7-c1a8-407c-98de-baa62ee48c1e",
+  "reopenOperationUuid": "79dd12c7-c4c9-490e-9bd7-3af77adb6956",
+  "expectedRevision": 5,
+  "expectedScoreVersion": 1,
+  "testVersionNumber": 1,
+  "evaluationReferenceHash": "c29a0dc9d74391cf6a4f78a443e65d703d74670b4d377faf51908578a4d6282d",
+  "reasonCode": "TEACHER_CORRECTION",
+  "comment": "Review all answers",
+  "answers": [
+    {
+      "answerUuid": "a1ee65e5-d85a-4625-9d29-2d14e855fe96",
+      "verificationUuid": "67e74f5d-ca92-481a-9352-aee9edd289e5",
+      "questionUuid": "be3b6b9e-5ad2-4241-a9ef-cffaf6c890b9",
+      "regionUuid": "666c4ba4-6b87-4897-b63d-e81d8a795e81",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "b3c4c8ba-9e22-4d89-82fd-ae6768f82060",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "answerUuid": "4c858801-b59f-47e5-b6fa-7956711fa70e",
+      "verificationUuid": "3fc8649d-09a4-4f4b-90bc-ae45c499c873",
+      "questionUuid": "1c07bab0-26bf-4162-a221-08b87c886959",
+      "regionUuid": "849fc6e6-a6d9-47fe-a29f-547528166905",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "18464fc8-21af-4a00-bdb5-974dd71c0050",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "answerUuid": "36d4ccdf-b540-40bf-82b1-9180fddbdde7",
+      "verificationUuid": "4b4bcf55-b564-4e9d-bc3f-a6a7dd0c952a",
+      "questionUuid": "2b3fd164-208f-4429-9406-c654814c7269",
+      "regionUuid": "1b1b4425-6cc4-4620-a77f-8d05d5924eb7",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "222053dd-53c4-4a00-a0f7-22862741eab8",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "answerUuid": "77aaf58a-9944-4906-ac39-46ead8431288",
+      "verificationUuid": "533806d0-ffcf-4aab-9235-dd874e4dbb11",
+      "questionUuid": "e161a368-a690-49da-8d5d-b546df4f9450",
+      "regionUuid": "024ef60c-3be1-47f1-9e7f-4a922b3a24ae",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "d99e27a2-434d-494f-b690-5cf6fe948ec2",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "answerUuid": "73d86a91-f486-4202-ade2-118033b70661",
+      "verificationUuid": "9c7950d1-2646-49b5-828e-1270c7f6b11c",
+      "questionUuid": "ae1ae5fb-a70e-42a8-a663-120c49585b3e",
+      "regionUuid": "15ce304b-3e33-4dfe-b6fd-11e309605da5",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "857fb7a5-631b-431c-a7f5-1fc554eee50b",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "answerUuid": "d782f38d-4586-4e12-9845-c533e40bca28",
+      "verificationUuid": "beb843fb-10c9-427e-8533-fa367d562f70",
+      "questionUuid": "a5422351-de1b-44e0-81a9-27a1c8b4c82a",
+      "regionUuid": "a87a8c10-6caa-4deb-a733-75307ba3ba5c",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "ef7759d5-c516-4f98-b35d-474f171c005d",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "answerUuid": "ed9ebb5f-214d-493d-a78d-7049e5d98696",
+      "verificationUuid": "e1546806-b19b-4037-95e3-f281e775a842",
+      "questionUuid": "07759a1a-a74a-49c8-8c2a-237ad16e4d54",
+      "regionUuid": "75f65825-660e-41f4-824e-a1514a7c5fd4",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "4b1e20e9-8d9d-41cc-9fb4-2bd4a0c7ed73",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "answerUuid": "c7999829-e2d7-4bfd-b8cc-fde65e7ff1ca",
+      "verificationUuid": "864ad89b-8fa6-402c-bbd3-121ad7714003",
+      "questionUuid": "26639f13-6f81-4d69-9cf4-6627ef08f8ec",
+      "regionUuid": "07986a11-e5b7-4815-b32f-87abc5b2e3f7",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "1340d6cc-db4e-46e5-b87b-f1fc3b9033bc",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "answerUuid": "162decb7-80f3-4594-8376-53dc6633fe52",
+      "verificationUuid": "bbeeb0c3-3b41-4c7a-a172-c5ed427bfd9d",
+      "questionUuid": "6c675b7b-7635-48e0-96ef-e10028a2f80e",
+      "regionUuid": "59719c2f-76a8-459c-8b1f-b5b6363a2609",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "bb52da1a-54d2-448c-b249-6d08f6ec7a27",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    },
+    {
+      "answerUuid": "2b079215-3ce5-44d3-822e-fb3eb4063ade",
+      "verificationUuid": "90f18899-74eb-4b70-bce4-58b4df566297",
+      "questionUuid": "c2744ace-952a-4986-b048-cfdc99e64ddd",
+      "regionUuid": "54445d0c-26c5-4eb7-843e-27ba53ccdedd",
+      "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+      "evaluation": {
+        "kind": "objective",
+        "answerStatus": "answered",
+        "detectionUuid": "5ce6bcec-cf2f-42d9-9dca-511d4ddbc25f",
+        "selectedOption": "A"
+      },
+      "comment": "Reviewed again",
+      "clientDecidedAt": "2026-09-12T00:00:00Z"
+    }
+  ]
+}

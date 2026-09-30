@@ -21,15 +21,19 @@ public class V3WrittenVerificationRepository {
     public void reference(long itemId,int version,String hash,String json) {
         jdbc.update("INSERT INTO mobile_written_references(sync_item_id,test_version_number,evaluation_reference_hash,reference_json) VALUES(?,?,?,?)",itemId,version,hash,json);
     }
-    public long answer(V3AuthenticatedUser user,Page page,long question,long itemId,Answer answer,BigDecimal points,List<Long> attachments,String snapshot) {
+    public long answer(V3AuthenticatedUser user,Page page,long question,long itemId,Answer answer,BigDecimal points,BigDecimal maximumPoints,List<Long> attachments,String snapshot) {
         Long primary=attachments.isEmpty()?null:attachments.get(0);
+        // Binary right/wrong per item, matching the objective path and the adviser-confirmed
+        // scoring rule: full marks counts as correct, anything else (including partial rubric
+        // credit) counts as incorrect for item-analysis/reporting purposes.
+        boolean isCorrect=points.compareTo(maximumPoints)>=0;
         long id=insert("student_answer_id","""
                 INSERT INTO student_answers(test_result_id,question_id,verified_by_user_id,answer_uuid,response_text,
                     response_evidence_attachment_id,capture_source,verified_at,answer_status,evaluation_status,
-                    points_earned,teacher_feedback,finalized_at)
-                VALUES(?,?,?,?,?,?,'manual',CURRENT_TIMESTAMP,?,'finalized',?,?,CURRENT_TIMESTAMP)
+                    is_correct,points_earned,teacher_feedback,finalized_at)
+                VALUES(?,?,?,?,?,?,'manual',CURRENT_TIMESTAMP,?,'finalized',?,?,?,CURRENT_TIMESTAMP)
                 """,page.resultId(),question,user.userId(),answer.answerUuid(),answer.evaluation().responseText(),primary,
-                answer.evaluation().answerStatus(),points,answer.comment());
+                answer.evaluation().answerStatus(),isCorrect,points,answer.comment());
         for(long attachment:attachments) {
             int changed=jdbc.update("UPDATE answer_attachments SET student_answer_id=? WHERE answer_attachment_id=? AND student_answer_id IS NULL",id,attachment);
             if(changed!=1)throw new com.capstone.assessment.v3.auth.exception.V3AuthException("EVIDENCE_ALREADY_LINKED","Evidence already belongs to another answer.",org.springframework.http.HttpStatus.CONFLICT);

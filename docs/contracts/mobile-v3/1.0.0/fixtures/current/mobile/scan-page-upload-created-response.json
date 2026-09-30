@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "message": "Scan page acknowledged.",
+  "data": {
+    "syncUuid": "63b15575-b1ca-45ea-902d-efeaec09915d",
+    "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+    "scanUuid": "e4c78a06-3c3a-4455-80bf-a57d098a9404",
+    "scanPageUuid": "63113584-7301-478b-a177-6d9f855200cd",
+    "backendScanPageId": 88001,
+    "uploadStatus": "created",
+    "pageStatus": "captured",
+    "contentHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "acknowledgedAt": "2026-08-30T03:35:04Z"
+  },
+  "errors": null,
+  "timestamp": "2026-08-30T03:35:04Z"
+}

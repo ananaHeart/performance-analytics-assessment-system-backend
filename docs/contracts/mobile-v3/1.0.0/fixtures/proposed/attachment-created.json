@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "message": "Illustrative contract response.",
+  "data": {
+    "attachmentUuid": "00000000-0000-4000-8000-000000002140",
+    "backendAttachmentId": 90001,
+    "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "uploadStatus": "created",
+    "acknowledgedAt": "2026-09-12T02:00:00Z"
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

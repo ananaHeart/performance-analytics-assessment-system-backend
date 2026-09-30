@@ -171,18 +171,28 @@ public class V3MobileService {
         String orientation = pageRows.get(0).orientation();
 
         if (header.manifestVersion() == 2) {
-            int expectedPages = com.capstone.assessment.v3.answersheet.service.V3DynamicLayout.pages(header.totalQuestions());
-            boolean valid = header.totalPages() == expectedPages
-                    && pages.stream().flatMap(p -> p.regions().stream()).map(r -> r.questionUuid()).distinct().count() == header.totalQuestions();
+            // Two different generators can both legitimately produce a manifestVersion==2
+            // sheet: the older MC-only multi-page pagination feature (V3DynamicLayout /
+            // generateDynamic, never activated in this database) and the mixed-question-type
+            // engine (DynamicSheetPacker / generateMixedDynamic, the one actually in use).
+            // This checks generic self-consistency invariants that hold for either producer,
+            // rather than re-deriving one generator's specific formula, which would reject
+            // manifests the other producer built correctly.
+            long distinctQuestions = pages.stream()
+                    .flatMap(p -> p.regions().stream())
+                    .map(V3AnswerSheetManifestResponse.Region::questionUuid)
+                    .distinct()
+                    .count();
+            String templateCode = pages.get(0).template().code();
+            String templateVersion = pages.get(0).template().version();
+            boolean valid = distinctQuestions == header.totalQuestions();
             for (int index = 0; index < pages.size(); index++) {
                 var page = pages.get(index);
                 valid &= page.pageNumber() == index + 1
-                        && page.regions().size() == com.capstone.assessment.v3.answersheet.service.V3DynamicLayout.pageQuestions(header.totalQuestions(), index + 1)
-                        && com.capstone.assessment.v3.answersheet.service.V3DynamicLayout.CODE.equals(page.template().code())
-                        && "3".equals(page.template().version()) && page.qr().payloadVersion() == 3
-                        && page.qr().payload().equals(com.capstone.assessment.v3.answersheet.service.V3DynamicLayout.qr(
-                            header.answerSheetUuid(), page.pageUuid(), header.assignmentUuid(), index + 1, expectedPages, page.pageGeometryHash()))
-                        && page.qr().payloadHash().equals(com.capstone.assessment.v3.answersheet.service.V3DynamicLayout.sha256(page.qr().payload()));
+                        && templateCode.equals(page.template().code())
+                        && templateVersion.equals(page.template().version())
+                        && page.qr().payloadHash().equals(
+                                com.capstone.assessment.v3.answersheet.service.V3DynamicLayout.sha256(page.qr().payload()));
             }
             if (!valid) throw new V3AuthException("ANSWER_SHEET_MANIFEST_INCONSISTENT",
                     "Dynamic manifest pages, QR identities and question coverage must match.", HttpStatus.CONFLICT);
@@ -208,7 +218,16 @@ public class V3MobileService {
                 header.manifestHash(),
                 header.requiredScannerVersion(),
                 header.generatedAt(),
-                pages
+                pages,
+                header.manifestVersion() == 2
+                        ? new V3AnswerSheetManifestResponse.DesignSystem(
+                                com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetPacker.DESIGN_SYSTEM_CODE,
+                                com.capstone.assessment.v3.answersheet.service.dynamic.DynamicSheetPacker.DESIGN_SYSTEM_VERSION,
+                                true,
+                                List.of("header_structure", "typography", "bubble_geometry",
+                                        "registration_marker_pattern", "response_region_rules")
+                        )
+                        : null
         );
     }
 
@@ -273,6 +292,8 @@ public class V3MobileService {
                 .stream()
                 .map(this::toManifestRegion)
                 .toList();
+        List<V3MobileReferenceDataResponse.TemplateRegion> templateRegions =
+                pageTemplateRegions(page.answerSheetPageId(), page.qrPayloadVersion());
 
         return new V3AnswerSheetManifestResponse.Page(
                 page.pageUuid(),
@@ -297,7 +318,46 @@ public class V3MobileService {
                 ),
                 regions,
                 page.pageGeometryHash(),
-                page.qrPayloadVersion()==3 ? repository.pageTemplateRegions(page.answerSheetPageId()) : List.of()
+                templateRegions,
+                registrationMarkers(templateRegions),
+                markerPattern(templateRegions)
+        );
+    }
+
+    private List<V3MobileReferenceDataResponse.TemplateRegion> pageTemplateRegions(long pageId, int qrPayloadVersion) {
+        return qrPayloadVersion == 3 ? repository.pageTemplateRegions(pageId) : List.of();
+    }
+
+    private List<V3AnswerSheetManifestResponse.RegistrationMarker> registrationMarkers(
+            List<V3MobileReferenceDataResponse.TemplateRegion> templateRegions
+    ) {
+        return templateRegions.stream()
+                .filter(region -> "registration_marker".equals(region.regionType()))
+                .map(region -> new V3AnswerSheetManifestResponse.RegistrationMarker(
+                        textValue(region.geometry(), "corner"),
+                        textValue(region.geometry(), "corner"),
+                        textValue(region.geometry(), "style"),
+                        rectangle(region)
+                ))
+                .toList();
+    }
+
+    private V3AnswerSheetManifestResponse.MarkerPattern markerPattern(
+            List<V3MobileReferenceDataResponse.TemplateRegion> templateRegions
+    ) {
+        return templateRegions.stream()
+                .filter(region -> "registration_marker".equals(region.regionType()))
+                .filter(region -> "hollow".equals(textValue(region.geometry(), "style")))
+                .findFirst()
+                .map(region -> new V3AnswerSheetManifestResponse.MarkerPattern(
+                        textValue(region.geometry(), "corner"), "hollow", "solid"))
+                .orElse(null);
+    }
+
+    private V3AnswerSheetManifestResponse.Rectangle rectangle(V3MobileReferenceDataResponse.TemplateRegion region) {
+        return new V3AnswerSheetManifestResponse.Rectangle(
+                region.rectangle().x(), region.rectangle().y(),
+                region.rectangle().width(), region.rectangle().height()
         );
     }
 

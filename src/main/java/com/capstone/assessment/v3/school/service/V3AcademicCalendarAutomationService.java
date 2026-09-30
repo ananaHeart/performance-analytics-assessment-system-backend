@@ -2,6 +2,7 @@ package com.capstone.assessment.v3.school.service;
 
 import com.capstone.assessment.v3.auth.service.V3AuditService;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
+import com.capstone.assessment.v3.school.model.V3AcademicCalendarLayout;
 import com.capstone.assessment.v3.school.model.V3AcademicCalendarModels.AcademicYearRow;
 import com.capstone.assessment.v3.school.model.V3AcademicCalendarModels.TermPeriodRow;
 import com.capstone.assessment.v3.school.repository.V3AcademicCalendarRepository;
@@ -13,6 +14,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Comparator;
 import java.util.Map;
 
 @Profile("v3")
@@ -42,11 +44,13 @@ public class V3AcademicCalendarAutomationService {
         if (year == null || "completed".equals(year.status())) {
             return;
         }
+        List<TermPeriodRow> terms = repository.listTermPeriods(academicYearId);
+        if (V3AcademicCalendarLayout.detect(terms, TermPeriodRow::termName, TermPeriodRow::termOrder).isEmpty()) {
+            return;
+        }
 
         if ("planned".equals(year.status()) && !year.startDate().isAfter(schoolDate)) {
-            List<TermPeriodRow> terms = repository.listTermPeriods(academicYearId);
-            if (terms.size() != 4
-                    || repository.anotherActiveAcademicYearExists(schoolId, academicYearId)) {
+            if (repository.anotherActiveAcademicYearExists(schoolId, academicYearId)) {
                 return;
             }
             if (repository.activateAcademicYearAutomatically(academicYearId) == 1) {
@@ -59,18 +63,19 @@ public class V3AcademicCalendarAutomationService {
             return;
         }
 
-        reconcileTerms(academicYearId, now);
+        reconcileTerms(academicYearId, terms, now);
         List<TermPeriodRow> refreshedTerms = repository.listTermPeriods(academicYearId);
         if (schoolDate.isAfter(year.endDate())
-                && refreshedTerms.size() == 4
+                && V3AcademicCalendarLayout.detect(
+                        refreshedTerms, TermPeriodRow::termName, TermPeriodRow::termOrder).isPresent()
                 && refreshedTerms.stream().allMatch(term -> "completed".equals(term.status()))
                 && repository.completeAcademicYearAutomatically(academicYearId) == 1) {
             record("academic_year.auto_complete", "academic_years", academicYearId, now);
         }
     }
 
-    private void reconcileTerms(int academicYearId, Instant now) {
-        for (TermPeriodRow term : repository.listTermPeriods(academicYearId)) {
+    private void reconcileTerms(int academicYearId, List<TermPeriodRow> terms, Instant now) {
+        for (TermPeriodRow term : terms.stream().sorted(Comparator.comparingInt(TermPeriodRow::termOrder)).toList()) {
             if ("completed".equals(term.status())) {
                 continue;
             }

@@ -264,6 +264,13 @@ public class V3ScanPageRepository {
                 image.mimeType(), image.fileSizeBytes(), image.contentHash(), Timestamp.from(capturedAt));
     }
 
+    /** Lineage anchor for answer_crop/normalized_page attachment uploads (Mobile needs this to reference the original). */
+    public String findOriginalAttachmentUuid(long pageId) {
+        return jdbc.queryForObject(
+                "SELECT attachment_uuid FROM answer_attachments WHERE scan_page_id = ? AND attachment_type = 'original_page'",
+                String.class, pageId);
+    }
+
     public void recordCapturedPage(long scanId) {
         jdbc.update("UPDATE scan_sessions SET captured_page_count = captured_page_count + 1 WHERE scan_session_id = ?",
                 scanId);

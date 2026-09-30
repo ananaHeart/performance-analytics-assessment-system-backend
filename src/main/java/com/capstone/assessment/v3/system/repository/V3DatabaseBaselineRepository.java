@@ -1,5 +1,7 @@
 package com.capstone.assessment.v3.system.repository;
 
+import com.capstone.assessment.v3.system.config.V3BaselineProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -11,9 +13,16 @@ public class V3DatabaseBaselineRepository {
     private static final int REQUIRED_DYNAMIC_TABLE_COUNT = 6;
 
     private final JdbcTemplate jdbcTemplate;
+    private final V3BaselineProperties properties;
 
     public V3DatabaseBaselineRepository(JdbcTemplate jdbcTemplate) {
+        this(jdbcTemplate, new V3BaselineProperties());
+    }
+
+    @Autowired
+    public V3DatabaseBaselineRepository(JdbcTemplate jdbcTemplate, V3BaselineProperties properties) {
         this.jdbcTemplate = jdbcTemplate;
+        this.properties = properties;
     }
 
     public V3DatabaseBaselineSnapshot readSnapshot() {
@@ -73,7 +82,7 @@ public class V3DatabaseBaselineRepository {
                 """);
         int requiredHardeningConstraintCount = count("""
                 SELECT COUNT(*)
-                FROM information_schema.table_constraints
+                FROM %s
                 WHERE constraint_schema = DATABASE()
                   AND constraint_name IN (
                       'fk_answer_attachments_source',
@@ -92,7 +101,7 @@ public class V3DatabaseBaselineRepository {
                       'chk_scan_pages_qr_payload',
                       'chk_scan_pages_qr_hash'
                   )
-                """);
+                """.formatted(requiredConstraintCatalog()));
         int schoolScopedSectionRuleCount = count("""
                 SELECT COUNT(*)
                   FROM information_schema.columns
@@ -145,7 +154,7 @@ public class V3DatabaseBaselineRepository {
                 """);
         int academicCalendarConstraintCount = count("""
                 SELECT COUNT(*)
-                  FROM information_schema.table_constraints
+                  FROM %s
                  WHERE constraint_schema = DATABASE()
                    AND constraint_name IN (
                        'fk_academic_years_school',
@@ -165,7 +174,7 @@ public class V3DatabaseBaselineRepository {
                        'fk_test_assignments_outside_schedule_user',
                        'chk_test_assignments_outside_schedule_confirmation'
                    )
-                """);
+                """.formatted(requiredConstraintCatalog()));
         int activeOmrTemplateCount = count(
                 "SELECT COUNT(*) FROM omr_templates WHERE template_status = 'active'"
         );
@@ -246,6 +255,9 @@ public class V3DatabaseBaselineRepository {
     }
 
     private int countConstraint(String constraintType) {
+        if ("CHECK".equals(constraintType) && isTiDb()) {
+            return count("SELECT COUNT(*) FROM information_schema.check_constraints WHERE constraint_schema = DATABASE()");
+        }
         String typePredicate = switch (constraintType) {
             case "FOREIGN KEY" -> "constraint_type = 'FOREIGN KEY'";
             case "CHECK" -> "constraint_type = 'CHECK'";
@@ -263,6 +275,26 @@ public class V3DatabaseBaselineRepository {
     private int count(String sql) {
         Integer value = jdbcTemplate.queryForObject(sql, Integer.class);
         return value == null ? 0 : value;
+    }
+
+    public boolean areCheckConstraintsEnabled() {
+        return !isTiDb() || count("SELECT @@GLOBAL.tidb_enable_check_constraint") == 1;
+    }
+
+    private boolean isTiDb() {
+        return properties.getDatabaseEngine() == V3BaselineProperties.DatabaseEngine.TIDB;
+    }
+
+    private String requiredConstraintCatalog() {
+        // TiDB exposes CHECK metadata separately. Excluding CHECK from the first
+        // branch also avoids double-counting if TABLE_CONSTRAINTS gains that support.
+        return isTiDb() ? """
+                (SELECT constraint_schema, constraint_name FROM information_schema.table_constraints
+                  WHERE constraint_type <> 'CHECK'
+                 UNION ALL
+                 SELECT constraint_schema, constraint_name FROM information_schema.check_constraints)
+                 required_constraints
+                """ : "information_schema.table_constraints";
     }
 
     public record V3DatabaseBaselineSnapshot(

@@ -1,0 +1,82 @@
+V3 calendar compatibility and cloud preparation - 2026-09-30
+
+STATUS
+The backend updates are collected in a clean publication branch. The original
+local working folder and its existing commits are preserved. A hardcoded local
+MFA key fallback is excluded from this branch and its new history; deployments
+must supply their own stable encryption key through environment settings.
+The frontend changes remain a separate commit/deployment task. No new version
+has been verified live. The working local V3 database and its configuration
+were not changed by preparing this publication branch.
+
+CALENDAR BEHAVIOR
+New academic years require Term 1, Term 2 and Term 3. Existing complete four-
+quarter years remain supported, including their stored IDs and names. Editing a
+planned legacy year retains its four periods; this does not convert old records.
+One active term per academic year, non-overlapping dates, ownership checks,
+manual overrides and completed-period restrictions remain enforced.
+
+New term windows use inclusive starts and exclusive ends. Assessment openings
+must precede the exclusive end; a closing time may equal it. Existing quarter
+boundaries retain their previous behavior. The calendar UI supports both layouts
+and renders the new terms in Manila time. Its current controls remain view and
+refresh; this work does not introduce calendar editing forms.
+
+VALIDATION
+205 focused backend tests passed across calendar, assessment, student reports,
+teacher isolation, exports, TiDB metadata and cloud configuration. Test execution
+used mocks, H2 and minimal configuration contexts, with no application server or
+external datasource startup. The backend JAR package build passed in the isolated
+worktree. Main-checkout Java/test sources match the tested worktree.
+Frontend: 8 helper tests, 6 responsive browser fixtures, targeted ESLint and the
+production build passed. The existing bundle-size warning remains.
+Cloud entrypoint shell syntax passed. Docker was unavailable, so the Docker image
+has not been built or run. Real accounts, email delivery and physical scanning
+have not been verified against the cloud deployment.
+
+PREPARED CLOUD TARGET
+TiDB database: performance_assessment_v3_test
+Host: gateway01.ap-southeast-1.prod.aws.tidbcloud.com
+Port: 4000, with TLS identity verification required.
+Activate profiles in order: v3,v3-mobile-release,v3-cloud.
+Use Dockerfile.v3-cloud and deploy/render-v3.env.example.
+The separate profile requires cloud secrets; it does not fall back to local DB
+credentials. Its guard rejects a different database, unsafe initialization,
+conflicting connection overrides, missing secrets and temporary storage paths.
+
+CLOUD DATABASE WORK STILL PENDING
+The September 29 reviewed package has 7 CHECK constraints; the existing release
+baseline requires 131. This is offline package evidence, not a fresh cloud query.
+deploy/tidb-v3 contains a reviewable repair of the missing 124 named checks,
+read-only precheck/postcheck SQL and source provenance. All SQL is qualified to
+the approved test database. None has been executed. Do not lower the release
+baseline to make the incomplete schema pass. See tidb-v3/REPAIR_NOTES.txt.
+
+DEPLOYMENT SEQUENCE
+1. The user confirmed FREE-ONLY deployment for a 10-teacher evaluation.
+   Do not provision paid services or disks. The prepared Render Docker route
+   requires permanent storage at /var/data and working SMTP. Render Free lacks
+   persistent disks and blocks outbound SMTP ports 25, 465 and 587. A free-only
+   route needs separate object-storage and HTTPS email-provider integration.
+   Free-only storage/email integration and its readiness checks remain to be
+   implemented before this cloud Docker configuration can run on Render Free.
+   No paid plan, disk or service was purchased or changed.
+2. Review and execute the TiDB read-only precheck against the exact destination.
+   Apply the reviewed additive repair only after the cloud execution decision;
+   stop on any mismatch or error. Verify all definitions and enforcement.
+3. Configure the actual Render service with the approved storage, HTTPS backend
+   and frontend URLs, cloud-only database credentials, stable MFA key and mail
+   provider settings. Keep secrets out of Git and frontend VITE variables.
+   Review the existing login-lockout switch before public deployment: the
+   preserved local demo changes default app.v3.auth.login-lockout-enabled to
+   false, which also disables login/sensitive-action rate limiting. The prepared
+   cloud overlay currently inherits this behavior; this commit does not resolve
+   the production authentication policy.
+4. Build/deploy the backend, confirm its database and mobile readiness checks,
+   then deploy the frontend with VITE_V3_API_URL pointing to that backend.
+5. Verify principal access, teacher registration/email, per-teacher student-report
+   isolation, term selection, uploads and exports. Connect the mobile app and
+   perform physical scan acceptance before claiming full system readiness.
+
+Render behavior reference: https://render.com/docs/free
+Persistent disks reference: https://render.com/docs/disks

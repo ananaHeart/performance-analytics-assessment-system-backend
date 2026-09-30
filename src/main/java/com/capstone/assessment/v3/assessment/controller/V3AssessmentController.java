@@ -119,6 +119,18 @@ public class V3AssessmentController {
         ));
     }
 
+    @PostMapping("/{testId}/restore")
+    public ResponseEntity<ApiResponse<V3AssessmentResponse>> restore(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @PathVariable long testId,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "V3 assessment restored successfully.",
+                assessmentService.restoreAssessment(user, testId, requestMetadata(httpRequest))
+        ));
+    }
+
     private V3RequestMetadata requestMetadata(HttpServletRequest request) {
         return new V3RequestMetadata(
                 clientIpAddress(request),

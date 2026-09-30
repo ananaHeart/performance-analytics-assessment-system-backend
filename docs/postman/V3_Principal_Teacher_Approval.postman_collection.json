@@ -1,0 +1,142 @@
+{
+  "info": {
+    "name": "SMART V3 Principal Teacher Approval",
+    "description": "Controlled local acceptance requests for verified, same-school teacher account review and decisions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "principalToken",
+      "value": ""
+    },
+    {
+      "key": "teacherUserId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "List Pending Verified Teachers",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{principalToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/users/teachers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "users",
+            "teachers"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Verified Teacher Detail",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{principalToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/users/teachers/{{teacherUserId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "users",
+            "teachers",
+            "{{teacherUserId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Approve Pending Teacher",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{principalToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/users/teachers/{{teacherUserId}}/approve",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "users",
+            "teachers",
+            "{{teacherUserId}}",
+            "approve"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Reject Pending Teacher",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{principalToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Applicant is not part of the current school faculty.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v3/users/teachers/{{teacherUserId}}/reject",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v3",
+            "users",
+            "teachers",
+            "{{teacherUserId}}",
+            "reject"
+          ]
+        }
+      }
+    }
+  ]
+}

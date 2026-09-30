@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "message": "Illustrative contract response.",
+  "data": {
+    "contractVersion": "3.0",
+    "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+    "scoreVersion": 1,
+    "status": "ready",
+    "reasonCode": null,
+    "generatedAt": "2026-09-12T02:00:00Z",
+    "metrics": {
+      "totalScore": 8,
+      "maxScore": 10,
+      "percentage": 80,
+      "itemAnalysis": null,
+      "mastery": null,
+      "interventions": null,
+      "student360": null
+    },
+    "unavailableModules": [
+      "itemAnalysis",
+      "mastery",
+      "interventions",
+      "student360"
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

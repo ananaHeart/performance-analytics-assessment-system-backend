@@ -52,7 +52,8 @@ class V3ScanPageUploadControllerTest {
         when(service.ingest(eq(user), any(), any())).thenAnswer(call -> {
             V3ScanPageUploadMetadata metadata = call.getArgument(1);
             return new V3ScanPageUploadResponse(metadata.syncUuid(), metadata.resultUuid(), metadata.scanUuid(),
-                    metadata.scanPageUuid(), 123, "created", "captured", metadata.imageHash(), Instant.now());
+                    metadata.scanPageUuid(), 123, "created", "captured", metadata.imageHash(),
+                    "00000000-0000-4000-8000-000000000000", Instant.now());
         });
     }
 
@@ -79,7 +80,8 @@ class V3ScanPageUploadControllerTest {
     @Test void durableReplayUsesHttp200() throws Exception {
         var metadata = mapper.readValue(valid, V3ScanPageUploadMetadata.class);
         when(service.ingest(eq(user), any(), any())).thenReturn(new V3ScanPageUploadResponse(metadata.syncUuid(),
-                metadata.resultUuid(), metadata.scanUuid(), metadata.scanPageUuid(), 123, "replayed", "captured", metadata.imageHash(), Instant.now()));
+                metadata.resultUuid(), metadata.scanUuid(), metadata.scanPageUuid(), 123, "replayed", "captured",
+                metadata.imageHash(), "00000000-0000-4000-8000-000000000000", Instant.now()));
         mvc.perform(multipart(ROUTE).part(metadata(valid), image())).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.uploadStatus").value("replayed"));
     }

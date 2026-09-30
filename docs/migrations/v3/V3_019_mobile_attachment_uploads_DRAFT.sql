@@ -1,0 +1,35 @@
+-- DRAFT after V3_018; isolated validation only. Does not change the configured V3_014 baseline.
+CREATE TABLE mobile_attachment_uploads (
+    operation_uuid CHAR(36) NOT NULL PRIMARY KEY,
+    attachment_uuid CHAR(36) NOT NULL,
+    teacher_user_id BIGINT UNSIGNED NOT NULL,
+    sync_id BIGINT UNSIGNED NOT NULL,
+    scan_page_id BIGINT UNSIGNED NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    request_json LONGTEXT NOT NULL,
+    image_uuid CHAR(36) NOT NULL,
+    storage_key VARCHAR(500) NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    file_size_bytes BIGINT UNSIGNED NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    width_pixels INT UNSIGNED NOT NULL,
+    height_pixels INT UNSIGNED NOT NULL,
+    upload_state ENUM('pending','committed') NOT NULL DEFAULT 'pending',
+    backend_attachment_id BIGINT UNSIGNED NULL,
+    response_json LONGTEXT NULL,
+    last_error_code VARCHAR(50) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    committed_at TIMESTAMP NULL,
+    CONSTRAINT uk_mobile_attachment_uuid UNIQUE(attachment_uuid),
+    CONSTRAINT uk_mobile_attachment_sync UNIQUE(sync_id),
+    CONSTRAINT fk_mobile_attachment_teacher FOREIGN KEY(teacher_user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_mobile_attachment_sync FOREIGN KEY(sync_id) REFERENCES syncs(sync_id),
+    CONSTRAINT fk_mobile_attachment_page FOREIGN KEY(scan_page_id) REFERENCES scan_pages(scan_page_id),
+    CONSTRAINT fk_mobile_attachment_evidence FOREIGN KEY(backend_attachment_id) REFERENCES answer_attachments(answer_attachment_id),
+    CONSTRAINT chk_mobile_attachment_request CHECK(JSON_VALID(request_json)),
+    CONSTRAINT chk_mobile_attachment_response CHECK(response_json IS NULL OR JSON_VALID(response_json)),
+    CONSTRAINT chk_mobile_attachment_image CHECK(file_size_bytes BETWEEN 1 AND 15728640 AND width_pixels > 0 AND height_pixels > 0 AND width_pixels * height_pixels <= 40000000),
+    CONSTRAINT chk_mobile_attachment_state CHECK(
+        (upload_state='pending' AND backend_attachment_id IS NULL AND response_json IS NULL AND committed_at IS NULL)
+        OR (upload_state='committed' AND backend_attachment_id IS NOT NULL AND response_json IS NOT NULL AND committed_at IS NOT NULL))
+) ENGINE=InnoDB;

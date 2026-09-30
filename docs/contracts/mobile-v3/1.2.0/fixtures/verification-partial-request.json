@@ -1,0 +1,66 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "00000000-0000-4000-8000-000000000134",
+  "operationUuid": "00000000-0000-4000-8000-000000010134",
+  "assignmentUuid": "26b14ea2-4383-43f5-bb40-f60683ee46bb",
+  "items": [
+    {
+      "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+      "expectedRevision": 2,
+      "pageDecisions": [
+        {
+          "verificationUuid": "00000000-0000-4000-8000-000000000140",
+          "scanPageUuid": "63113584-7301-478b-a177-6d9f855200cd",
+          "action": "accepted",
+          "reasonCode": null,
+          "comment": null,
+          "clientDecidedAt": "2026-09-12T02:00:00Z"
+        }
+      ],
+      "answers": [
+        {
+          "answerUuid": "00000000-0000-4000-8000-000000001004",
+          "verificationUuid": "00000000-0000-4000-8000-000000000130",
+          "questionUuid": "1dd4c493-013f-4251-9d87-ad9be9533298",
+          "regionUuid": "c4eff0ab-8c19-4f56-bd9e-821882281363",
+          "scanPageUuid": "63113584-7301-478b-a177-6d9f855200cd",
+          "evaluation": {
+            "kind": "objective",
+            "detectionUuid": "00000000-0000-4000-8000-000000001001"
+          },
+          "comment": null,
+          "clientDecidedAt": "2026-09-12T02:00:00Z"
+        }
+      ]
+    },
+    {
+      "resultUuid": "00000000-0000-4000-8000-000000000902",
+      "expectedRevision": 2,
+      "pageDecisions": [
+        {
+          "verificationUuid": "00000000-0000-4000-8000-000000000151",
+          "scanPageUuid": "00000000-0000-4000-8000-000000000150",
+          "action": "accepted",
+          "reasonCode": null,
+          "comment": null,
+          "clientDecidedAt": "2026-09-12T02:00:00Z"
+        }
+      ],
+      "answers": [
+        {
+          "answerUuid": "00000000-0000-4000-8000-000000000152",
+          "verificationUuid": "00000000-0000-4000-8000-000000000153",
+          "questionUuid": "1dd4c493-013f-4251-9d87-ad9be9533298",
+          "regionUuid": "c4eff0ab-8c19-4f56-bd9e-821882281363",
+          "scanPageUuid": "00000000-0000-4000-8000-000000000150",
+          "evaluation": {
+            "kind": "objective",
+            "detectionUuid": "00000000-0000-4000-8000-000000000154"
+          },
+          "comment": null,
+          "clientDecidedAt": "2026-09-12T02:00:00Z"
+        }
+      ]
+    }
+  ]
+}

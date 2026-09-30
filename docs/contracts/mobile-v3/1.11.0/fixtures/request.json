@@ -1,0 +1,10 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "41204952-60f3-43fc-a684-9e721cf75206",
+  "operationUuid": "c73051ee-3755-46e2-8484-a7cd811a9d81",
+  "expectedRevision": 4,
+  "expectedScoreVersion": 1,
+  "reasonCode": "VERIFIED_RESCAN",
+  "comment": "New capture verified",
+  "replacementResultUuid": "a058fd61-7116-4e09-bdad-685c937fbaad"
+}

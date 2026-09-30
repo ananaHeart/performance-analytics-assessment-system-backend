@@ -91,8 +91,12 @@ public class V3TeacherVerificationService {
                             throw conflict("OBJECTIVE_REGION_REQUIRED","This slice accepts only MC/TF detection-backed answers.");
                         var detection=repository.detection(answer.evaluation().detectionUuid(),page.pageId(),region.id(),region.questionId())
                                 .orElseThrow(()->dependency("Commit the referenced detection for this page/region/question before verification."));
-                        if(!Set.of("detected","blank").contains(detection.status()))
-                            throw conflict("OBJECTIVE_RESCAN_REQUIRED","Uncertain or multiple marks cannot become a chosen answer; request a rescan or reject the page.");
+                        // Uncertain/multiple marks are recorded faithfully as their own status
+                        // (never converted into a chosen option) rather than blocked outright -
+                        // student marks stay untouchable; see scoreObjectiveAnswer for how these
+                        // are scored (zero credit, same as blank).
+                        if(!Set.of("detected","blank","multiple_marks","uncertain").contains(detection.status()))
+                            throw conflict("OBJECTIVE_RESCAN_REQUIRED","This detection status cannot be verified; request a rescan or reject the page.");
                         if("blank".equals(detection.status()) && (detection.option()!=null || detection.optionId()!=null)
                                 || "detected".equals(detection.status()) && (detection.optionId()==null || detection.option()==null
                                 || !Set.of("A","B","C","D").contains(detection.option())

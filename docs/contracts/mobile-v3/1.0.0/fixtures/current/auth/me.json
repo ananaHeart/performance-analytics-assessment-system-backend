@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "message": "Authenticated user retrieved successfully.",
+  "data": {
+    "userId": 42,
+    "schoolId": "SCHOOL-001",
+    "firstName": "Demo",
+    "middleName": null,
+    "lastName": "Teacher",
+    "suffix": null,
+    "email": "teacher@example.com",
+    "role": "teacher",
+    "status": "active",
+    "mfaRequired": false
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

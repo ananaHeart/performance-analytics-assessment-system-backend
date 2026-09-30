@@ -1,0 +1,2804 @@
+{
+  "status": "offline_reviewed_live_acceptance_pending",
+  "target_database": "performance_assessment_v3_test",
+  "database_connections": 0,
+  "sql_statements_executed": 0,
+  "rules_added_if_applied": 124,
+  "hardening_checks_restored": 12,
+  "calendar_checks_restored": 7,
+  "existing_export_checks": 7,
+  "other_release_checks_restored": 105,
+  "expected_total_checks_after_repair": 131,
+  "local_release_expected_checks": 131,
+  "full_release_named_check_set_reconstructed": true,
+  "full_release_named_check_gap_after_repair": 0,
+  "semantic_equivalence_status": "Original expressions retained except two documented QR-regex adaptations; live verification pending",
+  "source_export_sha256": "d190e18dbf421f8e4d03369d96f105708ce7a32c9d65af648aa5ad14c4035c8c",
+  "package_schema_sha256": "02260922dcd47f78c1c61eb6582eda3bdffc2ca1bcf9a78f2ede068c5312e0d2",
+  "package_foreign_keys_sha256": "e801e5d25a4b7616534c9ff44357583f89c253d3986be59a83cf3a3704ab20f0",
+  "repository_schema_source_sha256": "6dfffd4179ec114d49a48ee0f4309cca1cfaf1b2beae96ecef9168b4c13744e2",
+  "migration_sources": [
+    {
+      "file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql",
+      "sha256": "72ae8916ed6210ab0bb25f1e167c8c8f8faf51adcc8a22c28088bc1fafcc0932",
+      "named_checks_after_migration": 9
+    },
+    {
+      "file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "sha256": "9816298c1b57bbde81b0039d37ca96ecce9c2f28b8186ac2d1d8857725be7d71",
+      "named_checks_after_migration": 24
+    },
+    {
+      "file": "docs/migrations/v3/V3_002_assessment_capture.sql",
+      "sha256": "e009a3d108586810bd8eb7f9aef94db6d22af0a036003c455644911bfe9326b5",
+      "named_checks_after_migration": 33
+    },
+    {
+      "file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "sha256": "201848fe7bd2fc4cbc707c30847b32ecb69732aa3edc9154997ddaae8cada3ff",
+      "named_checks_after_migration": 43
+    },
+    {
+      "file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "sha256": "2de7fc20ab624f9090cf67e3d322cb7d2c2572150c128a823c8e588a910f803d",
+      "named_checks_after_migration": 61
+    },
+    {
+      "file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "sha256": "23163b9117d90962d053578d68db1da3a66c2da71e3e81bffb9f8b25cbba105c",
+      "named_checks_after_migration": 73
+    },
+    {
+      "file": "docs/migrations/v3/V3_013_school_scoped_sections.sql",
+      "sha256": "8938e305c64f7e526e1d78c0bb80982110260f7867a20e7749c07da3e5866205",
+      "named_checks_after_migration": 73
+    },
+    {
+      "file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql",
+      "sha256": "443667a137f470a85f63a7767bb1bbbe5ce267bf170f90fa77610905d3ad6dae",
+      "named_checks_after_migration": 80
+    },
+    {
+      "file": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql",
+      "sha256": "566964ade3635db6b1968852e7632cd1dfbdcefa4a57b7150ac81a6880b9d3f6",
+      "named_checks_after_migration": 84
+    },
+    {
+      "file": "docs/migrations/v3/V3_016_mobile_detection_receipts_DRAFT.sql",
+      "sha256": "b4a8cf63f98408f6f96f94b128bb57c14375d1d0d2958ca2d72bfb7d2edf59a2",
+      "named_checks_after_migration": 86
+    },
+    {
+      "file": "docs/migrations/v3/V3_017_mobile_teacher_verification_DRAFT.sql",
+      "sha256": "a470e6955ebf1d84c78767f80d4e63ff1918b19eb8d92f03557c81b3520aa796",
+      "named_checks_after_migration": 88
+    },
+    {
+      "file": "docs/migrations/v3/V3_018_mobile_result_finalization_DRAFT.sql",
+      "sha256": "8ca6a49d2b1297753c3a5d834973efbb029096bae229d18b32275289b50687ff",
+      "named_checks_after_migration": 91
+    },
+    {
+      "file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql",
+      "sha256": "0d51f456c9a43cac8f71aff196cfa4320a15657dc3e70431d5c78a29c3d734f6",
+      "named_checks_after_migration": 95
+    },
+    {
+      "file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql",
+      "sha256": "aabb1b181c125ed954fde8d3b8cf2fc5c3db833193e00d4b6888810e3f03a2d5",
+      "named_checks_after_migration": 99
+    },
+    {
+      "file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "sha256": "ad6bb19fd52629b764e9a868cfc08de2bfc4958d25455e81060d3a4ee27d1f52",
+      "named_checks_after_migration": 107
+    },
+    {
+      "file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "sha256": "5143d849cacbffb2a32b1637945e78ff25cd219f2d97bd4741d1496d787378fc",
+      "named_checks_after_migration": 116
+    },
+    {
+      "file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "sha256": "8ddfb88a385df51ddcbacd2a4b5265a66f3b77a920ea895861b430146e00b6cb",
+      "named_checks_after_migration": 124
+    }
+  ],
+  "check_add_drop_history": [
+    {
+      "action": "add",
+      "name": "chk_academic_years_dates",
+      "table": "academic_years",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_keys_option",
+      "table": "answer_keys",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_detections_option",
+      "table": "omr_detections",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_detections_confidence",
+      "table": "omr_detections",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_student_answers_option",
+      "table": "student_answers",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_student_answers_points",
+      "table": "student_answers",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_test_parts_number_of_items",
+      "table": "test_parts",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_test_parts_points_per_item",
+      "table": "test_parts",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_test_results_scores",
+      "table": "test_results",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_users_teaching_start_month",
+      "table": "users",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_users_teaching_start_year",
+      "table": "users",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_students_lrn",
+      "table": "students",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_term_periods_dates",
+      "table": "term_periods",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_term_periods_override",
+      "table": "term_periods",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_performance_rule_sets_dates",
+      "table": "performance_rule_sets",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_rubrics_total_points",
+      "table": "rubrics",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_rubric_criteria_maximum_points",
+      "table": "rubric_criteria",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_test_assignments_dates",
+      "table": "test_assignments",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_questions_maximum_points",
+      "table": "questions",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_questions_maximum_response_length",
+      "table": "questions",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_question_options_order",
+      "table": "question_options",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_accepted_answers_points",
+      "table": "accepted_answers",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "drop",
+      "name": "chk_answer_keys_option",
+      "table": "answer_keys",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_keys_strategy",
+      "table": "answer_keys",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_part_skill_mappings_range",
+      "table": "part_skill_mappings",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_class_lists_end_state",
+      "table": "class_lists",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_templates_item_count",
+      "table": "omr_templates",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_templates_option_count",
+      "table": "omr_templates",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "drop",
+      "name": "chk_omr_detections_option",
+      "table": "omr_detections",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_detections_option",
+      "table": "omr_detections",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_test_results_percentage",
+      "table": "test_results",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "drop",
+      "name": "chk_student_answers_option",
+      "table": "student_answers",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_student_answers_response",
+      "table": "student_answers",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_attachments_owner",
+      "table": "answer_attachments",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_attachments_file_size",
+      "table": "answer_attachments",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_scan_verifications_reason",
+      "table": "scan_verifications",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_verifications_points",
+      "table": "answer_verifications",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_verifications_reason",
+      "table": "answer_verifications",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_rubric_scores_points",
+      "table": "answer_rubric_scores",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_intervention_results_mastery",
+      "table": "intervention_results",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_student_intervention_cases_dates",
+      "table": "student_intervention_cases",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_student_intervention_updates_status_change",
+      "table": "student_intervention_updates",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_syncs_request_item_count",
+      "table": "syncs",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_verification_challenges_attempts",
+      "table": "verification_challenges",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_verification_challenges_expiry",
+      "table": "verification_challenges",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_user_mfa_factors_totp",
+      "table": "user_mfa_factors",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mfa_authentication_challenges_attempts",
+      "table": "mfa_authentication_challenges",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mfa_authentication_challenges_expiry",
+      "table": "mfa_authentication_challenges",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_auth_sessions_mfa_state",
+      "table": "auth_sessions",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_paper_sizes_dimensions",
+      "table": "paper_sizes",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "drop",
+      "name": "chk_omr_templates_item_count",
+      "table": "omr_templates",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "drop",
+      "name": "chk_omr_templates_option_count",
+      "table": "omr_templates",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_templates_item_count",
+      "table": "omr_templates",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_templates_option_count",
+      "table": "omr_templates",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_templates_print_scale",
+      "table": "omr_templates",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_template_regions_bounds",
+      "table": "omr_template_regions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_template_regions_question_type",
+      "table": "omr_template_regions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_versions_minimum_questions",
+      "table": "answer_sheet_versions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_versions_pages",
+      "table": "answer_sheet_versions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_versions_generation",
+      "table": "answer_sheet_versions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_versions_content_version",
+      "table": "answer_sheet_versions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_versions_pdf_size",
+      "table": "answer_sheet_versions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_pages_number",
+      "table": "answer_sheet_pages",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_regions_item_numbers",
+      "table": "answer_sheet_regions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_scan_sessions_capture_model",
+      "table": "scan_sessions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_scan_sessions_page_counts",
+      "table": "scan_sessions",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_scan_pages_numbers",
+      "table": "scan_pages",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_scan_pages_rotation",
+      "table": "scan_pages",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_omr_detections_page_region",
+      "table": "omr_detections",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "drop",
+      "name": "chk_answer_attachments_owner",
+      "table": "answer_attachments",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_attachments_owner",
+      "table": "answer_attachments",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_attachments_region_page",
+      "table": "answer_attachments",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_rubric_scores_maximum",
+      "table": "answer_rubric_scores",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_questions_expected_response_count",
+      "table": "questions",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_regions_expected_count",
+      "table": "answer_sheet_regions",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_regions_line_count",
+      "table": "answer_sheet_regions",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_regions_response_shape",
+      "table": "answer_sheet_regions",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_attachments_normalized_source",
+      "table": "answer_attachments",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_attachments_hold",
+      "table": "answer_attachments",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_attachments_purge_state",
+      "table": "answer_attachments",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_attachments_held_not_purged",
+      "table": "answer_attachments",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_pages_qr_payload",
+      "table": "answer_sheet_pages",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_sheet_pages_qr_hash",
+      "table": "answer_sheet_pages",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_scan_pages_qr_payload",
+      "table": "scan_pages",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_scan_pages_qr_hash",
+      "table": "scan_pages",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_term_periods_order",
+      "table": "term_periods",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_class_assignment_schedules_day",
+      "table": "class_assignment_schedules",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_class_assignment_schedules_time",
+      "table": "class_assignment_schedules",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_class_assignment_schedules_dates",
+      "table": "class_assignment_schedules",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_class_assignment_schedules_timezone",
+      "table": "class_assignment_schedules",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_class_assignment_schedules_archive",
+      "table": "class_assignment_schedules",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_test_assignments_outside_schedule_confirmation",
+      "table": "test_assignments",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_scan_uploads_json",
+      "table": "mobile_scan_uploads",
+      "source_file": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_scan_uploads_state",
+      "table": "mobile_scan_uploads",
+      "source_file": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_scan_uploads_size",
+      "table": "mobile_scan_uploads",
+      "source_file": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_scan_uploads_pixels",
+      "table": "mobile_scan_uploads",
+      "source_file": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_test_results_mobile_revision",
+      "table": "test_results",
+      "source_file": "docs/migrations/v3/V3_016_mobile_detection_receipts_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_detection_uploads_response",
+      "table": "mobile_detection_uploads",
+      "source_file": "docs/migrations/v3/V3_016_mobile_detection_receipts_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_verification_batches_json",
+      "table": "mobile_verification_batches",
+      "source_file": "docs/migrations/v3/V3_017_mobile_teacher_verification_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_verification_items_json",
+      "table": "mobile_verification_items",
+      "source_file": "docs/migrations/v3/V3_017_mobile_teacher_verification_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_result_finalization_revision",
+      "table": "mobile_result_finalizations",
+      "source_file": "docs/migrations/v3/V3_018_mobile_result_finalization_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_result_finalization_version",
+      "table": "mobile_result_finalizations",
+      "source_file": "docs/migrations/v3/V3_018_mobile_result_finalization_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_result_finalization_json",
+      "table": "mobile_result_finalizations",
+      "source_file": "docs/migrations/v3/V3_018_mobile_result_finalization_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_attachment_request",
+      "table": "mobile_attachment_uploads",
+      "source_file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_attachment_response",
+      "table": "mobile_attachment_uploads",
+      "source_file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_attachment_image",
+      "table": "mobile_attachment_uploads",
+      "source_file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_attachment_state",
+      "table": "mobile_attachment_uploads",
+      "source_file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql"
+    },
+    {
+      "action": "drop",
+      "name": "chk_student_answers_response",
+      "table": "student_answers",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_student_answers_response",
+      "table": "student_answers",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_student_answers_evidence_source",
+      "table": "student_answers",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_written_reference_version",
+      "table": "mobile_written_references",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_written_reference_json",
+      "table": "mobile_written_references",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_answer_verifications_evaluation_json",
+      "table": "answer_verifications",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_reopen_revision",
+      "table": "mobile_result_reopens",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_reopen_version",
+      "table": "mobile_result_reopens",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_reopen_reason",
+      "table": "mobile_result_reopens",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_reopen_comment",
+      "table": "mobile_result_reopens",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_reopen_hash",
+      "table": "mobile_result_reopens",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_reopen_request",
+      "table": "mobile_result_reopens",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_reopen_score",
+      "table": "mobile_result_reopens",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_reopen_response",
+      "table": "mobile_result_reopens",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_correction_version",
+      "table": "mobile_result_corrections",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_correction_revision",
+      "table": "mobile_result_corrections",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_correction_hash",
+      "table": "mobile_result_corrections",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_correction_request",
+      "table": "mobile_result_corrections",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_correction_reference",
+      "table": "mobile_result_corrections",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_correction_response",
+      "table": "mobile_result_corrections",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_answer_correction_kind",
+      "table": "mobile_answer_corrections",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_answer_correction_before",
+      "table": "mobile_answer_corrections",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_answer_correction_after",
+      "table": "mobile_answer_corrections",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_supersession_distinct",
+      "table": "mobile_result_supersessions",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_supersession_revision",
+      "table": "mobile_result_supersessions",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_supersession_version",
+      "table": "mobile_result_supersessions",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_supersession_hash",
+      "table": "mobile_result_supersessions",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_supersession_request",
+      "table": "mobile_result_supersessions",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_supersession_previous",
+      "table": "mobile_result_supersessions",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_supersession_replacement",
+      "table": "mobile_result_supersessions",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql"
+    },
+    {
+      "action": "add",
+      "name": "chk_mobile_supersession_response",
+      "table": "mobile_result_supersessions",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql"
+    }
+  ],
+  "referenced_columns_validated_against_export": {
+    "chk_academic_years_dates": [
+      "end_date",
+      "start_date"
+    ],
+    "chk_omr_detections_confidence": [
+      "confidence_score"
+    ],
+    "chk_student_answers_points": [
+      "points_earned"
+    ],
+    "chk_test_parts_number_of_items": [
+      "number_of_items"
+    ],
+    "chk_test_parts_points_per_item": [
+      "points_per_item"
+    ],
+    "chk_test_results_scores": [
+      "max_score",
+      "total_score"
+    ],
+    "chk_users_teaching_start_month": [
+      "teaching_start_month"
+    ],
+    "chk_users_teaching_start_year": [
+      "teaching_start_year"
+    ],
+    "chk_students_lrn": [
+      "student_lrn"
+    ],
+    "chk_term_periods_dates": [
+      "end_at",
+      "start_at"
+    ],
+    "chk_term_periods_override": [
+      "overridden_at",
+      "overridden_by_user_id",
+      "override_reason"
+    ],
+    "chk_performance_rule_sets_dates": [
+      "effective_from_at",
+      "effective_until_at"
+    ],
+    "chk_rubrics_total_points": [
+      "total_points"
+    ],
+    "chk_rubric_criteria_maximum_points": [
+      "maximum_points"
+    ],
+    "chk_test_assignments_dates": [
+      "close_at",
+      "open_at"
+    ],
+    "chk_questions_maximum_points": [
+      "maximum_points"
+    ],
+    "chk_questions_maximum_response_length": [
+      "maximum_response_length"
+    ],
+    "chk_question_options_order": [
+      "option_order"
+    ],
+    "chk_accepted_answers_points": [
+      "points"
+    ],
+    "chk_answer_keys_strategy": [
+      "answer_key_type",
+      "correct_question_option_id",
+      "rubric_id"
+    ],
+    "chk_part_skill_mappings_range": [
+      "end_item_number",
+      "item_count",
+      "start_item_number"
+    ],
+    "chk_class_lists_end_state": [
+      "ended_at",
+      "enrollment_status"
+    ],
+    "chk_omr_detections_option": [
+      "detected_option"
+    ],
+    "chk_test_results_percentage": [
+      "percentage_snapshot"
+    ],
+    "chk_answer_attachments_file_size": [
+      "file_size_bytes"
+    ],
+    "chk_scan_verifications_reason": [
+      "reason_code",
+      "verification_action"
+    ],
+    "chk_answer_verifications_points": [
+      "new_points"
+    ],
+    "chk_answer_verifications_reason": [
+      "reason_code",
+      "verification_action"
+    ],
+    "chk_answer_rubric_scores_points": [
+      "points_awarded"
+    ],
+    "chk_intervention_results_mastery": [
+      "mastery_rate_snapshot"
+    ],
+    "chk_student_intervention_cases_dates": [
+      "opened_at",
+      "resolved_at"
+    ],
+    "chk_student_intervention_updates_status_change": [
+      "new_status",
+      "previous_status",
+      "update_type"
+    ],
+    "chk_syncs_request_item_count": [
+      "request_item_count"
+    ],
+    "chk_verification_challenges_attempts": [
+      "attempt_count",
+      "maximum_attempt_count"
+    ],
+    "chk_verification_challenges_expiry": [
+      "created_at",
+      "expires_at"
+    ],
+    "chk_user_mfa_factors_totp": [
+      "totp_digits",
+      "totp_period_seconds"
+    ],
+    "chk_mfa_authentication_challenges_attempts": [
+      "attempt_count",
+      "maximum_attempt_count"
+    ],
+    "chk_mfa_authentication_challenges_expiry": [
+      "created_at",
+      "expires_at"
+    ],
+    "chk_auth_sessions_mfa_state": [
+      "authentication_level",
+      "mfa_verified_at",
+      "user_mfa_factor_id"
+    ],
+    "chk_paper_sizes_dimensions": [
+      "height_points",
+      "width_points"
+    ],
+    "chk_omr_templates_item_count": [
+      "maximum_item_count",
+      "minimum_item_count"
+    ],
+    "chk_omr_templates_option_count": [
+      "option_count"
+    ],
+    "chk_omr_templates_print_scale": [
+      "required_print_scale_percent"
+    ],
+    "chk_omr_template_regions_bounds": [
+      "height_points",
+      "width_points",
+      "x_points",
+      "y_points"
+    ],
+    "chk_omr_template_regions_question_type": [
+      "question_type_id",
+      "region_type"
+    ],
+    "chk_answer_sheet_versions_minimum_questions": [
+      "total_questions"
+    ],
+    "chk_answer_sheet_versions_pages": [
+      "total_pages"
+    ],
+    "chk_answer_sheet_versions_generation": [
+      "generation_number"
+    ],
+    "chk_answer_sheet_versions_content_version": [
+      "manifest_version",
+      "test_version_number"
+    ],
+    "chk_answer_sheet_versions_pdf_size": [
+      "pdf_file_size_bytes"
+    ],
+    "chk_answer_sheet_pages_number": [
+      "page_number",
+      "total_pages"
+    ],
+    "chk_answer_sheet_regions_item_numbers": [
+      "global_item_number",
+      "part_item_number",
+      "region_sequence"
+    ],
+    "chk_scan_sessions_capture_model": [
+      "answer_sheet_version_id",
+      "omr_template_id"
+    ],
+    "chk_scan_sessions_page_counts": [
+      "captured_page_count",
+      "expected_page_count"
+    ],
+    "chk_scan_pages_numbers": [
+      "capture_number",
+      "page_number"
+    ],
+    "chk_scan_pages_rotation": [
+      "captured_rotation_degrees"
+    ],
+    "chk_omr_detections_page_region": [
+      "answer_sheet_region_id",
+      "scan_page_id"
+    ],
+    "chk_answer_attachments_owner": [
+      "scan_page_id",
+      "scan_session_id",
+      "student_answer_id"
+    ],
+    "chk_answer_attachments_region_page": [
+      "answer_sheet_region_id",
+      "scan_page_id"
+    ],
+    "chk_answer_rubric_scores_maximum": [
+      "maximum_points_snapshot",
+      "points_awarded"
+    ],
+    "chk_questions_expected_response_count": [
+      "expected_response_count"
+    ],
+    "chk_answer_sheet_regions_expected_count": [
+      "expected_response_count_snapshot"
+    ],
+    "chk_answer_sheet_regions_line_count": [
+      "response_line_count"
+    ],
+    "chk_answer_sheet_regions_response_shape": [
+      "expected_response_count_snapshot",
+      "region_type",
+      "response_line_count",
+      "response_region_size"
+    ],
+    "chk_answer_attachments_normalized_source": [
+      "attachment_type",
+      "source_answer_attachment_id"
+    ],
+    "chk_answer_attachments_hold": [
+      "retention_hold",
+      "retention_hold_reason",
+      "retention_hold_set_at",
+      "retention_hold_set_by_user_id"
+    ],
+    "chk_answer_attachments_purge_state": [
+      "last_purge_attempt_at",
+      "last_purge_error",
+      "purge_reason",
+      "purge_status",
+      "purged_at",
+      "purged_by_user_id"
+    ],
+    "chk_answer_attachments_held_not_purged": [
+      "purge_status",
+      "retention_hold"
+    ],
+    "chk_answer_sheet_pages_qr_payload": [
+      "qr_payload"
+    ],
+    "chk_answer_sheet_pages_qr_hash": [
+      "qr_payload",
+      "qr_payload_hash"
+    ],
+    "chk_scan_pages_qr_payload": [
+      "qr_payload"
+    ],
+    "chk_scan_pages_qr_hash": [
+      "qr_payload",
+      "qr_payload_hash"
+    ],
+    "chk_term_periods_order": [
+      "term_order"
+    ],
+    "chk_class_assignment_schedules_day": [
+      "day_of_week"
+    ],
+    "chk_class_assignment_schedules_time": [
+      "end_time",
+      "start_time"
+    ],
+    "chk_class_assignment_schedules_dates": [
+      "effective_from",
+      "effective_to"
+    ],
+    "chk_class_assignment_schedules_timezone": [
+      "timezone_name"
+    ],
+    "chk_class_assignment_schedules_archive": [
+      "archived_at",
+      "schedule_status",
+      "status_changed_by_user_id",
+      "status_reason"
+    ],
+    "chk_test_assignments_outside_schedule_confirmation": [
+      "outside_schedule_confirmed",
+      "outside_schedule_confirmed_at",
+      "outside_schedule_confirmed_by_user_id",
+      "outside_schedule_reason"
+    ],
+    "chk_mobile_scan_uploads_json": [
+      "request_json"
+    ],
+    "chk_mobile_scan_uploads_state": [
+      "backend_scan_page_id",
+      "committed_at",
+      "receipt_page_status",
+      "upload_state"
+    ],
+    "chk_mobile_scan_uploads_size": [
+      "file_size_bytes"
+    ],
+    "chk_mobile_scan_uploads_pixels": [
+      "height_pixels",
+      "width_pixels"
+    ],
+    "chk_test_results_mobile_revision": [
+      "mobile_revision"
+    ],
+    "chk_mobile_detection_uploads_response": [
+      "response_json"
+    ],
+    "chk_mobile_verification_batches_json": [
+      "request_json"
+    ],
+    "chk_mobile_verification_items_json": [
+      "response_json"
+    ],
+    "chk_mobile_result_finalization_revision": [
+      "mobile_revision"
+    ],
+    "chk_mobile_result_finalization_version": [
+      "score_version"
+    ],
+    "chk_mobile_result_finalization_json": [
+      "response_json"
+    ],
+    "chk_mobile_attachment_request": [
+      "request_json"
+    ],
+    "chk_mobile_attachment_response": [
+      "response_json"
+    ],
+    "chk_mobile_attachment_image": [
+      "file_size_bytes",
+      "height_pixels",
+      "width_pixels"
+    ],
+    "chk_mobile_attachment_state": [
+      "backend_attachment_id",
+      "committed_at",
+      "response_json",
+      "upload_state"
+    ],
+    "chk_student_answers_response": [
+      "answer_status",
+      "capture_source",
+      "response_evidence_attachment_id",
+      "response_text",
+      "selected_question_option_id"
+    ],
+    "chk_student_answers_evidence_source": [
+      "capture_source",
+      "response_evidence_attachment_id",
+      "selected_question_option_id"
+    ],
+    "chk_mobile_written_reference_version": [
+      "test_version_number"
+    ],
+    "chk_mobile_written_reference_json": [
+      "reference_json"
+    ],
+    "chk_answer_verifications_evaluation_json": [
+      "evaluation_snapshot_json"
+    ],
+    "chk_mobile_reopen_revision": [
+      "mobile_revision",
+      "previous_revision"
+    ],
+    "chk_mobile_reopen_version": [
+      "score_version"
+    ],
+    "chk_mobile_reopen_reason": [
+      "reason_code"
+    ],
+    "chk_mobile_reopen_comment": [
+      "comment"
+    ],
+    "chk_mobile_reopen_hash": [
+      "request_hash"
+    ],
+    "chk_mobile_reopen_request": [
+      "request_json"
+    ],
+    "chk_mobile_reopen_score": [
+      "official_score_json"
+    ],
+    "chk_mobile_reopen_response": [
+      "response_json"
+    ],
+    "chk_mobile_correction_version": [
+      "previous_score_version",
+      "score_version"
+    ],
+    "chk_mobile_correction_revision": [
+      "mobile_revision"
+    ],
+    "chk_mobile_correction_hash": [
+      "request_hash"
+    ],
+    "chk_mobile_correction_request": [
+      "request_json"
+    ],
+    "chk_mobile_correction_reference": [
+      "reference_json"
+    ],
+    "chk_mobile_correction_response": [
+      "response_json"
+    ],
+    "chk_mobile_answer_correction_kind": [
+      "answer_verification_id",
+      "omr_detection_id"
+    ],
+    "chk_mobile_answer_correction_before": [
+      "before_json"
+    ],
+    "chk_mobile_answer_correction_after": [
+      "after_json"
+    ],
+    "chk_mobile_supersession_distinct": [
+      "replacement_result_id",
+      "test_result_id"
+    ],
+    "chk_mobile_supersession_revision": [
+      "mobile_revision",
+      "previous_revision"
+    ],
+    "chk_mobile_supersession_version": [
+      "score_version"
+    ],
+    "chk_mobile_supersession_hash": [
+      "request_hash"
+    ],
+    "chk_mobile_supersession_request": [
+      "request_json"
+    ],
+    "chk_mobile_supersession_previous": [
+      "previous_score_json"
+    ],
+    "chk_mobile_supersession_replacement": [
+      "replacement_score_json"
+    ],
+    "chk_mobile_supersession_response": [
+      "response_json"
+    ]
+  },
+  "offline_reference_seed_counts": {
+    "paper_sizes": 3,
+    "required_paper_size_seeds": 3,
+    "validated_v2_regions": 15,
+    "active_question_types": 5,
+    "active_templates": 2,
+    "approved_active_templates": 2,
+    "unapproved_active_templates": 0,
+    "active_performance_rule_sets": 4
+  },
+  "expected_readiness_after_repair": {
+    "tables": 79,
+    "foreign_keys": 200,
+    "checks": 131,
+    "unique_constraints": 118,
+    "required_dynamic_tables": 6,
+    "required_hardening_columns": 16,
+    "required_hardening_constraints": 15,
+    "school_scoped_section_rules": 3,
+    "academic_calendar_columns": 20,
+    "academic_calendar_constraints": 16,
+    "paper_sizes": 3,
+    "required_paper_size_seeds": 3,
+    "validated_v2_regions": 15,
+    "active_question_types": 5,
+    "active_templates": 2,
+    "approved_active_templates": 2,
+    "unapproved_active_templates": 0,
+    "active_performance_rule_sets": 4
+  },
+  "sources": [
+    "https://docs.pingcap.com/tidb/stable/constraints/",
+    "https://docs.pingcap.com/tidb/stable/string-functions/",
+    "https://docs.pingcap.com/tidb/stable/encryption-and-compression-functions/",
+    "https://docs.pingcap.com/tidb/stable/information-schema-check-constraints/",
+    "https://docs.pingcap.com/tidb/stable/information-schema-tidb-check-constraints/"
+  ],
+  "rules": [
+    {
+      "table": "academic_years",
+      "name": "chk_academic_years_dates",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql",
+      "source_line": 32,
+      "source_expression": "`end_date` >= `start_date`",
+      "cloud_expression": "`end_date` >= `start_date`",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "omr_detections",
+      "name": "chk_omr_detections_confidence",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql",
+      "source_line": 366,
+      "source_expression": "`confidence_score` >= 0 and `confidence_score` <= 1",
+      "cloud_expression": "`confidence_score` >= 0 and `confidence_score` <= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "student_answers",
+      "name": "chk_student_answers_points",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql",
+      "source_line": 522,
+      "source_expression": "`points_earned` >= 0",
+      "cloud_expression": "`points_earned` >= 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "test_parts",
+      "name": "chk_test_parts_number_of_items",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql",
+      "source_line": 651,
+      "source_expression": "`number_of_items` > 0",
+      "cloud_expression": "`number_of_items` > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "test_parts",
+      "name": "chk_test_parts_points_per_item",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql",
+      "source_line": 652,
+      "source_expression": "`points_per_item` > 0",
+      "cloud_expression": "`points_per_item` > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "test_results",
+      "name": "chk_test_results_scores",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_000_v2_schema_snapshot.sql",
+      "source_line": 700,
+      "source_expression": "`total_score` >= 0 and `max_score` >= 0 and `total_score` <= `max_score`",
+      "cloud_expression": "`total_score` >= 0 and `max_score` >= 0 and `total_score` <= `max_score`",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "users",
+      "name": "chk_users_teaching_start_month",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 15,
+      "source_expression": "teaching_start_month IS NULL OR teaching_start_month BETWEEN 1 AND 12",
+      "cloud_expression": "teaching_start_month IS NULL OR teaching_start_month BETWEEN 1 AND 12",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "users",
+      "name": "chk_users_teaching_start_year",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 17,
+      "source_expression": "teaching_start_year IS NULL OR teaching_start_year BETWEEN 1900 AND 2200",
+      "cloud_expression": "teaching_start_year IS NULL OR teaching_start_year BETWEEN 1900 AND 2200",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "students",
+      "name": "chk_students_lrn",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 32,
+      "source_expression": "student_lrn REGEXP '^[0-9]{12}$'",
+      "cloud_expression": "student_lrn REGEXP '^[0-9]{12}$'",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "term_periods",
+      "name": "chk_term_periods_dates",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 56,
+      "source_expression": "end_at > start_at",
+      "cloud_expression": "end_at > start_at",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "term_periods",
+      "name": "chk_term_periods_override",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 57,
+      "source_expression": "overridden_by_user_id IS NULL OR (override_reason IS NOT NULL AND overridden_at IS NOT NULL)",
+      "cloud_expression": "overridden_by_user_id IS NULL OR (override_reason IS NOT NULL AND overridden_at IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "performance_rule_sets",
+      "name": "chk_performance_rule_sets_dates",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 102,
+      "source_expression": "effective_until_at IS NULL OR effective_from_at IS NULL OR effective_until_at > effective_from_at",
+      "cloud_expression": "effective_until_at IS NULL OR effective_from_at IS NULL OR effective_until_at > effective_from_at",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "rubrics",
+      "name": "chk_rubrics_total_points",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 125,
+      "source_expression": "total_points > 0",
+      "cloud_expression": "total_points > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "rubric_criteria",
+      "name": "chk_rubric_criteria_maximum_points",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 143,
+      "source_expression": "maximum_points > 0",
+      "cloud_expression": "maximum_points > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "test_assignments",
+      "name": "chk_test_assignments_dates",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 190,
+      "source_expression": "close_at IS NULL OR open_at IS NULL OR close_at > open_at",
+      "cloud_expression": "close_at IS NULL OR open_at IS NULL OR close_at > open_at",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "questions",
+      "name": "chk_questions_maximum_points",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 225,
+      "source_expression": "maximum_points > 0",
+      "cloud_expression": "maximum_points > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "questions",
+      "name": "chk_questions_maximum_response_length",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 226,
+      "source_expression": "maximum_response_length IS NULL OR maximum_response_length > 0",
+      "cloud_expression": "maximum_response_length IS NULL OR maximum_response_length > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "question_options",
+      "name": "chk_question_options_order",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 243,
+      "source_expression": "option_order > 0",
+      "cloud_expression": "option_order > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "accepted_answers",
+      "name": "chk_accepted_answers_points",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 264,
+      "source_expression": "points >= 0",
+      "cloud_expression": "points >= 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_keys",
+      "name": "chk_answer_keys_strategy",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 283,
+      "source_expression": "(answer_key_type = 'option' AND correct_question_option_id IS NOT NULL AND rubric_id IS NULL) OR (answer_key_type = 'accepted_text' AND correct_question_option_id IS NULL AND rubric_id IS NULL) OR (answer_key_type = 'rubric' AND correct_question_option_id IS NULL AND rubric_id IS NOT NULL) OR (answer_key_type = 'manual' AND correct_question_option_id IS NULL)",
+      "cloud_expression": "(answer_key_type = 'option' AND correct_question_option_id IS NOT NULL AND rubric_id IS NULL) OR (answer_key_type = 'accepted_text' AND correct_question_option_id IS NULL AND rubric_id IS NULL) OR (answer_key_type = 'rubric' AND correct_question_option_id IS NULL AND rubric_id IS NOT NULL) OR (answer_key_type = 'manual' AND correct_question_option_id IS NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "part_skill_mappings",
+      "name": "chk_part_skill_mappings_range",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 308,
+      "source_expression": "start_item_number >= 1 AND end_item_number >= start_item_number AND item_count = end_item_number - start_item_number + 1",
+      "cloud_expression": "start_item_number >= 1 AND end_item_number >= start_item_number AND item_count = end_item_number - start_item_number + 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "class_lists",
+      "name": "chk_class_lists_end_state",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_001_core_domain.sql",
+      "source_line": 382,
+      "source_expression": "(enrollment_status = 'enrolled' AND ended_at IS NULL) OR (enrollment_status <> 'enrolled' AND ended_at IS NOT NULL)",
+      "cloud_expression": "(enrollment_status = 'enrolled' AND ended_at IS NULL) OR (enrollment_status <> 'enrolled' AND ended_at IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "omr_detections",
+      "name": "chk_omr_detections_option",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql",
+      "source_line": 78,
+      "source_expression": "detected_option IS NULL OR detected_option IN ('A', 'B', 'C', 'D')",
+      "cloud_expression": "detected_option IS NULL OR detected_option IN ('A', 'B', 'C', 'D')",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "test_results",
+      "name": "chk_test_results_percentage",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql",
+      "source_line": 105,
+      "source_expression": "percentage_snapshot IS NULL OR percentage_snapshot BETWEEN 0 AND 100",
+      "cloud_expression": "percentage_snapshot IS NULL OR percentage_snapshot BETWEEN 0 AND 100",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_attachments",
+      "name": "chk_answer_attachments_file_size",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql",
+      "source_line": 172,
+      "source_expression": "file_size_bytes > 0",
+      "cloud_expression": "file_size_bytes > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "scan_verifications",
+      "name": "chk_scan_verifications_reason",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql",
+      "source_line": 193,
+      "source_expression": "verification_action = 'accepted' OR reason_code IS NOT NULL",
+      "cloud_expression": "verification_action = 'accepted' OR reason_code IS NOT NULL",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_verifications",
+      "name": "chk_answer_verifications_points",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql",
+      "source_line": 231,
+      "source_expression": "new_points >= 0",
+      "cloud_expression": "new_points >= 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_verifications",
+      "name": "chk_answer_verifications_reason",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql",
+      "source_line": 232,
+      "source_expression": "verification_action NOT IN ('ocr_corrected', 'reopened') OR reason_code IS NOT NULL",
+      "cloud_expression": "verification_action NOT IN ('ocr_corrected', 'reopened') OR reason_code IS NOT NULL",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_rubric_scores",
+      "name": "chk_answer_rubric_scores_points",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_002_assessment_capture.sql",
+      "source_line": 259,
+      "source_expression": "points_awarded >= 0",
+      "cloud_expression": "points_awarded >= 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "intervention_results",
+      "name": "chk_intervention_results_mastery",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 20,
+      "source_expression": "mastery_rate_snapshot BETWEEN 0 AND 100",
+      "cloud_expression": "mastery_rate_snapshot BETWEEN 0 AND 100",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "student_intervention_cases",
+      "name": "chk_student_intervention_cases_dates",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 68,
+      "source_expression": "resolved_at IS NULL OR resolved_at >= opened_at",
+      "cloud_expression": "resolved_at IS NULL OR resolved_at >= opened_at",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "student_intervention_updates",
+      "name": "chk_student_intervention_updates_status_change",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 94,
+      "source_expression": "update_type <> 'status_change' OR (previous_status IS NOT NULL AND new_status IS NOT NULL)",
+      "cloud_expression": "update_type <> 'status_change' OR (previous_status IS NOT NULL AND new_status IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "syncs",
+      "name": "chk_syncs_request_item_count",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 113,
+      "source_expression": "request_item_count >= 0",
+      "cloud_expression": "request_item_count >= 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "verification_challenges",
+      "name": "chk_verification_challenges_attempts",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 152,
+      "source_expression": "maximum_attempt_count > 0 AND attempt_count <= maximum_attempt_count",
+      "cloud_expression": "maximum_attempt_count > 0 AND attempt_count <= maximum_attempt_count",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "verification_challenges",
+      "name": "chk_verification_challenges_expiry",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 155,
+      "source_expression": "expires_at > created_at",
+      "cloud_expression": "expires_at > created_at",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "user_mfa_factors",
+      "name": "chk_user_mfa_factors_totp",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 190,
+      "source_expression": "totp_digits IN (6, 8) AND totp_period_seconds BETWEEN 15 AND 120",
+      "cloud_expression": "totp_digits IN (6, 8) AND totp_period_seconds BETWEEN 15 AND 120",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mfa_authentication_challenges",
+      "name": "chk_mfa_authentication_challenges_attempts",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 232,
+      "source_expression": "maximum_attempt_count > 0 AND attempt_count <= maximum_attempt_count",
+      "cloud_expression": "maximum_attempt_count > 0 AND attempt_count <= maximum_attempt_count",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mfa_authentication_challenges",
+      "name": "chk_mfa_authentication_challenges_expiry",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 235,
+      "source_expression": "expires_at > created_at",
+      "cloud_expression": "expires_at > created_at",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "auth_sessions",
+      "name": "chk_auth_sessions_mfa_state",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_003_security_sync_intervention.sql",
+      "source_line": 249,
+      "source_expression": "authentication_level = 'password' OR (user_mfa_factor_id IS NOT NULL AND mfa_verified_at IS NOT NULL)",
+      "cloud_expression": "authentication_level = 'password' OR (user_mfa_factor_id IS NOT NULL AND mfa_verified_at IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "paper_sizes",
+      "name": "chk_paper_sizes_dimensions",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 24,
+      "source_expression": "width_points > 0 AND height_points > 0",
+      "cloud_expression": "width_points > 0 AND height_points > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "omr_templates",
+      "name": "chk_omr_templates_item_count",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 59,
+      "source_expression": "(minimum_item_count IS NULL AND maximum_item_count IS NULL) OR ( minimum_item_count >= 1 AND maximum_item_count >= minimum_item_count )",
+      "cloud_expression": "(minimum_item_count IS NULL AND maximum_item_count IS NULL) OR ( minimum_item_count >= 1 AND maximum_item_count >= minimum_item_count )",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "omr_templates",
+      "name": "chk_omr_templates_option_count",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 66,
+      "source_expression": "option_count IS NULL OR option_count BETWEEN 2 AND 4",
+      "cloud_expression": "option_count IS NULL OR option_count BETWEEN 2 AND 4",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "omr_templates",
+      "name": "chk_omr_templates_print_scale",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 69,
+      "source_expression": "required_print_scale_percent = 100.00",
+      "cloud_expression": "required_print_scale_percent = 100.00",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "omr_template_regions",
+      "name": "chk_omr_template_regions_bounds",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 128,
+      "source_expression": "x_points >= 0 AND y_points >= 0 AND width_points > 0 AND height_points > 0",
+      "cloud_expression": "x_points >= 0 AND y_points >= 0 AND width_points > 0 AND height_points > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "omr_template_regions",
+      "name": "chk_omr_template_regions_question_type",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 134,
+      "source_expression": "(region_type IN ('objective_bubbles', 'written_response') AND question_type_id IS NOT NULL) OR (region_type IN ('page_identity', 'registration_marker') AND question_type_id IS NULL)",
+      "cloud_expression": "(region_type IN ('objective_bubbles', 'written_response') AND question_type_id IS NOT NULL) OR (region_type IN ('page_identity', 'registration_marker') AND question_type_id IS NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_versions",
+      "name": "chk_answer_sheet_versions_minimum_questions",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 188,
+      "source_expression": "total_questions >= 5",
+      "cloud_expression": "total_questions >= 5",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_versions",
+      "name": "chk_answer_sheet_versions_pages",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 191,
+      "source_expression": "total_pages >= 1",
+      "cloud_expression": "total_pages >= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_versions",
+      "name": "chk_answer_sheet_versions_generation",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 192,
+      "source_expression": "generation_number >= 1",
+      "cloud_expression": "generation_number >= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_versions",
+      "name": "chk_answer_sheet_versions_content_version",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 193,
+      "source_expression": "test_version_number >= 1 AND manifest_version >= 1",
+      "cloud_expression": "test_version_number >= 1 AND manifest_version >= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_versions",
+      "name": "chk_answer_sheet_versions_pdf_size",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 196,
+      "source_expression": "pdf_file_size_bytes IS NULL OR pdf_file_size_bytes > 0",
+      "cloud_expression": "pdf_file_size_bytes IS NULL OR pdf_file_size_bytes > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_pages",
+      "name": "chk_answer_sheet_pages_number",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 229,
+      "source_expression": "page_number >= 1 AND total_pages >= page_number",
+      "cloud_expression": "page_number >= 1 AND total_pages >= page_number",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_regions",
+      "name": "chk_answer_sheet_regions_item_numbers",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 279,
+      "source_expression": "global_item_number >= 1 AND part_item_number >= 1 AND region_sequence >= 1",
+      "cloud_expression": "global_item_number >= 1 AND part_item_number >= 1 AND region_sequence >= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "scan_sessions",
+      "name": "chk_scan_sessions_capture_model",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 300,
+      "source_expression": "answer_sheet_version_id IS NOT NULL OR omr_template_id IS NOT NULL",
+      "cloud_expression": "answer_sheet_version_id IS NOT NULL OR omr_template_id IS NOT NULL",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "scan_sessions",
+      "name": "chk_scan_sessions_page_counts",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 303,
+      "source_expression": "expected_page_count >= 1 AND captured_page_count <= expected_page_count",
+      "cloud_expression": "expected_page_count >= 1 AND captured_page_count <= expected_page_count",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "scan_pages",
+      "name": "chk_scan_pages_numbers",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 369,
+      "source_expression": "page_number >= 1 AND capture_number >= 1",
+      "cloud_expression": "page_number >= 1 AND capture_number >= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "scan_pages",
+      "name": "chk_scan_pages_rotation",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 372,
+      "source_expression": "captured_rotation_degrees IN (0, 90, 180, 270)",
+      "cloud_expression": "captured_rotation_degrees IN (0, 90, 180, 270)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "omr_detections",
+      "name": "chk_omr_detections_page_region",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 397,
+      "source_expression": "(scan_page_id IS NULL AND answer_sheet_region_id IS NULL) OR (scan_page_id IS NOT NULL AND answer_sheet_region_id IS NOT NULL)",
+      "cloud_expression": "(scan_page_id IS NULL AND answer_sheet_region_id IS NULL) OR (scan_page_id IS NOT NULL AND answer_sheet_region_id IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_attachments",
+      "name": "chk_answer_attachments_owner",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 428,
+      "source_expression": "student_answer_id IS NOT NULL OR scan_session_id IS NOT NULL OR scan_page_id IS NOT NULL",
+      "cloud_expression": "student_answer_id IS NOT NULL OR scan_session_id IS NOT NULL OR scan_page_id IS NOT NULL",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_attachments",
+      "name": "chk_answer_attachments_region_page",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 433,
+      "source_expression": "answer_sheet_region_id IS NULL OR scan_page_id IS NOT NULL",
+      "cloud_expression": "answer_sheet_region_id IS NULL OR scan_page_id IS NOT NULL",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_rubric_scores",
+      "name": "chk_answer_rubric_scores_maximum",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_006_dynamic_answer_sheet_schema_DRAFT.sql",
+      "source_line": 464,
+      "source_expression": "maximum_points_snapshot IS NULL OR ( maximum_points_snapshot > 0 AND points_awarded <= maximum_points_snapshot )",
+      "cloud_expression": "maximum_points_snapshot IS NULL OR ( maximum_points_snapshot > 0 AND points_awarded <= maximum_points_snapshot )",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "questions",
+      "name": "chk_questions_expected_response_count",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 23,
+      "source_expression": "expected_response_count IS NULL OR expected_response_count >= 1",
+      "cloud_expression": "expected_response_count IS NULL OR expected_response_count >= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_regions",
+      "name": "chk_answer_sheet_regions_expected_count",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 34,
+      "source_expression": "expected_response_count_snapshot IS NULL OR expected_response_count_snapshot >= 1",
+      "cloud_expression": "expected_response_count_snapshot IS NULL OR expected_response_count_snapshot >= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_regions",
+      "name": "chk_answer_sheet_regions_line_count",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 38,
+      "source_expression": "response_line_count IS NULL OR response_line_count >= 1",
+      "cloud_expression": "response_line_count IS NULL OR response_line_count >= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_regions",
+      "name": "chk_answer_sheet_regions_response_shape",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 41,
+      "source_expression": "( region_type = 'objective_bubbles' AND response_region_size = 'none' AND expected_response_count_snapshot IS NULL AND response_line_count IS NULL ) OR ( region_type = 'written_response' AND response_region_size <> 'none' AND ( expected_response_count_snapshot IS NULL OR response_line_count IS NULL OR response_line_count >= expected_response_count_snapshot ) )",
+      "cloud_expression": "( region_type = 'objective_bubbles' AND response_region_size = 'none' AND expected_response_count_snapshot IS NULL AND response_line_count IS NULL ) OR ( region_type = 'written_response' AND response_region_size <> 'none' AND ( expected_response_count_snapshot IS NULL OR response_line_count IS NULL OR response_line_count >= expected_response_count_snapshot ) )",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_attachments",
+      "name": "chk_answer_attachments_normalized_source",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 98,
+      "source_expression": "( attachment_type = 'normalized_page' AND source_answer_attachment_id IS NOT NULL ) OR ( attachment_type <> 'normalized_page' AND source_answer_attachment_id IS NULL )",
+      "cloud_expression": "( attachment_type = 'normalized_page' AND source_answer_attachment_id IS NOT NULL ) OR ( attachment_type <> 'normalized_page' AND source_answer_attachment_id IS NULL )",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_attachments",
+      "name": "chk_answer_attachments_hold",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 108,
+      "source_expression": "( retention_hold = FALSE AND retention_hold_reason IS NULL AND retention_hold_set_by_user_id IS NULL AND retention_hold_set_at IS NULL ) OR ( retention_hold = TRUE AND retention_hold_reason IS NOT NULL AND retention_hold_set_by_user_id IS NOT NULL AND retention_hold_set_at IS NOT NULL )",
+      "cloud_expression": "( retention_hold = FALSE AND retention_hold_reason IS NULL AND retention_hold_set_by_user_id IS NULL AND retention_hold_set_at IS NULL ) OR ( retention_hold = TRUE AND retention_hold_reason IS NOT NULL AND retention_hold_set_by_user_id IS NOT NULL AND retention_hold_set_at IS NOT NULL )",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_attachments",
+      "name": "chk_answer_attachments_purge_state",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 122,
+      "source_expression": "( purge_status = 'retained' AND purged_at IS NULL AND purged_by_user_id IS NULL AND purge_reason IS NULL AND last_purge_error IS NULL ) OR ( purge_status = 'purged' AND last_purge_attempt_at IS NOT NULL AND purged_at IS NOT NULL AND purge_reason IS NOT NULL AND last_purge_error IS NULL ) OR ( purge_status = 'purge_failed' AND last_purge_attempt_at IS NOT NULL AND purged_at IS NULL AND purged_by_user_id IS NULL AND purge_reason IS NOT NULL AND last_purge_error IS NOT NULL )",
+      "cloud_expression": "( purge_status = 'retained' AND purged_at IS NULL AND purged_by_user_id IS NULL AND purge_reason IS NULL AND last_purge_error IS NULL ) OR ( purge_status = 'purged' AND last_purge_attempt_at IS NOT NULL AND purged_at IS NOT NULL AND purge_reason IS NOT NULL AND last_purge_error IS NULL ) OR ( purge_status = 'purge_failed' AND last_purge_attempt_at IS NOT NULL AND purged_at IS NULL AND purged_by_user_id IS NULL AND purge_reason IS NOT NULL AND last_purge_error IS NOT NULL )",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_attachments",
+      "name": "chk_answer_attachments_held_not_purged",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 146,
+      "source_expression": "retention_hold = FALSE OR purge_status <> 'purged'",
+      "cloud_expression": "retention_hold = FALSE OR purge_status <> 'purged'",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_pages",
+      "name": "chk_answer_sheet_pages_qr_payload",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 160,
+      "source_expression": "OCTET_LENGTH(qr_payload) BETWEEN 2 AND 256",
+      "cloud_expression": "OCTET_LENGTH(qr_payload) BETWEEN 2 AND 256",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_sheet_pages",
+      "name": "chk_answer_sheet_pages_qr_hash",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 163,
+      "source_expression": "BINARY qr_payload_hash REGEXP '^[0-9a-f]{64}$' AND qr_payload_hash = SHA2(qr_payload, 256)",
+      "cloud_expression": "REGEXP_LIKE(`qr_payload_hash`, '^[0-9a-f]{64}$', 'c') AND `qr_payload_hash` = SHA2(`qr_payload`,256)",
+      "adaptation": "TiDB rejects binary-string regex arguments. Use a character-string regex with explicit case-sensitive flag; retain lowercase 64-hex and exact SHA-256 checks. Pending TiDB DDL and negative-write acceptance.",
+      "live_verification": "not_run"
+    },
+    {
+      "table": "scan_pages",
+      "name": "chk_scan_pages_qr_payload",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 169,
+      "source_expression": "OCTET_LENGTH(qr_payload) BETWEEN 2 AND 256",
+      "cloud_expression": "OCTET_LENGTH(qr_payload) BETWEEN 2 AND 256",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "scan_pages",
+      "name": "chk_scan_pages_qr_hash",
+      "group": "hardening",
+      "source_file": "docs/migrations/v3/V3_009_dynamic_answer_sheet_contract_hardening_DRAFT.sql",
+      "source_line": 172,
+      "source_expression": "BINARY qr_payload_hash REGEXP '^[0-9a-f]{64}$' AND qr_payload_hash = SHA2(qr_payload, 256)",
+      "cloud_expression": "REGEXP_LIKE(`qr_payload_hash`, '^[0-9a-f]{64}$', 'c') AND `qr_payload_hash` = SHA2(`qr_payload`,256)",
+      "adaptation": "TiDB rejects binary-string regex arguments. Use a character-string regex with explicit case-sensitive flag; retain lowercase 64-hex and exact SHA-256 checks. Pending TiDB DDL and negative-write acceptance.",
+      "live_verification": "not_run"
+    },
+    {
+      "table": "term_periods",
+      "name": "chk_term_periods_order",
+      "group": "calendar",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql",
+      "source_line": 156,
+      "source_expression": "`term_order` BETWEEN 1 AND 4",
+      "cloud_expression": "`term_order` BETWEEN 1 AND 4",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "class_assignment_schedules",
+      "name": "chk_class_assignment_schedules_day",
+      "group": "calendar",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql",
+      "source_line": 189,
+      "source_expression": "`day_of_week` BETWEEN 1 AND 7",
+      "cloud_expression": "`day_of_week` BETWEEN 1 AND 7",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "class_assignment_schedules",
+      "name": "chk_class_assignment_schedules_time",
+      "group": "calendar",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql",
+      "source_line": 191,
+      "source_expression": "`end_time` > `start_time`",
+      "cloud_expression": "`end_time` > `start_time`",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "class_assignment_schedules",
+      "name": "chk_class_assignment_schedules_dates",
+      "group": "calendar",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql",
+      "source_line": 193,
+      "source_expression": "`effective_to` IS NULL OR `effective_to` >= `effective_from`",
+      "cloud_expression": "`effective_to` IS NULL OR `effective_to` >= `effective_from`",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "class_assignment_schedules",
+      "name": "chk_class_assignment_schedules_timezone",
+      "group": "calendar",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql",
+      "source_line": 195,
+      "source_expression": "`timezone_name` = 'Asia/Manila'",
+      "cloud_expression": "`timezone_name` = 'Asia/Manila'",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "class_assignment_schedules",
+      "name": "chk_class_assignment_schedules_archive",
+      "group": "calendar",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql",
+      "source_line": 197,
+      "source_expression": "(`schedule_status` = 'active' AND `status_changed_by_user_id` IS NULL AND `status_reason` IS NULL AND `archived_at` IS NULL) OR (`schedule_status` = 'archived' AND `status_changed_by_user_id` IS NOT NULL AND CHAR_LENGTH(TRIM(`status_reason`)) >= 5 AND `archived_at` IS NOT NULL)",
+      "cloud_expression": "(`schedule_status` = 'active' AND `status_changed_by_user_id` IS NULL AND `status_reason` IS NULL AND `archived_at` IS NULL) OR (`schedule_status` = 'archived' AND `status_changed_by_user_id` IS NOT NULL AND CHAR_LENGTH(TRIM(`status_reason`)) >= 5 AND `archived_at` IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "test_assignments",
+      "name": "chk_test_assignments_outside_schedule_confirmation",
+      "group": "calendar",
+      "source_file": "docs/migrations/v3/V3_014_academic_calendar_and_class_schedules.sql",
+      "source_line": 225,
+      "source_expression": "(`outside_schedule_confirmed` = 0 AND `outside_schedule_reason` IS NULL AND `outside_schedule_confirmed_by_user_id` IS NULL AND `outside_schedule_confirmed_at` IS NULL) OR (`outside_schedule_confirmed` = 1 AND CHAR_LENGTH(TRIM(`outside_schedule_reason`)) >= 5 AND `outside_schedule_confirmed_by_user_id` IS NOT NULL AND `outside_schedule_confirmed_at` IS NOT NULL)",
+      "cloud_expression": "(`outside_schedule_confirmed` = 0 AND `outside_schedule_reason` IS NULL AND `outside_schedule_confirmed_by_user_id` IS NULL AND `outside_schedule_confirmed_at` IS NULL) OR (`outside_schedule_confirmed` = 1 AND CHAR_LENGTH(TRIM(`outside_schedule_reason`)) >= 5 AND `outside_schedule_confirmed_by_user_id` IS NOT NULL AND `outside_schedule_confirmed_at` IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_scan_uploads",
+      "name": "chk_mobile_scan_uploads_json",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql",
+      "source_line": 30,
+      "source_expression": "JSON_VALID(request_json)",
+      "cloud_expression": "JSON_VALID(request_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_scan_uploads",
+      "name": "chk_mobile_scan_uploads_state",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql",
+      "source_line": 31,
+      "source_expression": "(upload_state = 'pending' AND backend_scan_page_id IS NULL AND receipt_page_status IS NULL AND committed_at IS NULL) OR (upload_state = 'committed' AND backend_scan_page_id IS NOT NULL AND receipt_page_status = 'captured' AND committed_at IS NOT NULL)",
+      "cloud_expression": "(upload_state = 'pending' AND backend_scan_page_id IS NULL AND receipt_page_status IS NULL AND committed_at IS NULL) OR (upload_state = 'committed' AND backend_scan_page_id IS NOT NULL AND receipt_page_status = 'captured' AND committed_at IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_scan_uploads",
+      "name": "chk_mobile_scan_uploads_size",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql",
+      "source_line": 35,
+      "source_expression": "file_size_bytes BETWEEN 1 AND 15728640",
+      "cloud_expression": "file_size_bytes BETWEEN 1 AND 15728640",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_scan_uploads",
+      "name": "chk_mobile_scan_uploads_pixels",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_015_mobile_scan_upload_receipts_DRAFT.sql",
+      "source_line": 36,
+      "source_expression": "width_pixels > 0 AND height_pixels > 0 AND CAST(width_pixels AS DECIMAL(20,0)) * height_pixels <= 40000000",
+      "cloud_expression": "width_pixels > 0 AND height_pixels > 0 AND CAST(width_pixels AS DECIMAL(20,0)) * height_pixels <= 40000000",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "test_results",
+      "name": "chk_test_results_mobile_revision",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_016_mobile_detection_receipts_DRAFT.sql",
+      "source_line": 5,
+      "source_expression": "mobile_revision BETWEEN 1 AND 9007199254740991",
+      "cloud_expression": "mobile_revision BETWEEN 1 AND 9007199254740991",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_detection_uploads",
+      "name": "chk_mobile_detection_uploads_response",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_016_mobile_detection_receipts_DRAFT.sql",
+      "source_line": 18,
+      "source_expression": "JSON_VALID(response_json)",
+      "cloud_expression": "JSON_VALID(response_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_verification_batches",
+      "name": "chk_mobile_verification_batches_json",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_017_mobile_teacher_verification_DRAFT.sql",
+      "source_line": 10,
+      "source_expression": "JSON_VALID(request_json)",
+      "cloud_expression": "JSON_VALID(request_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_verification_items",
+      "name": "chk_mobile_verification_items_json",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_017_mobile_teacher_verification_DRAFT.sql",
+      "source_line": 17,
+      "source_expression": "response_json IS NULL OR JSON_VALID(response_json)",
+      "cloud_expression": "response_json IS NULL OR JSON_VALID(response_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_finalizations",
+      "name": "chk_mobile_result_finalization_revision",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_018_mobile_result_finalization_DRAFT.sql",
+      "source_line": 10,
+      "source_expression": "mobile_revision BETWEEN 2 AND 9007199254740991",
+      "cloud_expression": "mobile_revision BETWEEN 2 AND 9007199254740991",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_finalizations",
+      "name": "chk_mobile_result_finalization_version",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_018_mobile_result_finalization_DRAFT.sql",
+      "source_line": 11,
+      "source_expression": "score_version >= 1",
+      "cloud_expression": "score_version >= 1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_finalizations",
+      "name": "chk_mobile_result_finalization_json",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_018_mobile_result_finalization_DRAFT.sql",
+      "source_line": 12,
+      "source_expression": "JSON_VALID(response_json)",
+      "cloud_expression": "JSON_VALID(response_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_attachment_uploads",
+      "name": "chk_mobile_attachment_request",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql",
+      "source_line": 29,
+      "source_expression": "JSON_VALID(request_json)",
+      "cloud_expression": "JSON_VALID(request_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_attachment_uploads",
+      "name": "chk_mobile_attachment_response",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql",
+      "source_line": 30,
+      "source_expression": "response_json IS NULL OR JSON_VALID(response_json)",
+      "cloud_expression": "response_json IS NULL OR JSON_VALID(response_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_attachment_uploads",
+      "name": "chk_mobile_attachment_image",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql",
+      "source_line": 31,
+      "source_expression": "file_size_bytes BETWEEN 1 AND 15728640 AND width_pixels > 0 AND height_pixels > 0 AND width_pixels * height_pixels <= 40000000",
+      "cloud_expression": "file_size_bytes BETWEEN 1 AND 15728640 AND width_pixels > 0 AND height_pixels > 0 AND width_pixels * height_pixels <= 40000000",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_attachment_uploads",
+      "name": "chk_mobile_attachment_state",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_019_mobile_attachment_uploads_DRAFT.sql",
+      "source_line": 32,
+      "source_expression": "(upload_state='pending' AND backend_attachment_id IS NULL AND response_json IS NULL AND committed_at IS NULL) OR (upload_state='committed' AND backend_attachment_id IS NOT NULL AND response_json IS NOT NULL AND committed_at IS NOT NULL)",
+      "cloud_expression": "(upload_state='pending' AND backend_attachment_id IS NULL AND response_json IS NULL AND committed_at IS NULL) OR (upload_state='committed' AND backend_attachment_id IS NOT NULL AND response_json IS NOT NULL AND committed_at IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "student_answers",
+      "name": "chk_student_answers_response",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql",
+      "source_line": 7,
+      "source_expression": "selected_question_option_id IS NOT NULL OR response_text IS NOT NULL OR answer_status IN ('blank','multiple','uncertain','invalid','pending_manual') OR (capture_source='manual' AND response_evidence_attachment_id IS NOT NULL)",
+      "cloud_expression": "selected_question_option_id IS NOT NULL OR response_text IS NOT NULL OR answer_status IN ('blank','multiple','uncertain','invalid','pending_manual') OR (capture_source='manual' AND response_evidence_attachment_id IS NOT NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "student_answers",
+      "name": "chk_student_answers_evidence_source",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql",
+      "source_line": 11,
+      "source_expression": "response_evidence_attachment_id IS NULL OR (capture_source='manual' AND selected_question_option_id IS NULL)",
+      "cloud_expression": "response_evidence_attachment_id IS NULL OR (capture_source='manual' AND selected_question_option_id IS NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_written_references",
+      "name": "chk_mobile_written_reference_version",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql",
+      "source_line": 22,
+      "source_expression": "test_version_number > 0",
+      "cloud_expression": "test_version_number > 0",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_written_references",
+      "name": "chk_mobile_written_reference_json",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql",
+      "source_line": 23,
+      "source_expression": "JSON_VALID(reference_json)",
+      "cloud_expression": "JSON_VALID(reference_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "answer_verifications",
+      "name": "chk_answer_verifications_evaluation_json",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql",
+      "source_line": 33,
+      "source_expression": "evaluation_snapshot_json IS NULL OR JSON_VALID(evaluation_snapshot_json)",
+      "cloud_expression": "evaluation_snapshot_json IS NULL OR JSON_VALID(evaluation_snapshot_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_reopens",
+      "name": "chk_mobile_reopen_revision",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "source_line": 26,
+      "source_expression": "previous_revision BETWEEN 1 AND 9007199254740990 AND mobile_revision=previous_revision+1",
+      "cloud_expression": "previous_revision BETWEEN 1 AND 9007199254740990 AND mobile_revision=previous_revision+1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_reopens",
+      "name": "chk_mobile_reopen_version",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "source_line": 27,
+      "source_expression": "score_version>=1",
+      "cloud_expression": "score_version>=1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_reopens",
+      "name": "chk_mobile_reopen_reason",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "source_line": 28,
+      "source_expression": "CHAR_LENGTH(TRIM(reason_code)) BETWEEN 1 AND 50",
+      "cloud_expression": "CHAR_LENGTH(TRIM(reason_code)) BETWEEN 1 AND 50",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_reopens",
+      "name": "chk_mobile_reopen_comment",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "source_line": 29,
+      "source_expression": "comment IS NULL OR CHAR_LENGTH(comment)<=4000",
+      "cloud_expression": "comment IS NULL OR CHAR_LENGTH(comment)<=4000",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_reopens",
+      "name": "chk_mobile_reopen_hash",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "source_line": 30,
+      "source_expression": "request_hash REGEXP '^[0-9a-f]{64}$'",
+      "cloud_expression": "request_hash REGEXP '^[0-9a-f]{64}$'",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_reopens",
+      "name": "chk_mobile_reopen_request",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "source_line": 31,
+      "source_expression": "JSON_VALID(request_json)",
+      "cloud_expression": "JSON_VALID(request_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_reopens",
+      "name": "chk_mobile_reopen_score",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "source_line": 32,
+      "source_expression": "JSON_VALID(official_score_json)",
+      "cloud_expression": "JSON_VALID(official_score_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_reopens",
+      "name": "chk_mobile_reopen_response",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_021_mobile_result_reopen_DRAFT.sql",
+      "source_line": 33,
+      "source_expression": "JSON_VALID(response_json)",
+      "cloud_expression": "JSON_VALID(response_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_corrections",
+      "name": "chk_mobile_correction_version",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "source_line": 26,
+      "source_expression": "previous_score_version BETWEEN 1 AND 2147483646 AND score_version=previous_score_version+1",
+      "cloud_expression": "previous_score_version BETWEEN 1 AND 2147483646 AND score_version=previous_score_version+1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_corrections",
+      "name": "chk_mobile_correction_revision",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "source_line": 27,
+      "source_expression": "mobile_revision BETWEEN 2 AND 9007199254740991",
+      "cloud_expression": "mobile_revision BETWEEN 2 AND 9007199254740991",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_corrections",
+      "name": "chk_mobile_correction_hash",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "source_line": 28,
+      "source_expression": "request_hash REGEXP '^[0-9a-f]{64}$'",
+      "cloud_expression": "request_hash REGEXP '^[0-9a-f]{64}$'",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_corrections",
+      "name": "chk_mobile_correction_request",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "source_line": 29,
+      "source_expression": "JSON_VALID(request_json)",
+      "cloud_expression": "JSON_VALID(request_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_corrections",
+      "name": "chk_mobile_correction_reference",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "source_line": 30,
+      "source_expression": "JSON_VALID(reference_json)",
+      "cloud_expression": "JSON_VALID(reference_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_corrections",
+      "name": "chk_mobile_correction_response",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "source_line": 31,
+      "source_expression": "JSON_VALID(response_json)",
+      "cloud_expression": "JSON_VALID(response_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_answer_corrections",
+      "name": "chk_mobile_answer_correction_kind",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "source_line": 47,
+      "source_expression": "(omr_detection_id IS NULL)<>(answer_verification_id IS NULL)",
+      "cloud_expression": "(omr_detection_id IS NULL)<>(answer_verification_id IS NULL)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_answer_corrections",
+      "name": "chk_mobile_answer_correction_before",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "source_line": 48,
+      "source_expression": "JSON_VALID(before_json)",
+      "cloud_expression": "JSON_VALID(before_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_answer_corrections",
+      "name": "chk_mobile_answer_correction_after",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_022_mobile_result_corrections_DRAFT.sql",
+      "source_line": 49,
+      "source_expression": "JSON_VALID(after_json)",
+      "cloud_expression": "JSON_VALID(after_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_supersessions",
+      "name": "chk_mobile_supersession_distinct",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "source_line": 27,
+      "source_expression": "test_result_id<>replacement_result_id",
+      "cloud_expression": "test_result_id<>replacement_result_id",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_supersessions",
+      "name": "chk_mobile_supersession_revision",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "source_line": 28,
+      "source_expression": "previous_revision BETWEEN 1 AND 9007199254740990 AND mobile_revision=previous_revision+1",
+      "cloud_expression": "previous_revision BETWEEN 1 AND 9007199254740990 AND mobile_revision=previous_revision+1",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_supersessions",
+      "name": "chk_mobile_supersession_version",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "source_line": 29,
+      "source_expression": "score_version BETWEEN 1 AND 2147483647",
+      "cloud_expression": "score_version BETWEEN 1 AND 2147483647",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_supersessions",
+      "name": "chk_mobile_supersession_hash",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "source_line": 30,
+      "source_expression": "request_hash REGEXP '^[0-9a-f]{64}$'",
+      "cloud_expression": "request_hash REGEXP '^[0-9a-f]{64}$'",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_supersessions",
+      "name": "chk_mobile_supersession_request",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "source_line": 31,
+      "source_expression": "JSON_VALID(request_json)",
+      "cloud_expression": "JSON_VALID(request_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_supersessions",
+      "name": "chk_mobile_supersession_previous",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "source_line": 32,
+      "source_expression": "JSON_VALID(previous_score_json)",
+      "cloud_expression": "JSON_VALID(previous_score_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_supersessions",
+      "name": "chk_mobile_supersession_replacement",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "source_line": 33,
+      "source_expression": "JSON_VALID(replacement_score_json)",
+      "cloud_expression": "JSON_VALID(replacement_score_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    },
+    {
+      "table": "mobile_result_supersessions",
+      "name": "chk_mobile_supersession_response",
+      "group": "other_release",
+      "source_file": "docs/migrations/v3/V3_023_mobile_result_supersession_DRAFT.sql",
+      "source_line": 34,
+      "source_expression": "JSON_VALID(response_json)",
+      "cloud_expression": "JSON_VALID(response_json)",
+      "adaptation": null,
+      "live_verification": "not_run"
+    }
+  ],
+  "sql_file_sha256": {
+    "00_precheck.sql": "650b7e20e6ab4204ce1364a9247181a4dad0d9a19d5e65afca8443402f94893f",
+    "01_add_required_checks.sql": "23dcf55bb1ebc2523a0e67cff3d076aad4e9875449fd95a881e5fc38b0449560",
+    "02_verify.sql": "2f2c121c4590405a93584d0cef176ff06312fdff599c5470b3e596b218b342d7"
+  }
+}

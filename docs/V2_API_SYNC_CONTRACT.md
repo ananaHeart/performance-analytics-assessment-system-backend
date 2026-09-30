@@ -116,9 +116,9 @@ For a fully manual result, the result still uses the same batch/result/answer UU
 
 The isolated OpenCV prototype may continue against the following frozen planning rules. These rules do not authorize SQLite, V1 sync, or TiDB integration yet.
 
-1. `classListId` is the authoritative learner identity for an assessment attempt. The QR may include `studentId` only as redundant display or mismatch evidence. The backend resolves the student through `class_lists` and verifies that the membership belongs to the assessment class.
+1. `classListId` remains the authoritative learner identity for an assessment attempt, but the reusable context-template QR does not contain learner or class-list identity. The selected authenticated mobile student/class context supplies `classListId`, and the backend verifies that membership against the QR `testId`.
 2. `questionId` is the authoritative answer and detection mapping. `itemNumber` remains required for display and diagnostics, but it is not sufficient for V2 persistence or upload.
-3. Multiple-choice detections use canonical options `A` through `E`.
+3. The validated `OMR-A4-10-MC-CTX-V2` physical template uses canonical options `A` through `D` only. Assessments containing option E are not printable with this template version.
 4. True/False sheets may print `T/F`, but normalized output uses `A` for True and `B` for False. Raw scanner evidence may retain the printed labels. This keeps `answer_keys.correct_option`, `omr_detections.detected_option`, and `student_answers.selected_option` consistent.
 5. The first approved scanner release supports one question type per physical sheet. Mixed Multiple Choice and True/False sheets are deferred until a mixed-template specification and complete physical validation exist.
 6. Physical OpenCV validation continues in parallel with DTO/API contract definition. No production integration starts until both are approved.
@@ -131,13 +131,12 @@ Recommended compact QR identity:
   "v": 2,
   "tv": "OMR-A4-10-MC-CTX-V2",
   "t": 101,
-  "cl": 501,
-  "qt": "multiple_choice",
+  "q": "MC",
   "n": 10
 }
 ```
 
-`cl` is `classListId`, `t` is a numeric `testId`, and `qt` is either `multiple_choice` or `true_false`. The authenticated user, not a QR user identifier, determines who performed and verified the scan.
+`t` is the numeric `testId`; `q` is the compact question-type code. The selected mobile context supplies the learner/class-list association. The authenticated user, not a QR user identifier, determines who performed and verified the scan.
 
 Each `templateVersion` is an immutable registry key for exactly one physical layout. Its registry entry fixes the paper size, item count, question type, printed choices, alignment-marker positions, bubble coordinates, and geometry revision. A change to any of those properties requires a new version. A generator must not reuse `OMR-A4-10-MC-CTX-V2` for another item count or geometry.
 

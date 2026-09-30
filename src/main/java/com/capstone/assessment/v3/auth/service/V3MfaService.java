@@ -359,7 +359,7 @@ public class V3MfaService {
                     "MFA_LOGIN_CHALLENGE_FAILED",
                     "mfa_authentication_challenges",
                     challenge.challengeUuid(),
-                    "failure",
+                    "failed",
                     metadata,
                     Map.of("attemptCount", nextAttemptCount, "locked", locked),
                     now
@@ -527,12 +527,13 @@ public class V3MfaService {
             V3RequestMetadata metadata,
             Instant now
     ) {
-        int failures = authRepository.countRecentCredentialFailures(
+        // Same switch as login: off by default, a wrong password is simply rejected.
+        int failures = !authProperties.isLoginLockoutEnabled() ? 0 : authRepository.countRecentCredentialFailures(
                 user.email(),
                 metadata.ipAddress(),
                 now.minus(authProperties.getLockDuration())
         );
-        if (failures >= authProperties.getMaxFailedAttempts() * 2) {
+        if (authProperties.isLoginLockoutEnabled() && failures >= authProperties.getMaxFailedAttempts() * 2) {
             throw new V3AuthException(
                     "SENSITIVE_ACTION_RATE_LIMITED",
                     "Too many security verification attempts. Please try again later.",
@@ -606,7 +607,7 @@ public class V3MfaService {
                 "MFA_CODE_REJECTED",
                 "user_mfa_factors",
                 factorUuid,
-                "failure",
+                "failed",
                 metadata,
                 Map.of("operation", operation),
                 now

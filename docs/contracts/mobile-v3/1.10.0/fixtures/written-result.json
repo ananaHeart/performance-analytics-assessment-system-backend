@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "message": "Request completed successfully.",
+  "data": {
+    "testResultId": 1011,
+    "resultUuid": "b5711a1a-bd73-4b12-8729-3a4e9969a82d",
+    "testAssignmentId": 1,
+    "testId": 1010,
+    "classListId": 1029,
+    "studentId": 1015,
+    "studentName": "Synthetic Learner",
+    "attemptNumber": 1,
+    "totalScore": 22.5,
+    "maxScore": 28.0,
+    "percentage": 80.36,
+    "performanceStatus": "maintain",
+    "performanceLabel": "Maintain",
+    "performanceRuleSetId": 1,
+    "itemsEvaluated": 10,
+    "scoreVersion": 2,
+    "resultStatus": "finalized",
+    "scoredAt": "2026-09-12T15:42:57.225116800Z",
+    "scoreChanged": true,
+    "parts": [
+      {
+        "testPartId": 1015,
+        "partOrder": 1,
+        "partName": "MC",
+        "totalScore": 22.5,
+        "maxScore": 28.0,
+        "percentage": 80.36,
+        "itemsEvaluated": 10
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T15:42:57.293080700Z"
+}

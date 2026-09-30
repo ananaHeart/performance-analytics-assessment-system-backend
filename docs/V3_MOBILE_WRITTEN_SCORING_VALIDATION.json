@@ -1,0 +1,197 @@
+{
+  "generatedAtUtc": "2026-09-12T14:37:11.2174796Z",
+  "scope": "Milestone 3 Prompt 12 manual/rubric teacher verification and persistence",
+  "totalTests": 172.0,
+  "newPromptTests": 23,
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 93,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:34:14.0025905Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3WrittenVerificationControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:33:36.4276486Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3TeacherVerificationPersistenceTest",
+      "tests": 29,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:34:19.6886651Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3TeacherVerificationControllerTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:33:36.2606433Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3EvaluationReferenceControllerTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:33:35.3228589Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3EvaluationReferenceGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:33:36.5986488Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3AttachmentUploadControllerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:33:33.7254827Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:33:35.5378578Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.scoring.service.V3ScoringServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:34:19.9206545Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T14:33:30.8727044Z"
+    }
+  ],
+  "hashes": [
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3WrittenVerificationService.java",
+      "sha256": "94701c9c0b1a553695bca405245a4ddbbbac22d72c2973e22ef38b6a9c852e8d"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3WrittenVerificationRepository.java",
+      "sha256": "470a5d93ccddbfcc4934ceafd04113e83afcaf5b6c92bfd1f65a5659993a3d20"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/dto/V3WrittenVerificationBatch.java",
+      "sha256": "946d8f6763fcc76f7083d9977b74c21b372712d0a8d940a52d025da5ceffaad4"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/controller/V3TeacherVerificationController.java",
+      "sha256": "81bc56b5d52a33a06d76afddf25bf16e5e4da1ec9c090dac872a83b1cdb17291"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3VerificationRepository.java",
+      "sha256": "c3c0fbb814ac1643e713256d7d5da19c9a2f1f7a0bb9f8ddcc376376972385bf"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3EvaluationReferenceService.java",
+      "sha256": "94dd8acd73b7dae0d8f102ebee2d8eb5c151dd6210aac9bec65b3bb2cefb2bbe"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3EvaluationReferenceRepository.java",
+      "sha256": "9ef2c0e4875aa3f98c4516f5f83a9db1a5a86eefddad1a5c70c68c850871c5d1"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3AttachmentUploadService.java",
+      "sha256": "25a08545a98abe8a59e23f92cf2c44cd8c55319d6f874309f3b364ffdf1a3ff5"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3AttachmentUploadRepository.java",
+      "sha256": "69e1b7eb5d7e160a46b6b97eef8d7e0ca0b5932e58f4380b2281944f7f4a75f7"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3MobileReadbackService.java",
+      "sha256": "cf45bfe09670c7ed08c43fe5f747ccf4fa48b2d702720bfb98401b116e0e9dde"
+    },
+    {
+      "file": "docs/migrations/v3/V3_020_mobile_written_verification_DRAFT.sql",
+      "sha256": "aabb1b181c125ed954fde8d3b8cf2fc5c3db833193e00d4b6888810e3f03a2d5"
+    },
+    {
+      "file": "docs/contracts/mobile-v3/1.7.0/openapi.json",
+      "sha256": "c7837de84f290a48c5984a0cb6212a11e7c4ce7277d73702e2b33eb483e54fa6"
+    }
+  ],
+  "contract": {
+    "packVersion": "1.7.0",
+    "writtenRequestVersion": "3.1",
+    "objectiveRequestVersionUnchanged": "3.0",
+    "openapi": "3.1.0",
+    "schemas": 22,
+    "fixtures": 4,
+    "syntheticRuntimeSamplesChecked": 4,
+    "allEightPackValidatorsPassed": true,
+    "previousNamedWireSchemasUnchanged": true
+  },
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "draftChain": "V3_020",
+    "tables": 75,
+    "foreignKeys": 182,
+    "checks": 106,
+    "uniqueConstraints": 106,
+    "newMigrationAdded": true,
+    "syntheticRecordsOnly": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true
+  },
+  "validationCases": [
+    "Manual image-only answer uses real evidence FK and persists teacher points/comment/audit",
+    "Essay criterion totals computed server-side and accepted bounds snapshot survives later rubric edits",
+    "Direct manual essay requires no assigned rubric; blank requires zero; actual response evidence/text is required",
+    "Stale bounds/test version, wrong revision, question text limits, missing/foreign/duplicate/over-maximum criteria rejected",
+    "Purged or different-region attachments rejected with no answer/page commit",
+    "Concurrent retries, atomic rollback, lost acknowledgement and immutable operation conflicts",
+    "Per-result partial success and historical sync/result/rubric ID readback",
+    "Concurrent rubric edit blocks until accepted score transaction commits",
+    "Image-only FK/check invariants and current teacher reauthorization",
+    "Strict explicit 3.1 HTTP dispatch; old objective payload and security release gate preserved"
+  ],
+  "release": {
+    "verificationHttpEnabled": false,
+    "configuredBaseline": "V3_014",
+    "writtenScorePersistenceImplemented": true,
+    "writtenFinalizationImplemented": false,
+    "mobileCodeChanged": false,
+    "physicalWrittenScannerValidated": false,
+    "completeMobileFlow": false
+  },
+  "milestone": {
+    "number": 3,
+    "prompt": 12,
+    "componentStatus": "COMPLETE_RELEASE_GATED",
+    "milestoneStatus": "IN_PROGRESS",
+    "next": "Prompt 13 written finalization and workflow validation"
+  },
+  "limitations": [
+    "Synthetic written question/region metadata validates persistence only, not physical printed geometry or scanner acceptance.",
+    "Reference binding snapshots public scoring bounds; omitted rubric descriptors/level definitions and hidden keys are not fingerprinted.",
+    "Official written finalization must validate stored reference and retained evidence before scoring.",
+    "Answer-level teacher verification completion does not finalize the learner result or enable official analytics.",
+    "Reviewed V3_020 deployment, correction/reopen and production Mobile wiring remain pending."
+  ]
+}

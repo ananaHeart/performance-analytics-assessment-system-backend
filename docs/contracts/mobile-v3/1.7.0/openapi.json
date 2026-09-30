@@ -1,0 +1,1436 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SMART Mobile V3 written teacher verification",
+    "version": "1.7.0"
+  },
+  "paths": {
+    "/api/v3/mobile/verification-batches": {
+      "post": {
+        "operationId": "verifyMobileWrittenAnswers",
+        "x-production-enabled": false,
+        "x-required-draft-migration": "V3_020",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Explicit 3.1 manual/rubric request on the existing verification route. 3.0 remains objective-only. Every result binds its downloaded reference hash and test version. HTTP remains denied. Returns per-result outcomes; outer success=true does not imply every result succeeded. No result finalization or correction.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WrittenBatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inspect items: success/failed and retryable error. Includes stale reference, revision conflict, invalid evidence, score bounds and incomplete rubric outcomes.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/expired session"
+          },
+          "403": {
+            "description": "Release gate or teacher no longer owns all requested resources"
+          },
+          "409": {
+            "description": "Immutable operation/sync identity conflict"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid DTO, duplicate identities, unsupported kinds, missing actual response or invalid score precision"
+          },
+          "500": {
+            "description": "Persistence acknowledgement unavailable; retry the same operation"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "VerificationResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "syncUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "operationUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "syncStatus": {
+                "enum": [
+                  "success",
+                  "partial_success",
+                  "failed"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/VerificationOutcome"
+                },
+                "minItems": 1,
+                "maxItems": 50
+              }
+            },
+            "required": [
+              "syncUuid",
+              "operationUuid",
+              "syncStatus",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "VerificationOutcome": {
+        "type": "object",
+        "properties": {
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed"
+            ]
+          },
+          "disposition": {
+            "enum": [
+              "created",
+              "replayed",
+              "rejected"
+            ]
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idMappings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IdMapping"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "resultUuid",
+          "status",
+          "disposition",
+          "revision",
+          "idMappings",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "IdMapping": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "enum": [
+              "test_result",
+              "scan_session",
+              "scan_page",
+              "answer_sheet_version",
+              "answer_sheet_page",
+              "answer_sheet_region",
+              "student_answer",
+              "omr_detection",
+              "answer_attachment",
+              "scan_verification",
+              "answer_verification",
+              "sync"
+            ]
+          },
+          "uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "centralId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "entityType",
+          "uuid",
+          "centralId"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "additionalProperties": false
+      },
+      "SyncReadback": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractVersion": {
+                "const": "3.0"
+              },
+              "syncUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "assignmentUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "syncStatus": {
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "partial_success",
+                  "success",
+                  "failed"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SyncResultOutcome"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "contractVersion",
+              "syncUuid",
+              "assignmentUuid",
+              "syncStatus",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "SyncResultOutcome": {
+        "type": "object",
+        "properties": {
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "pending"
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pageOutcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageOutcome"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "resultUuid",
+          "status",
+          "error",
+          "pageOutcomes"
+        ],
+        "additionalProperties": false
+      },
+      "PageOutcome": {
+        "type": "object",
+        "properties": {
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "pending"
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "scanPageUuid",
+          "status",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "EvaluationReference": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractVersion": {
+                "const": "3.0"
+              },
+              "assignmentUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "testVersionNumber": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "evaluationReferenceHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "questionUuid": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "maximumPoints": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 999999.99,
+                      "multipleOf": 0.01
+                    },
+                    "rubricId": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "expectedResponseCount": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "questionUuid",
+                    "maximumPoints",
+                    "rubricId",
+                    "expectedResponseCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "rubrics": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "rubricId": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "criteria": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rubricCriterionId": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "maximumPoints": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 999999.99,
+                            "multipleOf": 0.01
+                          },
+                          "isRequired": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "rubricCriterionId",
+                          "name",
+                          "maximumPoints",
+                          "isRequired"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 100
+                    }
+                  },
+                  "required": [
+                    "rubricId",
+                    "name",
+                    "criteria"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "contractVersion",
+              "assignmentUuid",
+              "testVersionNumber",
+              "evaluationReferenceHash",
+              "questions",
+              "rubrics"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "ManualEvaluation": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "manual"
+          },
+          "answerStatus": {
+            "enum": [
+              "answered",
+              "blank"
+            ]
+          },
+          "responseText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attachmentUuids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "minItems": 0,
+            "maxItems": 200,
+            "uniqueItems": true
+          },
+          "points": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          }
+        },
+        "required": [
+          "kind",
+          "answerStatus",
+          "responseText",
+          "attachmentUuids",
+          "points"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "answerStatus": {
+                  "const": "blank"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "points": {
+                  "const": 0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "RubricEvaluation": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "rubric"
+          },
+          "answerStatus": {
+            "enum": [
+              "answered",
+              "blank"
+            ]
+          },
+          "responseText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attachmentUuids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "minItems": 0,
+            "maxItems": 200,
+            "uniqueItems": true
+          },
+          "rubricId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "criterionScores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CriterionScore"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "kind",
+          "answerStatus",
+          "responseText",
+          "attachmentUuids",
+          "rubricId",
+          "criterionScores"
+        ],
+        "additionalProperties": false
+      },
+      "CriterionScore": {
+        "type": "object",
+        "properties": {
+          "rubricCriterionId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pointsAwarded": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rubricCriterionId",
+          "pointsAwarded",
+          "comment"
+        ],
+        "additionalProperties": false
+      },
+      "AnswerEvaluation": {
+        "type": "object",
+        "properties": {
+          "answerUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "verificationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "questionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "regionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "evaluation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ObjectiveEvaluation"
+              },
+              {
+                "$ref": "#/components/schemas/ManualEvaluation"
+              },
+              {
+                "$ref": "#/components/schemas/RubricEvaluation"
+              }
+            ]
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clientDecidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "answerUuid",
+          "verificationUuid",
+          "questionUuid",
+          "regionUuid",
+          "scanPageUuid",
+          "evaluation",
+          "comment",
+          "clientDecidedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ObjectiveEvaluation": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "objective"
+          },
+          "detectionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "kind",
+          "detectionUuid"
+        ],
+        "additionalProperties": false
+      },
+      "VerificationItem": {
+        "type": "object",
+        "properties": {
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageDecisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageDecision"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnswerEvaluation"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "resultUuid",
+          "expectedRevision",
+          "pageDecisions",
+          "answers"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "pageDecisions": {
+                "minItems": 1
+              }
+            }
+          },
+          {
+            "properties": {
+              "answers": {
+                "minItems": 1
+              }
+            }
+          }
+        ]
+      },
+      "PageDecision": {
+        "type": "object",
+        "properties": {
+          "verificationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "action": {
+            "enum": [
+              "accepted",
+              "rescan_requested",
+              "rejected"
+            ]
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clientDecidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "verificationUuid",
+          "scanPageUuid",
+          "action",
+          "reasonCode",
+          "comment",
+          "clientDecidedAt"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "enum": [
+                    "rescan_requested",
+                    "rejected"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "reasonCode": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50
+                }
+              }
+            }
+          }
+        ]
+      },
+      "VerificationBatch": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "const": "3.0"
+          },
+          "syncUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "operationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "assignmentUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VerificationItem"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "contractVersion",
+          "syncUuid",
+          "operationUuid",
+          "assignmentUuid",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ManualEvaluation31": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "manual"
+          },
+          "answerStatus": {
+            "enum": [
+              "answered",
+              "blank"
+            ]
+          },
+          "responseText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000,
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attachmentUuids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "minItems": 0,
+            "maxItems": 20,
+            "uniqueItems": true
+          },
+          "points": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 999999.99,
+            "multipleOf": 0.01
+          }
+        },
+        "required": [
+          "kind",
+          "answerStatus",
+          "responseText",
+          "attachmentUuids",
+          "points"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "answerStatus": {
+                  "const": "blank"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "points": {
+                  "const": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "answerStatus": {
+                  "const": "blank"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "responseText": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "responseText": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "attachmentUuids": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "RubricEvaluation31": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "rubric"
+          },
+          "answerStatus": {
+            "enum": [
+              "answered",
+              "blank"
+            ]
+          },
+          "responseText": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000,
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attachmentUuids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "minItems": 0,
+            "maxItems": 20,
+            "uniqueItems": true
+          },
+          "rubricId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "criterionScores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CriterionScore"
+            },
+            "minItems": 1,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "kind",
+          "answerStatus",
+          "responseText",
+          "attachmentUuids",
+          "rubricId",
+          "criterionScores"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "answerStatus": {
+                  "const": "blank"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "responseText": {
+                  "type": "null"
+                },
+                "criterionScores": {
+                  "items": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/CriterionScore"
+                      },
+                      {
+                        "properties": {
+                          "pointsAwarded": {
+                            "const": 0
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "else": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "responseText": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "attachmentUuids": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "WrittenPageDecision": {
+        "type": "object",
+        "properties": {
+          "verificationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "action": {
+            "const": "accepted"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clientDecidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "verificationUuid",
+          "scanPageUuid",
+          "action",
+          "reasonCode",
+          "comment",
+          "clientDecidedAt"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {
+                  "enum": [
+                    "rescan_requested",
+                    "rejected"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "reasonCode": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 50
+                }
+              }
+            }
+          }
+        ]
+      },
+      "WrittenAnswer": {
+        "type": "object",
+        "properties": {
+          "answerUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "verificationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "questionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "regionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "evaluation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ManualEvaluation31"
+              },
+              {
+                "$ref": "#/components/schemas/RubricEvaluation31"
+              }
+            ]
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clientDecidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "answerUuid",
+          "verificationUuid",
+          "questionUuid",
+          "regionUuid",
+          "scanPageUuid",
+          "evaluation",
+          "comment",
+          "clientDecidedAt"
+        ],
+        "additionalProperties": false
+      },
+      "WrittenItem": {
+        "type": "object",
+        "properties": {
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageDecisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WrittenPageDecision"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          },
+          "answers": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/WrittenAnswer"
+            }
+          },
+          "testVersionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "evaluationReferenceHash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "resultUuid",
+          "expectedRevision",
+          "pageDecisions",
+          "answers",
+          "testVersionNumber",
+          "evaluationReferenceHash"
+        ],
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "properties": {
+              "pageDecisions": {
+                "minItems": 1
+              }
+            }
+          },
+          {
+            "properties": {
+              "answers": {
+                "minItems": 1
+              }
+            }
+          }
+        ]
+      },
+      "WrittenBatch": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "const": "3.1"
+          },
+          "syncUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "operationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "assignmentUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WrittenItem"
+            },
+            "minItems": 1,
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "contractVersion",
+          "syncUuid",
+          "operationUuid",
+          "assignmentUuid",
+          "items"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

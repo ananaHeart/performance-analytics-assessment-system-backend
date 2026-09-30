@@ -104,6 +104,11 @@ class V3AnswerSheetServiceTest {
         when(repository.findQuestions(assignment.testId())).thenReturn(questions);
         when(repository.findValidatedTemplate("A4"))
                 .thenReturn(Optional.of(V3AnswerSheetTestFixtures.validatedTemplate()));
+        // Five questions isn't the fixed template's exact-10 shape, so eligibility now also tries
+        // the dynamic mixed-type template lookup; stub it with the same restrictive-item-count
+        // fixture so this test still exercises UNSUPPORTED_TEMPLATE_ITEM_COUNT specifically.
+        when(repository.findTemplateByCode(V3DynamicLayout.CODE, "A4"))
+                .thenReturn(Optional.of(V3AnswerSheetTestFixtures.validatedTemplate()));
 
         V3AnswerSheetEligibilityResponse response = service.getEligibility(TEACHER, 5001L, "A4");
 

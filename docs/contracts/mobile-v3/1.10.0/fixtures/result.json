@@ -1,0 +1,252 @@
+{
+  "success": true,
+  "message": "Request completed successfully.",
+  "data": {
+    "contractVersion": "3.0",
+    "resultUuid": "a8cdcd37-c368-4e12-8dfb-01c5e06fb631",
+    "testResultId": 1018,
+    "assignmentUuid": "ef7fa226-18df-44c3-a313-27e433bf48ba",
+    "classListId": 1035,
+    "studentId": 1021,
+    "resultStatus": "finalized",
+    "revision": 6,
+    "scoreVersion": 2,
+    "pendingReasons": [],
+    "idMappings": [
+      {
+        "entityType": "answer_attachment",
+        "uuid": "19475873-d7ef-4235-8e34-33afa5fcb053",
+        "centralId": 10
+      },
+      {
+        "entityType": "answer_sheet_page",
+        "uuid": "4ad4d108-e892-474d-a3ab-02bd11a6f9d1",
+        "centralId": 7
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "024ef60c-3be1-47f1-9e7f-4a922b3a24ae",
+        "centralId": 64
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "07986a11-e5b7-4815-b32f-87abc5b2e3f7",
+        "centralId": 68
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "15ce304b-3e33-4dfe-b6fd-11e309605da5",
+        "centralId": 65
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "1b1b4425-6cc4-4620-a77f-8d05d5924eb7",
+        "centralId": 63
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "54445d0c-26c5-4eb7-843e-27ba53ccdedd",
+        "centralId": 70
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "59719c2f-76a8-459c-8b1f-b5b6363a2609",
+        "centralId": 69
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "666c4ba4-6b87-4897-b63d-e81d8a795e81",
+        "centralId": 61
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "75f65825-660e-41f4-824e-a1514a7c5fd4",
+        "centralId": 67
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "849fc6e6-a6d9-47fe-a29f-547528166905",
+        "centralId": 62
+      },
+      {
+        "entityType": "answer_sheet_region",
+        "uuid": "a87a8c10-6caa-4deb-a733-75307ba3ba5c",
+        "centralId": 66
+      },
+      {
+        "entityType": "answer_sheet_version",
+        "uuid": "499ff0ac-6b45-4f9b-b4c4-297d200cbb7e",
+        "centralId": 7
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "1340d6cc-db4e-46e5-b87b-f1fc3b9033bc",
+        "centralId": 1130
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "18464fc8-21af-4a00-bdb5-974dd71c0050",
+        "centralId": 1131
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "222053dd-53c4-4a00-a0f7-22862741eab8",
+        "centralId": 1132
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "4b1e20e9-8d9d-41cc-9fb4-2bd4a0c7ed73",
+        "centralId": 1133
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "5ce6bcec-cf2f-42d9-9dca-511d4ddbc25f",
+        "centralId": 1134
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "857fb7a5-631b-431c-a7f5-1fc554eee50b",
+        "centralId": 1135
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "b3c4c8ba-9e22-4d89-82fd-ae6768f82060",
+        "centralId": 1136
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "bb52da1a-54d2-448c-b249-6d08f6ec7a27",
+        "centralId": 1137
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "d99e27a2-434d-494f-b690-5cf6fe948ec2",
+        "centralId": 1138
+      },
+      {
+        "entityType": "omr_detection",
+        "uuid": "ef7759d5-c516-4f98-b35d-474f171c005d",
+        "centralId": 1139
+      },
+      {
+        "entityType": "scan_page",
+        "uuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+        "centralId": 8
+      },
+      {
+        "entityType": "scan_session",
+        "uuid": "751a48c6-5e0f-4eb4-b09c-fa5220765bca",
+        "centralId": 1020
+      },
+      {
+        "entityType": "scan_verification",
+        "uuid": "56eeeeff-c7ec-45ce-ae79-6f0cd518cb53",
+        "centralId": 5
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "162decb7-80f3-4594-8376-53dc6633fe52",
+        "centralId": 1134
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "2b079215-3ce5-44d3-822e-fb3eb4063ade",
+        "centralId": 1135
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "36d4ccdf-b540-40bf-82b1-9180fddbdde7",
+        "centralId": 1136
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "4c858801-b59f-47e5-b6fa-7956711fa70e",
+        "centralId": 1137
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "73d86a91-f486-4202-ade2-118033b70661",
+        "centralId": 1138
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "77aaf58a-9944-4906-ac39-46ead8431288",
+        "centralId": 1139
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "a1ee65e5-d85a-4625-9d29-2d14e855fe96",
+        "centralId": 1140
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "c7999829-e2d7-4bfd-b8cc-fde65e7ff1ca",
+        "centralId": 1141
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "d782f38d-4586-4e12-9845-c533e40bca28",
+        "centralId": 1142
+      },
+      {
+        "entityType": "student_answer",
+        "uuid": "ed9ebb5f-214d-493d-a78d-7049e5d98696",
+        "centralId": 1143
+      },
+      {
+        "entityType": "test_result",
+        "uuid": "a8cdcd37-c368-4e12-8dfb-01c5e06fb631",
+        "centralId": 1018
+      }
+    ],
+    "pages": [
+      {
+        "scanUuid": "751a48c6-5e0f-4eb4-b09c-fa5220765bca",
+        "scanPageUuid": "205d1423-a187-4769-ae54-fbf5b2c0b88e",
+        "pageUuid": "4ad4d108-e892-474d-a3ab-02bd11a6f9d1",
+        "pageStatus": "accepted",
+        "originalAttachmentUuid": "19475873-d7ef-4235-8e34-33afa5fcb053"
+      }
+    ],
+    "rubricScoreMappings": [],
+    "officialScore": {
+      "testResultId": 1018,
+      "resultUuid": "a8cdcd37-c368-4e12-8dfb-01c5e06fb631",
+      "testAssignmentId": 7,
+      "testId": 1016,
+      "classListId": 1035,
+      "studentId": 1021,
+      "studentName": "Synthetic Learner",
+      "attemptNumber": 1,
+      "totalScore": 20.0,
+      "maxScore": 20.0,
+      "percentage": 100.0,
+      "performanceStatus": "maintain",
+      "performanceLabel": "Maintain",
+      "performanceRuleSetId": 1,
+      "itemsEvaluated": 10,
+      "scoreVersion": 2,
+      "resultStatus": "finalized",
+      "scoredAt": "2026-09-12T15:43:00.161904200Z",
+      "scoreChanged": false,
+      "parts": [
+        {
+          "testPartId": 1021,
+          "partOrder": 1,
+          "partName": "MC",
+          "totalScore": 20.0,
+          "maxScore": 20.0,
+          "percentage": 100.0,
+          "itemsEvaluated": 10
+        }
+      ]
+    },
+    "analytics": {
+      "status": "ready",
+      "scoreVersion": 2,
+      "reasonCode": null
+    }
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T15:43:00.248904Z"
+}

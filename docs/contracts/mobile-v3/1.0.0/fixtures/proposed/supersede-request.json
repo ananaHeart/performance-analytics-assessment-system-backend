@@ -1,0 +1,10 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "00000000-0000-4000-8000-000000000161",
+  "operationUuid": "00000000-0000-4000-8000-000000010161",
+  "expectedRevision": 4,
+  "expectedScoreVersion": 1,
+  "reasonCode": "VERIFIED_RETAKE",
+  "comment": "Review retained written evidence.",
+  "replacementResultUuid": "00000000-0000-4000-8000-000000000902"
+}

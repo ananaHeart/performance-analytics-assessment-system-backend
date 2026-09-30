@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "message": "Illustrative contract response.",
+  "data": {
+    "contractVersion": "3.0",
+    "assignmentUuid": "00000000-0000-4000-8000-000000002102",
+    "testVersionNumber": 1,
+    "evaluationReferenceHash": "e4b0c9732ae7828dbc63213c00874f4f750dba04592fe8fe3bae9de649ea347d",
+    "questions": [
+      {
+        "questionUuid": "00000000-0000-4000-8000-000000002110",
+        "maximumPoints": 5,
+        "rubricId": null,
+        "expectedResponseCount": 1
+      },
+      {
+        "questionUuid": "00000000-0000-4000-8000-000000002111",
+        "maximumPoints": 5,
+        "rubricId": null,
+        "expectedResponseCount": null
+      }
+    ],
+    "rubrics": []
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

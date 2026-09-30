@@ -1,0 +1,102 @@
+{
+  "generatedAtUtc": "2026-09-12T13:04:50.8986873Z",
+  "scope": "Prompt 8 objective backend scoring and first finalization",
+  "totalTests": 96.0,
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.scoring.service.V3ScoringServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:02:52.1072484Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3MobileFinalizationBaselineTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:02:40.0142708Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 33,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:02:51.9577343Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3TeacherVerificationPersistenceTest",
+      "tests": 29,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:00:06.5972592Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3TeacherVerificationControllerTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:59:46.6792033Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:59:45.6661995Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T12:59:41.8978001Z"
+    }
+  ],
+  "draftMigration": "docs/migrations/v3/V3_018_mobile_result_finalization_DRAFT.sql",
+  "migrationSha256": "8ca6a49d2b1297753c3a5d834973efbb029096bae229d18b32275289b50687ff",
+  "contract": {
+    "packVersion": "1.3.0",
+    "openapi": "3.1.0",
+    "openapiSha256": "d5181e661371fd364b1b1665af052b48fe25e2e9e5424f867074ec5b9cae76f1",
+    "schemas": 3,
+    "fixtures": 3,
+    "allFourPackValidatorsPassed": true,
+    "existingDtoUnchanged": true,
+    "requestBody": false
+  },
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "tables": 73,
+    "foreignKeys": 175,
+    "checks": 98,
+    "uniqueConstraints": 104,
+    "syntheticRecordsOnly": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true
+  },
+  "release": {
+    "mobileFinalizationEnabled": false,
+    "mobileWriteRoutesEnabled": false,
+    "configuredBaseline": "V3_014",
+    "draftMigrationsDeployedToSchool": false,
+    "physicalScannerValidated": false,
+    "completeMobileFlow": false
+  },
+  "limitations": [
+    "The affected scoring, baseline and MariaDB suites were rerun after the final concurrency and previously-scored-result guards.",
+    "Seventeen of thirty-three MariaDB tests cover finalization; sixteen preserve scan/detection/verification regression coverage.",
+    "The bodyless route has no caller expectedRevision; server locks serialize writes but do not identify a stale caller screen.",
+    "Authoritative Mobile readback, analytics reconciliation, written upload, correction/reopen and superseding remain pending.",
+    "Fault injection does not prove power-loss durability; production HTTP and physical-phone acceptance were not tested.",
+    "TF uses synthetic stored records. Approved original capture remains one-page 10-MC A4."
+  ]
+}

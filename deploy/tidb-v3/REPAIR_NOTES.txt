@@ -1,0 +1,132 @@
+TiDB V3 CHECK restoration - offline preparation, 2026-09-30
+
+STATUS
+No SQL has been executed. No database connection was opened. No local database,
+local application properties, original export, or September 29 import package
+was changed by preparing these files. Live cloud readiness remains pending.
+
+EXACT DESTINATION
+performance_assessment_v3_test on the previously confirmed TiDB cluster only.
+Every ALTER TABLE names this schema explicitly. The scripts have no configurable
+database target and must never be adapted to the working local database.
+
+WHY THIS IS NEEDED
+The verified September 29 cloud package preserved all seven CHECK expressions
+that existed in the supplied export. That export contained no named CHECKs.
+The application release baseline requires 131 CHECKs. This is a genuine schema
+gap, not merely a metadata-count difference.
+
+The full named rule set can be reconstructed without querying local databases:
+- V3_000, 001, 002, 003, 006, 009, 013 and 014 produce 80 named rules.
+- The 80 names match the recovery schema, which also contains seven inline JSON
+  rules (87 checks at the V3_014 stage).
+- V3_015 through V3_023 add 44 net named rules, resulting in 124 named rules.
+- The V3_020 replacement of chk_student_answers_response is retained, including
+  manual written-answer evidence. Obsolete replaced rules are not restored.
+- Restoring all 124 missing rules, while preserving the seven exported rules,
+  yields the existing release expectation of 131. Do not lower it to 7 or 26.
+
+The earlier 19-rule investigation (12 evidence-hardening and seven calendar
+rules) was only a subset. These final SQL files cover all 124 missing rules,
+including the remaining 105 release checks. No partial version should be used
+to declare the deployment ready.
+
+FILES
+00_precheck.sql: SELECT/SHOW-only inspection. Confirm TiDB identity, exact schema,
+  CHECK feature ON, FK checks ON, counts 79/200/7/118, all 124 proposed names
+  absent, scalar QR-function behavior, and zero existing-row violations.
+01_add_required_checks.sql: 124 fully qualified ADD CONSTRAINT CHECK ENFORCED
+  statements. No row changes, seed operations, column changes, drops, or global
+  configuration changes. This is a reviewable candidate, not an executed repair.
+02_verify.sql: SELECT/SHOW-only count, definition, row-violation, and reference
+  seed verification. Expected CHECK total is 131. SHOW CREATE covers both the
+  restored rules and the original seven JSON rules; inspect enforcement too.
+constraint-plan.json: exact source paths, lines, expressions, source hashes,
+  migration add/drop history, cloud variants, referenced columns, and counts.
+prepare_constraint_repair.py: offline-only reproducible generator/validator.
+
+TIDB EXPRESSION COMPATIBILITY
+The QR hash checks in V3_009 use BINARY qr_payload_hash REGEXP. TiDB prohibits
+binary-string arguments to its regular-expression functions. The two cloud
+expressions use REGEXP_LIKE(qr_payload_hash, '^[0-9a-f]{64}$', 'c') while keeping
+qr_payload_hash = SHA2(qr_payload, 256). This preserves explicit lowercase
+64-hex matching and the exact payload digest. Neither check is omitted or
+weakened. Source and replacement expressions are both recorded in the JSON.
+
+All other 122 named expressions are retained from the final migration state,
+apart from whitespace normalization. Every referenced column was checked
+against the exported schema. The offline validation does not prove TiDB DDL
+acceptance, enforcement behavior, or correctness of live data. The two QR
+variants especially require actual TiDB validation before release.
+
+The term_order database constraint retains its source range 1..4. That supports
+legacy four-quarter records as well as three-term records; application rules
+must validate the number of periods per academic year. No term or date is
+rewritten by this repair.
+
+EXECUTION GATE (NOT PERFORMED HERE)
+1. Obtain explicit approval for the 124 additive cloud DDL statements, then use
+   a connection restricted to the exact target. Review the read-only precheck.
+2. Stop if identity, enabled enforcement, counts, existing names, scalar probes,
+   or row-violation counts differ. Do not repair rows or disable checks to proceed.
+3. Execute the additive statements only after that review; stop on the first
+   error. DDL statements commit independently. If interrupted, inspect metadata
+   and create an exact remaining-statement list; do not blindly replay the file.
+4. Run post-verification. Compare every clause, confirm all 131 checks, and
+   confirm no NOT ENFORCED marker. Keep foreign-key and CHECK enforcement ON.
+5. Before release, run negative-write acceptance in an explicitly approved
+   disposable environment. Include bad response counts, invalid region shapes,
+   held/purged attachment states, malformed or wrong QR hashes, invalid periods,
+   schedule dates, JSON receipt bodies, invalid scores, and mobile revisions.
+   These tests are not included as writes to the cloud test schema here.
+
+EXPECTED READINESS AFTER A SUCCESSFUL REPAIR
+Tables 79; foreign keys 200; CHECKs 131; unique constraints 118.
+Required dynamic tables 6; hardening columns 16; hardening constraints 15;
+school-scoped section rules 3; calendar columns 20; calendar constraints 16.
+Paper sizes 3 with all three approved dimension seeds; validated V2 regions 15;
+active question types 5; active OMR templates 2, both approved; unapproved active
+templates 0; active performance rule sets 4. Reference-seed counts were computed
+offline from the hash-verified package, not from a live database in this task.
+
+STARTUP/DEPLOYMENT IMPLICATIONS FOR THE BACKEND
+- Use the v3 profile plus a separate v3-cloud override; v3 already activates the
+  v3-mobile-release profile group. Keep existing local property files unchanged.
+- Require cloud-only connection inputs; never fall back to a localhost URL.
+  Fix expected database to performance_assessment_v3_test. Keep SQL init never,
+  Hibernate DDL none, and both database/mobile startup validators enabled.
+- Read CHECK definitions from information_schema.check_constraints (or the
+  TiDB-specific tidb_check_constraints when table identity is required).
+  TableConstraints metadata is not the sole authority for TiDB CHECKs. Count
+  required named CHECKs as well as the corresponding FK/UNIQUE metadata.
+- Keep the release guard at 131 checks. The imported seven-check schema must
+  continue to fail readiness until the complete repair is approved and verified.
+- Override server.port to use PORT in cloud config; the current v3 file fixes
+  8080 even though the base file supports PORT.
+- The Docker image runs as spring, but /app belongs to root and no output folder
+  is provisioned. Create owned storage directories before dropping privileges.
+  Mobile readiness requires an existing, absolute, writable evidence directory.
+  Both generated answer sheets and original scan evidence need durable storage.
+- Cloud mode must use its real HTTPS backend URL, production mode, required MFA
+  key inputs, and operational email delivery. Current production readiness and
+  email sender support SMTP only. Do not label device wiring or physical scanning
+  verified before real device acceptance.
+- CORS currently hardcodes the earlier Render frontend origin. Confirm the
+  actual deployed dashboard URL before changing its cloud allowlist.
+
+OFFICIAL REFERENCES REVIEWED
+TiDB CHECK syntax, existing-row checks, and enforcement:
+https://docs.pingcap.com/tidb/stable/constraints/
+Regex binary-string restrictions and explicit case-sensitive matching:
+https://docs.pingcap.com/tidb/stable/string-functions/
+SHA2 support:
+https://docs.pingcap.com/tidb/stable/encryption-and-compression-functions/
+CHECK definitions and table-aware metadata:
+https://docs.pingcap.com/tidb/stable/information-schema-check-constraints/
+https://docs.pingcap.com/tidb/stable/information-schema-tidb-check-constraints/
+
+REVALIDATE OFFLINE
+python prepare_constraint_repair.py --package <September-29-package-path> --check
+This checks source/package hashes, all 124 final rule names and column references,
+the V3_020 replacement, exact generated artifacts, all reference-seed counts,
+and the allowed statement types and fixed destination. It executes no SQL.

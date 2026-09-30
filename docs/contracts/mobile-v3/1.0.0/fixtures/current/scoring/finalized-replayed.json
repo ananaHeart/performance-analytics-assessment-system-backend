@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "message": "V3 assessment result scored and finalized successfully.",
+  "data": {
+    "testResultId": 87001,
+    "resultUuid": "fa6f21ad-cfff-41a3-99bc-188927e51e77",
+    "testAssignmentId": 12001,
+    "testId": 1006,
+    "classListId": 41001,
+    "studentId": 500,
+    "studentName": "Demo Learner",
+    "attemptNumber": 1,
+    "totalScore": 8,
+    "maxScore": 10,
+    "percentage": 80,
+    "performanceStatus": "maintain",
+    "performanceLabel": "Maintain",
+    "performanceRuleSetId": 1,
+    "itemsEvaluated": 10,
+    "scoreVersion": 1,
+    "resultStatus": "finalized",
+    "scoredAt": "2026-09-12T02:00:00Z",
+    "scoreChanged": false,
+    "parts": [
+      {
+        "testPartId": 21001,
+        "partOrder": 1,
+        "partName": "Multiple Choice",
+        "totalScore": 8,
+        "maxScore": 10,
+        "percentage": 80,
+        "itemsEvaluated": 10
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T02:00:00Z"
+}

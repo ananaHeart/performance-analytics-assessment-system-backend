@@ -105,7 +105,9 @@ public class V3MobileFinalizationRepository {
                   AND p.page_status='accepted' AND k.question_type_code IN ('multiple_choice','true_false')
                   AND g.region_type='objective_bubbles' AND g.question_type_id=q.question_type_id AND g.test_part_id=q.test_part_id
                   AND ((d.detection_status='blank' AND d.detected_option IS NULL AND a.answer_status='blank' AND a.selected_question_option_id IS NULL)
-                    OR (d.detection_status='detected' AND a.answer_status='answered' AND d.detected_option=o.option_key)) FOR UPDATE
+                    OR (d.detection_status='detected' AND a.answer_status='answered' AND d.detected_option=o.option_key)
+                    OR (d.detection_status='multiple_marks' AND a.answer_status='multiple' AND a.selected_question_option_id IS NULL)
+                    OR (d.detection_status='uncertain' AND a.answer_status='uncertain' AND a.selected_question_option_id IS NULL)) FOR UPDATE
                 """,Integer.class,c.testResultId(),c.teacherUserId(),c.teacherUserId());
         return matched == expected;
     }

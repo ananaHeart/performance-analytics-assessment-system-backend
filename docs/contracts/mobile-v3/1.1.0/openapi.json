@@ -1,0 +1,327 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SMART Mobile V3 detection upload",
+    "description": "Focused contract supplement. Wire contractVersion stays 3.0. Production wiring is not authorized by this document.",
+    "version": "1.1.0"
+  },
+  "paths": {
+    "/api/v3/mobile/scan-pages/{scanPageUuid}/detections": {
+      "post": {
+        "operationId": "uploadMobileDetections",
+        "summary": "Persist immutable MC/TF observations for one committed scan page",
+        "x-implementation-status": "IMPLEMENTED_RELEASE_BLOCKED",
+        "x-production-enabled": false,
+        "x-max-body-bytes": 131072,
+        "description": "One atomic batch of 1..200 observations. Exact operation retries replay the original receipt. Use a fresh syncUuid for each new stage operation. No scores or verification decisions are accepted. Production security currently denies this route.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scanPageUuid",
+            "schema": {
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            "required": true,
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetectionBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAck"
+                }
+              }
+            },
+            "description": "Atomic batch committed, disposition created"
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationAck"
+                }
+              }
+            },
+            "description": "Original committed receipt, disposition replayed"
+          },
+          "401": {
+            "description": "Missing or invalid bearer session"
+          },
+          "403": {
+            "description": "Production release gate denies this route; non-teacher access is also forbidden"
+          },
+          "404": {
+            "description": "Owned committed page or active teacher unavailable"
+          },
+          "409": {
+            "description": "Identity, sync, region/option, snapshot or target-state conflict; entire batch rejected"
+          },
+          "413": {
+            "description": "Actual or declared JSON body exceeds 128 KiB"
+          },
+          "415": {
+            "description": "Content type is not application/json"
+          },
+          "422": {
+            "description": "Invalid JSON, unknown or missing fields, invalid values or duplicate observations"
+          },
+          "500": {
+            "description": "Persistence failure or uncertain acknowledgement; retry identical operation and content"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "Detection": {
+        "type": "object",
+        "properties": {
+          "detectionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "regionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "questionUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "detectionStatus": {
+            "enum": [
+              "detected",
+              "blank",
+              "multiple_marks",
+              "uncertain"
+            ]
+          },
+          "detectedOption": {
+            "anyOf": [
+              {
+                "enum": [
+                  "A",
+                  "B",
+                  "C",
+                  "D"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "detectionUuid",
+          "regionUuid",
+          "questionUuid",
+          "detectionStatus",
+          "detectedOption",
+          "confidence"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "detectionStatus": {
+                  "const": "detected"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "detectedOption": {
+                  "enum": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                  ]
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "detectedOption": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DetectionBatch": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "const": "3.0"
+          },
+          "syncUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "operationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "detections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Detection"
+            },
+            "minItems": 1,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "contractVersion",
+          "syncUuid",
+          "operationUuid",
+          "detections"
+        ],
+        "additionalProperties": false
+      },
+      "IdMapping": {
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "enum": [
+              "test_result",
+              "scan_session",
+              "scan_page",
+              "answer_sheet_version",
+              "answer_sheet_page",
+              "answer_sheet_region",
+              "student_answer",
+              "omr_detection",
+              "answer_attachment",
+              "scan_verification",
+              "answer_verification",
+              "sync"
+            ]
+          },
+          "uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "centralId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "entityType",
+          "uuid",
+          "centralId"
+        ],
+        "additionalProperties": false
+      },
+      "OperationAck": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "syncUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "operationUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "disposition": {
+                "enum": [
+                  "created",
+                  "replayed"
+                ]
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "idMappings": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/IdMapping"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              },
+              "acknowledgedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              }
+            },
+            "required": [
+              "syncUuid",
+              "operationUuid",
+              "disposition",
+              "revision",
+              "idMappings",
+              "acknowledgedAt"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

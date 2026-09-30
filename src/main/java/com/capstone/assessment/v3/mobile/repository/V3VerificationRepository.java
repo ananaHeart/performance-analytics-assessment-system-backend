@@ -115,12 +115,22 @@ public class V3VerificationRepository {
                     capture_source,verified_at,answer_status,evaluation_status,is_correct,points_earned,teacher_feedback,finalized_at)
                 VALUES(?,?,?,?,?,'omr',CURRENT_TIMESTAMP,?,'finalized',NULL,0,?,CURRENT_TIMESTAMP)
                 """,page.resultId(),question,user.userId(),answer.answerUuid(),detection.optionId(),
-                "blank".equals(detection.status())?"blank":"answered",answer.comment());
+                answerStatus(detection.status()),answer.comment());
         jdbc.update("""
                 INSERT INTO mobile_objective_verifications(verification_uuid,student_answer_id,omr_detection_id,operation_uuid,
                     verified_by_user_id,comment,client_decided_at) VALUES(?,?,?,?,?,?,?)
                 """,answer.verificationUuid(),id,detection.id(),operation,user.userId(),answer.comment(),answer.clientDecidedAt().toString());
         return id;
+    }
+    /** Maps the immutable OMR detection status onto student_answers.answer_status without ever
+     *  substituting a chosen option for an ambiguous mark. */
+    private static String answerStatus(String detectionStatus) {
+        return switch(detectionStatus) {
+            case "blank" -> "blank";
+            case "multiple_marks" -> "multiple";
+            case "uncertain" -> "uncertain";
+            default -> "answered";
+        };
     }
     public void finishResult(long resultId,V3AuthenticatedUser user,Set<Long> scans) {
         jdbc.update("UPDATE test_results SET mobile_revision=mobile_revision+1,result_status='pending_verification' WHERE test_result_id=?",resultId);

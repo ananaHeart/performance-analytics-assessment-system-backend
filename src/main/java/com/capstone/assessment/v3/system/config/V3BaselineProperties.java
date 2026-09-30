@@ -5,6 +5,18 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "app.v3.baseline")
 public class V3BaselineProperties {
 
+    public enum DatabaseEngine { MARIADB, TIDB }
+
+    private DatabaseEngine databaseEngine = DatabaseEngine.MARIADB;
+
+    public DatabaseEngine getDatabaseEngine() {
+        return databaseEngine;
+    }
+
+    public void setDatabaseEngine(DatabaseEngine databaseEngine) {
+        this.databaseEngine = databaseEngine;
+    }
+
     private String expectedDatabase = "performance_assessment_v3_db";
     private int expectedTableCount = 67;
     private int expectedForeignKeyCount = 163;

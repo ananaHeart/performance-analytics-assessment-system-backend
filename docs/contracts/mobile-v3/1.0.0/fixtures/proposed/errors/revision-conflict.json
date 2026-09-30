@@ -1,0 +1,11 @@
+{
+  "success": false,
+  "message": "Illustrative rejected request.",
+  "data": null,
+  "errors": {
+    "code": "REVISION_CONFLICT",
+    "retryable": false,
+    "field": "expectedRevision"
+  },
+  "timestamp": "2026-09-12T02:00:00Z"
+}

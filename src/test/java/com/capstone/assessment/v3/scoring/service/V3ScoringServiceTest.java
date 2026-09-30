@@ -105,7 +105,31 @@ class V3ScoringServiceTest {
     }
 
     @Test
-    void uncertainObjectiveAnswerRequiresRescanAndCannotBeScored() {
+    void uncertainObjectiveAnswerScoresZeroLikeABlank() {
+        // Scanning was relaxed: an unclear mark no longer forces a rescan. It stays recorded
+        // as "uncertain" (never turned into a chosen option) and earns zero, like a blank.
+        ScoringRow uncertain = new ScoringRow(
+                11L, 1, "Part I", 101L, 1, "multiple_choice", new BigDecimal("2.00"), null,
+                3101L, "option", 1001L, null,
+                2001L, "answer-101", null, null, null, 0L, "uncertain", "finalized", 42L, NOW,
+                null, BigDecimal.ZERO, NOW, 1
+        );
+        stubReadyResult(pendingContext(42L), List.of(uncertain));
+        when(repository.updateResultScore(
+                eq(100L), anyInt(), any(), any(), anyInt(), any(), any(), anyLong(), anyInt(), any()
+        )).thenReturn(1);
+
+        V3ScoredResultResponse response = service.finalizeResult(TEACHER, 100L, METADATA);
+
+        assertEquals(new BigDecimal("0.00"), response.totalScore());
+        assertEquals(new BigDecimal("2.00"), response.maxScore());
+        verify(repository).updateObjectiveScore(2001L, false, new BigDecimal("0.00"));
+    }
+
+    @Test
+    void uncertainObjectiveAnswerCannotAlsoCarryASelectedOption() {
+        // The only thing still rejected: an "uncertain" mark that was silently turned into a
+        // chosen option. Student answers are recorded as scanned, never picked for them.
         ScoringRow uncertain = objectiveRow(
                 11L, 1, "Part I", 101L, 1, "multiple_choice", "2.00", 1001L, 1001L,
                 "uncertain", null
@@ -118,7 +142,7 @@ class V3ScoringServiceTest {
         );
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatus());
-        assertEquals("OBJECTIVE_RESCAN_REQUIRED", exception.getCode());
+        assertEquals("OBJECTIVE_ANSWER_INVALID", exception.getCode());
         verify(repository, never()).updateObjectiveScore(anyLong(), anyBoolean(), any(BigDecimal.class));
         verify(repository, never()).updateResultScore(
                 anyLong(), anyInt(), any(), any(), anyInt(), any(), anyString(),

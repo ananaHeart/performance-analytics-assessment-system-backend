@@ -15,6 +15,7 @@ import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.RubricCrit
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.RubricRow;
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.SkillMappingRow;
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.TermWindow;
+import com.capstone.assessment.v3.school.model.V3AcademicCalendarLayout;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -176,30 +177,38 @@ public class V3AssessmentRepository {
             int academicYearId,
             String schoolId
     ) {
-        return jdbcTemplate.query("""
+        record CalendarTerm(TermWindow window, String name, int order) { }
+        List<CalendarTerm> calendar = jdbcTemplate.query("""
                         SELECT term.term_period_id,
                                term.academic_year_id,
+                               term.term_name,
+                               term.term_order,
                                term.start_at,
                                term.end_at,
                                term.status
                           FROM term_periods term
                           JOIN academic_years academic_year
                             ON academic_year.academic_year_id = term.academic_year_id
-                         WHERE term.term_period_id = ?
-                           AND term.academic_year_id = ?
+                         WHERE term.academic_year_id = ?
                            AND academic_year.school_id = ?
                         """,
-                (rs, rowNum) -> new TermWindow(
+                (rs, rowNum) -> new CalendarTerm(new TermWindow(
                         rs.getInt("term_period_id"),
                         rs.getInt("academic_year_id"),
                         toInstant(rs.getTimestamp("start_at")),
                         toInstant(rs.getTimestamp("end_at")),
                         rs.getString("status")
-                ),
-                termPeriodId,
+                ), rs.getString("term_name"), rs.getInt("term_order")),
                 academicYearId,
                 schoolId
-        ).stream().findFirst();
+        );
+        boolean endExclusive = V3AcademicCalendarLayout.detect(calendar, CalendarTerm::name, CalendarTerm::order)
+                .filter(layout -> layout == V3AcademicCalendarLayout.THREE_TERMS).isPresent();
+        return calendar.stream().map(CalendarTerm::window)
+                .filter(term -> term.termPeriodId() == termPeriodId)
+                .map(term -> new TermWindow(term.termPeriodId(), term.academicYearId(),
+                        term.startAt(), term.endAt(), term.status(), endExclusive))
+                .findFirst();
     }
 
     public List<ClassScheduleWindow> listActiveClassScheduleWindows(long classAssignmentId) {
@@ -1183,6 +1192,27 @@ public class V3AssessmentRepository {
                 UPDATE test_assignments
                 SET assignment_status = 'archived'
                 WHERE test_assignment_id = ? AND assignment_status <> 'archived'
+                """, testAssignmentId);
+    }
+
+    /** Restores an archived test back to 'draft' so the teacher reviews it before
+     *  reactivating properly, mirroring the archive/restore pair already used by
+     *  class assignments (archiveAssignment/reactivateAssignment). */
+    public int restoreTest(long testId) {
+        return jdbcTemplate.update("""
+                        UPDATE tests
+                        SET status = 'draft', archived_at = NULL
+                        WHERE test_id = ? AND status = 'archived'
+                        """,
+                testId
+        );
+    }
+
+    public void restoreTestAssignment(long testAssignmentId) {
+        jdbcTemplate.update("""
+                UPDATE test_assignments
+                SET assignment_status = 'planned'
+                WHERE test_assignment_id = ? AND assignment_status = 'archived'
                 """, testAssignmentId);
     }
 

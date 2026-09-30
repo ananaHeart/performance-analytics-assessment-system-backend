@@ -1,0 +1,125 @@
+{
+  "success": true,
+  "message": "V3 Mobile reference data retrieved successfully.",
+  "data": {
+    "contractVersion": "3.0",
+    "serverTime": "2026-08-31T00:00:00Z",
+    "downloadMode": "full_snapshot",
+    "questionTypes": [
+      {
+        "questionTypeId": 1,
+        "code": "multiple_choice",
+        "name": "Multiple Choice",
+        "captureMode": "omr",
+        "scoringMode": "automatic",
+        "supportsOmr": true,
+        "supportsOcr": false,
+        "supportsMultipleResponse": false,
+        "requiresAttachment": false,
+        "requiresTeacherVerification": true,
+        "allowsTeacherAnswerEdit": false
+      },
+      {
+        "questionTypeId": 2,
+        "code": "true_false",
+        "name": "True or False",
+        "captureMode": "omr",
+        "scoringMode": "automatic",
+        "supportsOmr": true,
+        "supportsOcr": false,
+        "supportsMultipleResponse": false,
+        "requiresAttachment": false,
+        "requiresTeacherVerification": true,
+        "allowsTeacherAnswerEdit": false
+      },
+      {
+        "questionTypeId": 3,
+        "code": "identification",
+        "name": "Identification",
+        "captureMode": "hybrid",
+        "scoringMode": "hybrid",
+        "supportsOmr": false,
+        "supportsOcr": true,
+        "supportsMultipleResponse": false,
+        "requiresAttachment": true,
+        "requiresTeacherVerification": true,
+        "allowsTeacherAnswerEdit": false
+      },
+      {
+        "questionTypeId": 4,
+        "code": "enumeration",
+        "name": "Enumeration",
+        "captureMode": "hybrid",
+        "scoringMode": "hybrid",
+        "supportsOmr": false,
+        "supportsOcr": true,
+        "supportsMultipleResponse": true,
+        "requiresAttachment": true,
+        "requiresTeacherVerification": true,
+        "allowsTeacherAnswerEdit": false
+      },
+      {
+        "questionTypeId": 5,
+        "code": "essay",
+        "name": "Essay",
+        "captureMode": "manual",
+        "scoringMode": "manual",
+        "supportsOmr": false,
+        "supportsOcr": false,
+        "supportsMultipleResponse": false,
+        "requiresAttachment": true,
+        "requiresTeacherVerification": true,
+        "allowsTeacherAnswerEdit": false
+      }
+    ],
+    "paperSizes": [
+      {"paperSizeId": 1, "code": "A4", "name": "A4", "widthPt": 595.276, "heightPt": 841.890, "operationallySupported": true},
+      {"paperSizeId": 2, "code": "US_LETTER", "name": "US Letter", "widthPt": 612.000, "heightPt": 792.000, "operationallySupported": false},
+      {"paperSizeId": 3, "code": "US_LEGAL", "name": "US Legal", "widthPt": 612.000, "heightPt": 1008.000, "operationallySupported": false}
+    ],
+    "omrTemplates": [
+      {
+        "omrTemplateId": 1,
+        "code": "OMR-A4-10-MC-CTX-V2",
+        "name": "Validated A4 10-item Multiple Choice",
+        "version": "2",
+        "questionType": "multiple_choice",
+        "paperSize": "A4",
+        "orientation": "portrait",
+        "minimumItemCount": 10,
+        "maximumItemCount": 10,
+        "optionCount": 4,
+        "qrPayloadVersion": 2,
+        "minimumScannerVersion": "2.0.0",
+        "coordinateOrigin": "pdf_bottom_left",
+        "requiredPrintScalePercent": 100.00,
+        "geometryHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "physicallyValidated": true,
+        "regions": []
+      }
+    ],
+    "statuses": {
+      "testAssignments": ["planned", "open", "closed", "archived"],
+      "scanSessions": ["captured", "processing", "needs_verification", "accepted", "rescan_requested", "rejected", "superseded", "failed"],
+      "omrDetections": ["detected", "blank", "multiple_marks", "uncertain"],
+      "studentAnswers": ["answered", "blank", "multiple", "uncertain", "invalid", "pending_manual"],
+      "answerEvaluation": ["pending_verification", "needs_manual_scoring", "scored", "finalized"],
+      "testResults": ["draft", "pending_verification", "finalized", "superseded"],
+      "syncs": ["pending", "in_progress", "partial_success", "success", "failed"],
+      "syncItems": ["pending", "success", "failed", "skipped"]
+    },
+    "syncPolicy": {
+      "syncAction": "upsert",
+      "oneAssignmentPerSync": true,
+      "stableUuids": ["syncUuid", "resultUuid", "scanUuid", "scanPageUuid", "answerUuid"],
+      "identicalRetryStatus": "replayed",
+      "changedPayloadConflictCode": "IDEMPOTENCY_KEY_REUSE",
+      "scanPageUploadAvailable": false,
+      "scanPageUploadAvailabilityReason": "The DTO and retry contract are approved, but central scan-page evidence persistence is not implemented.",
+      "maximumQrPayloadBytes": 256,
+      "minimumAnswerSheetQuestions": 5
+    }
+  },
+  "errors": null,
+  "timestamp": "2026-08-31T00:00:00Z"
+}

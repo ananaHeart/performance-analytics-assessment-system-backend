@@ -1,0 +1,123 @@
+{
+  "generatedAtUtc": "2026-09-12T13:50:26.2708341Z",
+  "scope": "Milestone 3 Prompt 10 written contract review and evaluation-reference",
+  "totalTests": 83.0,
+  "suites": [
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3ScanUploadMariaDbTest",
+      "tests": 61,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:46:07.7013923Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3EvaluationReferenceControllerTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:45:47.3959651Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.service.V3EvaluationReferenceGateTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:45:47.7525213Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.scoring.service.V3ScoringServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:46:07.8579171Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.contract.V3MobileContractFixtureTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:45:43.9870991Z"
+    },
+    {
+      "suite": "com.capstone.assessment.v3.mobile.controller.V3ScanPageSecurityGateTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportUpdatedUtc": "2026-09-12T13:45:47.5925253Z"
+    }
+  ],
+  "hashes": [
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/service/V3EvaluationReferenceService.java",
+      "sha256": "f4335ab33ea986ae8a7fd0965239c9723cc7c0b316633ff0149306782c939603"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/repository/V3EvaluationReferenceRepository.java",
+      "sha256": "e87be6e3262ce8aa9f159cc77127f92f5de828511eb0ff22385c8af3e9403751"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/controller/V3EvaluationReferenceController.java",
+      "sha256": "ea5fafcf85f49433b2a64fe2d01291dcf5d2a3f7e72b48171ecaacec6c209a48"
+    },
+    {
+      "file": "src/main/java/com/capstone/assessment/v3/mobile/dto/V3EvaluationReference.java",
+      "sha256": "a5aedf8fa50fbe1bf4b7cb7b457764f34f761e6a030164feda865baaca0f710e"
+    },
+    {
+      "file": "docs/contracts/mobile-v3/1.5.0/openapi.json",
+      "sha256": "8b31fe5340a39cfee589dc51df4a52bbeb65c2b5eadda02f11fd0c825e5a0467"
+    }
+  ],
+  "contract": {
+    "packVersion": "1.5.0",
+    "wireVersion": "3.0",
+    "openapi": "3.1.0",
+    "schemas": 6,
+    "fixtures": 5,
+    "syntheticRuntimeSamplesChecked": 1,
+    "independentHashValidationPassed": true,
+    "allSixPackValidatorsPassed": true,
+    "parentWireSchemasUnchanged": true
+  },
+  "databaseValidation": {
+    "engine": "MariaDB 10.4.32",
+    "isolatedPort": 33317,
+    "existingDraftChain": "V3_018",
+    "tables": 73,
+    "foreignKeys": 175,
+    "checks": 98,
+    "uniqueConstraints": 104,
+    "newMigrationAdded": false,
+    "syntheticRecordsOnly": true,
+    "schoolDatabaseAccessed": false,
+    "temporaryInstanceStopped": true,
+    "imageOnlyAnsweredConstraintBlockConfirmed": true
+  },
+  "release": {
+    "evaluationReferenceEnabled": false,
+    "writtenWriteRoutesEnabled": false,
+    "configuredBaseline": "V3_014",
+    "physicalWrittenScannerValidated": false,
+    "completeMobileFlow": false
+  },
+  "milestone": {
+    "number": 3,
+    "prompt": 10,
+    "componentStatus": "COMPLETE_RELEASE_GATED",
+    "milestoneStatus": "IN_PROGRESS",
+    "next": "Prompt 11 written evidence/crop upload and persistence"
+  },
+  "limitations": [
+    "Reference contains scoring bounds; rubric descriptions and level definitions are not part of the frozen DTO.",
+    "Image-only answered persistence remains blocked by the existing SQL invariant despite retained evidence metadata.",
+    "Written verification requires a future explicit reference-binding/history decision; GET fingerprint alone is not a write precondition.",
+    "Existing scorer requires all rubric criteria, including those marked optional.",
+    "No written attachment/manual/rubric upload, migration, production HTTP or physical-phone acceptance was performed."
+  ]
+}

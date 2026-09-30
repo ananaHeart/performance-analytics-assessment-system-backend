@@ -228,6 +228,42 @@ class V3AuthServiceTest {
         );
     }
 
+    @Test
+    void wrongPasswordsNeverLockTheAccountWhileLockoutIsOff() {
+        // Already past the old 5-attempt limit.
+        V3UserAccount user = lockedUser(9, null);
+        when(authRepository.findUserByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, PASSWORD_HASH)).thenReturn(false);
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> service.login(loginRequest(), metadata()));
+
+        assertEquals("INVALID_CREDENTIALS", exception.getCode());
+        // The failure is still counted and audited, but no lock time is set.
+        verify(authRepository).recordFailedLogin(42L, 10, null);
+        verify(authRepository, never()).countRecentCredentialFailures(any(), any(), any());
+    }
+
+    @Test
+    void aLockSetBeforeLockoutWasTurnedOffNoLongerBlocksTheCorrectPassword() {
+        V3UserAccount user = lockedUser(9, NOW.plus(Duration.ofMinutes(10)));
+        when(authRepository.findUserByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, PASSWORD_HASH)).thenReturn(true);
+        when(tokenService.generateToken()).thenReturn("raw-access-token");
+        when(tokenService.hashToken("raw-access-token")).thenReturn("token-hash");
+
+        V3LoginResponse response = service.login(loginRequest(), metadata());
+
+        assertEquals("raw-access-token", response.accessToken());
+    }
+
+    private V3UserAccount lockedUser(int failedLoginCount, Instant lockedUntilAt) {
+        V3UserAccount base = user("active", false, NOW.minus(Duration.ofDays(10)));
+        return new V3UserAccount(base.userId(), base.schoolId(), 77L, "Test", null, "Teacher", null, EMAIL,
+                PASSWORD_HASH, "teacher", "active", failedLoginCount, lockedUntilAt, NOW.minusSeconds(60), false,
+                base.createdAt());
+    }
+
     private V3UserAccount user(String status, boolean mfaRequired, Instant createdAt) {
         return new V3UserAccount(
                 42L,

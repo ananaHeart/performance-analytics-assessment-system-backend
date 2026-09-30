@@ -15,6 +15,6 @@ public record V3AcademicYearRequest(
         @NotBlank @Pattern(regexp = "\\d{4}-\\d{4}") String yearName,
         @NotNull LocalDate startDate,
         @NotNull LocalDate endDate,
-        @NotNull @Size(min = 4, max = 4) List<@Valid V3TermPeriodRequest> termPeriods
+        @NotNull @Size(min = 3, max = 4) List<@NotNull @Valid V3TermPeriodRequest> termPeriods
 ) {
 }

@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "message": "Request completed successfully.",
+  "data": {
+    "contractVersion": "3.0",
+    "syncUuid": "41204952-60f3-43fc-a684-9e721cf75206",
+    "assignmentUuid": "1c2282b3-1d28-42b0-be25-9862e172150b",
+    "syncStatus": "success",
+    "items": [
+      {
+        "resultUuid": "d5c36d5f-1e04-4128-bff3-3737c311558f",
+        "status": "success",
+        "error": null,
+        "pageOutcomes": []
+      }
+    ]
+  },
+  "errors": null,
+  "timestamp": "2026-09-12T16:02:19.046394800Z"
+}

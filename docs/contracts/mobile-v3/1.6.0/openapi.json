@@ -1,0 +1,575 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SMART Mobile V3 evidence upload",
+    "version": "1.6.0"
+  },
+  "paths": {
+    "/api/v3/mobile/attachments": {
+      "post": {
+        "operationId": "uploadMobileAttachment",
+        "x-production-enabled": false,
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Prompt 11 implemented component; HTTP denied pending deployment/release. One attachment and fresh sync UUID per operation. Exact retry uses unchanged metadata and bytes. No answer scoring or finalization. Requires draft V3_019.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "metadata",
+                  "file"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "metadata": {
+                    "$ref": "#/components/schemas/AttachmentMetadata"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "metadata": {
+                  "contentType": "application/json"
+                },
+                "file": {
+                  "contentType": "image/jpeg, image/png"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Exact committed replay: same attachment ID and original acknowledgedAt, uploadStatus=replayed.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentAck"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Committed immutable evidence receipt. Storage locations are private.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentAck"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing/expired session"
+          },
+          "403": {
+            "description": "Release gate, wrong role or inactive teacher"
+          },
+          "404": {
+            "description": "Owned result/page not found or stored evidence missing"
+          },
+          "409": {
+            "description": "ATTACHMENT_IDENTITY_CONFLICT or ATTACHMENT_STATE_CONFLICT"
+          },
+          "413": {
+            "description": "64 KiB metadata or 15 MiB image bound exceeded"
+          },
+          "422": {
+            "description": "VALIDATION_FAILED, IMAGE_HASH_MISMATCH or ATTACHMENT_LINEAGE_INVALID"
+          },
+          "500": {
+            "description": "Evidence integrity/storage failure; corrupt evidence is never replaced"
+          },
+          "503": {
+            "description": "ATTACHMENT_STORAGE_UNAVAILABLE: retry unchanged request; an uncertain commit may already be durable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "AttachmentMetadata": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "const": "3.0"
+          },
+          "syncUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "operationUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "attachmentUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "attachmentType": {
+            "enum": [
+              "normalized_page",
+              "answer_crop",
+              "teacher_evidence"
+            ]
+          },
+          "regionUuid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceAttachmentUuid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Crop"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "fileSizeBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 15728640
+          },
+          "mimeType": {
+            "enum": [
+              "image/jpeg",
+              "image/png"
+            ]
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "contractVersion",
+          "syncUuid",
+          "operationUuid",
+          "attachmentUuid",
+          "resultUuid",
+          "scanPageUuid",
+          "attachmentType",
+          "regionUuid",
+          "sourceAttachmentUuid",
+          "crop",
+          "contentHash",
+          "fileSizeBytes",
+          "mimeType",
+          "capturedAt"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "attachmentType": {
+                  "const": "normalized_page"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "sourceAttachmentUuid": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "regionUuid": {
+                  "type": "null"
+                },
+                "crop": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "sourceAttachmentUuid": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "attachmentType": {
+                  "const": "answer_crop"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "regionUuid": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "crop": {
+                  "$ref": "#/components/schemas/Crop"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "attachmentType": {
+                  "const": "teacher_evidence"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "crop": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Crop": {
+        "type": "object",
+        "properties": {
+          "baseAttachmentUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "coordinateSpace": {
+            "const": "image_pixels_top_left"
+          },
+          "baseWidthPx": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "baseHeightPx": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "x": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "baseAttachmentUuid",
+          "coordinateSpace",
+          "baseWidthPx",
+          "baseHeightPx",
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "additionalProperties": false
+      },
+      "AttachmentAck": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "attachmentUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "backendAttachmentId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "contentHash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "uploadStatus": {
+                "enum": [
+                  "created",
+                  "replayed"
+                ]
+              },
+              "acknowledgedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              }
+            },
+            "required": [
+              "attachmentUuid",
+              "backendAttachmentId",
+              "contentHash",
+              "uploadStatus",
+              "acknowledgedAt"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "SyncReadback": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "contractVersion": {
+                "const": "3.0"
+              },
+              "syncUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "assignmentUuid": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "syncStatus": {
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "partial_success",
+                  "success",
+                  "failed"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SyncResultOutcome"
+                },
+                "minItems": 0,
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "contractVersion",
+              "syncUuid",
+              "assignmentUuid",
+              "syncStatus",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          "errors": {
+            "type": "null"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        },
+        "required": [
+          "success",
+          "message",
+          "data",
+          "errors",
+          "timestamp"
+        ],
+        "additionalProperties": false
+      },
+      "SyncResultOutcome": {
+        "type": "object",
+        "properties": {
+          "resultUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "pending"
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pageOutcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PageOutcome"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "resultUuid",
+          "status",
+          "error",
+          "pageOutcomes"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "additionalProperties": false
+      },
+      "PageOutcome": {
+        "type": "object",
+        "properties": {
+          "scanPageUuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed",
+              "pending"
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "scanPageUuid",
+          "status",
+          "error"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

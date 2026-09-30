@@ -1,0 +1,25 @@
+{
+  "contractVersion": "3.0",
+  "syncUuid": "00000000-0000-4000-8000-000000000120",
+  "operationUuid": "00000000-0000-4000-8000-000000010120",
+  "attachmentUuid": "00000000-0000-4000-8000-000000002140",
+  "resultUuid": "00000000-0000-4000-8000-000000002100",
+  "scanPageUuid": "00000000-0000-4000-8000-000000002101",
+  "attachmentType": "answer_crop",
+  "regionUuid": "00000000-0000-4000-8000-000000002120",
+  "sourceAttachmentUuid": "00000000-0000-4000-8000-000000002103",
+  "crop": {
+    "baseAttachmentUuid": "00000000-0000-4000-8000-000000002103",
+    "coordinateSpace": "image_pixels_top_left",
+    "baseWidthPx": 1200,
+    "baseHeightPx": 1600,
+    "x": 100,
+    "y": 200,
+    "width": 600,
+    "height": 120
+  },
+  "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "fileSizeBytes": 1024,
+  "mimeType": "image/jpeg",
+  "capturedAt": "2026-09-12T02:00:00Z"
+}

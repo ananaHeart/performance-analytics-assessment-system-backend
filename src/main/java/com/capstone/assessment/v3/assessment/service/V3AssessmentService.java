@@ -380,6 +380,40 @@ public class V3AssessmentService {
         return requireAssessment(user, testId);
     }
 
+    /** Reverses archiveAssessment. Lands on 'draft' (not whatever status it had before
+     *  archiving) so the teacher reviews the assessment - answer keys, skill mappings,
+     *  schedule - before reactivating it, rather than silently resuming as 'active' or
+     *  'completed'. There is no stored "status before archive" to restore to anyway. */
+    @Transactional
+    public V3AssessmentResponse restoreAssessment(
+            V3AuthenticatedUser user,
+            long testId,
+            V3RequestMetadata metadata
+    ) {
+        requireTeacher(user);
+        repository.lockTest(testId);
+        AssessmentHeader header = requireOwnedHeader(user, testId);
+        if (!"archived".equals(header.status())) {
+            throw conflict("ASSESSMENT_NOT_RESTORABLE", "Only archived assessments may be restored.");
+        }
+        Instant now = clock.instant();
+        if (repository.restoreTest(testId) != 1) {
+            throw conflict("ASSESSMENT_RESTORE_CONFLICT", "The assessment was changed before it could be restored.");
+        }
+        repository.restoreTestAssignment(header.testAssignmentId());
+        auditService.record(
+                user.userId(),
+                "assessment.restore",
+                "tests",
+                Long.toString(testId),
+                "success",
+                metadata,
+                Map.of("testAssignmentId", header.testAssignmentId()),
+                now
+        );
+        return requireAssessment(user, testId);
+    }
+
     private PreparedAssessment prepareAssessment(
             V3AuthenticatedUser user,
             V3AssessmentRequest request,
@@ -1348,6 +1382,10 @@ public class V3AssessmentService {
     }
 
     private void validateActivationReadiness(V3AssessmentResponse assessment) {
+        // Drafts saved before the opening date became required must get one before going live.
+        if (assessment.openAt() == null) {
+            throw invalid("openAt", "Set the opening date (when the assessment is conducted) before activating.");
+        }
         if (assessment.parts().isEmpty() || assessment.totalItems() < 1) {
             throw conflict("ASSESSMENT_INCOMPLETE", "The assessment has no questions.");
         }
@@ -1533,7 +1571,11 @@ public class V3AssessmentService {
     ) {
         Instant openAt = request.openAt();
         Instant closeAt = request.closeAt();
-        if (openAt != null && closeAt != null && !closeAt.isAfter(openAt)) {
+        // Required: reports print it as the date the assessment was conducted. Close stays optional.
+        if (openAt == null) {
+            throw invalid("openAt", "The opening date (when the assessment is conducted) is required.");
+        }
+        if (closeAt != null && !closeAt.isAfter(openAt)) {
             throw invalid("closeAt", "closeAt must be later than openAt.");
         }
         validateInsideTerm("openAt", openAt, termWindow);
@@ -1567,7 +1609,10 @@ public class V3AssessmentService {
     }
 
     private void validateInsideTerm(String field, Instant value, TermWindow termWindow) {
-        if (value != null && (value.isBefore(termWindow.startAt()) || value.isAfter(termWindow.endAt()))) {
+        // New terms exclude their end for openings; closing at that boundary is valid.
+        // Historical quarter windows retain their original inclusive-end behavior.
+        if (value != null && (value.isBefore(termWindow.startAt()) || value.isAfter(termWindow.endAt())
+                || (termWindow.endExclusive() && "openAt".equals(field) && value.equals(termWindow.endAt())))) {
             throw invalid(field, "The assessment schedule must stay inside the selected term period.");
         }
     }
