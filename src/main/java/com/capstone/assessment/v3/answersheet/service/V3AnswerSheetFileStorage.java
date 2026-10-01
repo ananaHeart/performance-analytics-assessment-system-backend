@@ -52,7 +52,8 @@ public class V3AnswerSheetFileStorage {
             if (!Files.isRegularFile(path)) {
                 throw new V3AuthException(
                         "ANSWER_SHEET_PDF_NOT_FOUND",
-                        "The stored answer-sheet PDF is unavailable.",
+                        // On free hosting a server restart clears stored PDFs; printed sheets still scan.
+                        "The stored answer-sheet PDF is unavailable. Generate the answer sheet again to download it.",
                         HttpStatus.NOT_FOUND
                 );
             }

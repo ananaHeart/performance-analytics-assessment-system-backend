@@ -93,7 +93,9 @@ public class V3MobileFinalizationService {
                 || image.fileSizeBytes()!=evidence.size() || !image.contentHash().equals(evidence.hash())
                 || !image.contentHash().equals(evidence.imageHash()))
             throw conflict("SCAN_EVIDENCE_INCOMPLETE","The selected original does not match its immutable committed receipt.");
-        storage.read(image); // Verify every page, including after replay/correction.
+        // Verify every page, including after replay/correction (on temporary storage, a file
+        // wiped by a restart is accepted on its committed receipt checked just above).
+        storage.readIfRetained(image);
         }
     }
     V3ScoredResultResponse officialSnapshot(ResultContext context,V3MobileFinalizationRepository.Receipt receipt) {

@@ -69,6 +69,26 @@ class V3OriginalScanImageStorageTest {
         assertEquals(1, publishedCount());
     }
 
+    /** Render Free: a restart wipes stored files. Sync must not stop because of it, but a file
+     *  that IS there and was altered must still be caught. Durable storage is unchanged. */
+    @Test
+    void temporaryStorageAcceptsAWipedFileOnItsReceiptButStillCatchesAlteredBytes() throws Exception {
+        V3OriginalScanImageStorage temporary = new V3OriginalScanImageStorage(root.toString(), true);
+        V3OriginalScanImageStorage.OriginalImage image;
+        try (var staged = temporary.stage(upload(jpeg), hash(jpeg))) {
+            image = staged.publish();
+        }
+        assertArrayEquals(jpeg, temporary.readIfRetained(image).orElseThrow(), "present file is still verified");
+
+        Files.write(root.resolve(image.storageKey()), new byte[]{1, 2, 3});
+        assertError("SCAN_EVIDENCE_INTEGRITY_FAILED", () -> temporary.readIfRetained(image));
+
+        Files.delete(root.resolve(image.storageKey()));
+        assertTrue(temporary.readIfRetained(image).isEmpty(), "wiped by a restart: rely on the committed receipt");
+        // Durable storage still treats a missing original as missing evidence.
+        assertError("SCAN_EVIDENCE_NOT_FOUND", () -> storage.readIfRetained(image));
+    }
+
     @Test
     void abandonRemovesOnlyStagingAndCannotLaterPublish() throws Exception {
         var staged = storage.stage(upload(jpeg), hash(jpeg));

@@ -136,7 +136,11 @@ public class V3AttachmentUploadService {
         return e;
     }
     private void verifyBytes(Evidence evidence) {
-        byte[] bytes=storage.read(evidence.image());
+        // On temporary storage a file wiped by a restart has no bytes to re-check; its committed
+        // receipt (hash, size, dimensions verified at upload) stands in for it.
+        var retained=storage.readIfRetained(evidence.image());
+        if(retained.isEmpty()) return;
+        byte[] bytes=retained.get();
         // Dimensions are checked against actual retained bytes, not the client crop declaration or a mutable DB value alone.
         try(var input=javax.imageio.ImageIO.createImageInputStream(new java.io.ByteArrayInputStream(bytes))) {
             var readers=javax.imageio.ImageIO.getImageReaders(input);

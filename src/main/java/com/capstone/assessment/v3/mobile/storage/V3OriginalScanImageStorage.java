@@ -3,6 +3,7 @@ package com.capstone.assessment.v3.mobile.storage;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
@@ -39,11 +40,36 @@ public class V3OriginalScanImageStorage {
     private static final Logger LOG = LoggerFactory.getLogger(V3OriginalScanImageStorage.class);
     private final Path root;
     private final Path staging;
+    /** Render Free: no persistent disk, so a restart or idle spin-down wipes stored files. */
+    private final boolean temporaryStorage;
 
+    public V3OriginalScanImageStorage(String directory) {
+        this(directory, false);
+    }
+
+    @Autowired
     public V3OriginalScanImageStorage(
-            @Value("${app.v3.scan-evidence.storage-directory:output/v3-scan-evidence}") String directory) {
+            @Value("${app.v3.scan-evidence.storage-directory:output/v3-scan-evidence}") String directory,
+            @Value("${app.v3.scan-evidence.temporary-storage:false}") boolean temporaryStorage) {
         root = Path.of(directory).toAbsolutePath().normalize();
         staging = root.resolve(".staging");
+        this.temporaryStorage = temporaryStorage;
+    }
+
+    /**
+     * Re-verifies retained bytes before they are relied on (finalization, written scoring,
+     * crop lineage). With durable storage a missing file fails exactly like {@link #read}.
+     * With temporary storage a file wiped by a restart is accepted on the strength of its
+     * committed receipt - hash, size and dimensions were verified when it was uploaded - so
+     * synchronization keeps working; a file that IS present but differs still fails.
+     */
+    public java.util.Optional<byte[]> readIfRetained(OriginalImage image) {
+        if (temporaryStorage && image != null && !Files.isRegularFile(resolveKey(image.storageKey()), LinkOption.NOFOLLOW_LINKS)) {
+            LOG.warn("Scan evidence {} is no longer on temporary storage; relying on its committed receipt.",
+                    image.attachmentUuid());
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(read(image));
     }
 
     /** Streams and closes the multipart input; never uses the client filename or rewrites pixels. */
