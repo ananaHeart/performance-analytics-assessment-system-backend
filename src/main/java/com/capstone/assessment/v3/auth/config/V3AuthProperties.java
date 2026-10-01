@@ -21,8 +21,11 @@ public class V3AuthProperties {
     private Duration registrationRetention = Duration.ofDays(30);
     private int cleanupBatchSize = 100;
     private boolean cleanupEnabled = true;
+    /** log (local only), smtp, or brevo-api (HTTPS - works where outbound SMTP ports are blocked). */
     private String emailDeliveryMode = "log";
     private String emailFromAddress = "no-reply@smart-assessment.local";
+    private String brevoApiKey;
+    private String brevoApiUrl = "https://api.brevo.com/v3/smtp/email";
 
     public Duration getSessionTtl() {
         return sessionTtl;
@@ -126,5 +129,21 @@ public class V3AuthProperties {
 
     public void setEmailFromAddress(String emailFromAddress) {
         this.emailFromAddress = emailFromAddress;
+    }
+
+    public String getBrevoApiKey() {
+        return brevoApiKey;
+    }
+
+    public void setBrevoApiKey(String brevoApiKey) {
+        this.brevoApiKey = brevoApiKey;
+    }
+
+    public String getBrevoApiUrl() {
+        return brevoApiUrl;
+    }
+
+    public void setBrevoApiUrl(String brevoApiUrl) {
+        this.brevoApiUrl = brevoApiUrl;
     }
 }

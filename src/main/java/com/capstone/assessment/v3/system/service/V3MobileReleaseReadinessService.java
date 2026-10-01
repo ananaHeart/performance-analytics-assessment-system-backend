@@ -80,7 +80,7 @@ public class V3MobileReleaseReadinessService {
         add(checks, "session_policy", validSessionPolicy(),
                 "Bearer sessions must expire between 1 minute and 24 hours; refresh is not supported.");
         add(checks, "production_auth_secrets", validProductionAuthConfiguration(),
-                "Production MFA requires an encryption key and SMTP email delivery.");
+                "Production MFA requires an encryption key and SMTP or Brevo API email delivery.");
 
         boolean backendReady = checks.stream().allMatch(V3MobileReleaseCheckResponse::passed);
         boolean fullyConnected = backendReady
@@ -181,9 +181,10 @@ public class V3MobileReleaseReadinessService {
             return true;
         }
         boolean encryptionReady = !mfa.isEnabled() || (mfa.getEncryptionKey() != null && !mfa.getEncryptionKey().isBlank());
-        return encryptionReady
-                && "smtp".equalsIgnoreCase(safe(auth.getEmailDeliveryMode()))
-                && !safe(smtpHost).isBlank();
+        String emailMode = safe(auth.getEmailDeliveryMode());
+        boolean emailReady = ("smtp".equalsIgnoreCase(emailMode) && !safe(smtpHost).isBlank())
+                || ("brevo-api".equalsIgnoreCase(emailMode) && !safe(auth.getBrevoApiKey()).isBlank());
+        return encryptionReady && emailReady;
     }
 
     private String normalizedMode() {

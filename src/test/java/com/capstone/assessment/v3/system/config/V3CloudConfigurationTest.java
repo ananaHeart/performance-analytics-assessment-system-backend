@@ -52,7 +52,7 @@ class V3CloudConfigurationTest {
                     assertThat(environment.getProperty("app.v3.baseline.validate-on-startup")).isEqualTo("true");
                     assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("none");
                     assertThat(environment.getProperty("spring.sql.init.mode")).isEqualTo("never");
-                    assertThat(environment.getProperty("app.v3.auth.email-delivery-mode")).isEqualTo("smtp");
+                    assertThat(environment.getProperty("app.v3.auth.email-delivery-mode")).isEqualTo("brevo-api");
                     assertThat(environment.getProperty("app.v3.mobile.release.mode")).isEqualTo("production");
                     assertThat(environment.getProperty("app.v3.mobile.release.public-base-url")).isEqualTo(PUBLIC_API);
                     assertThat(environment.getProperty("app.v3.answer-sheets.storage-directory")).isEqualTo("/var/data/synthetic/answer-sheets");
@@ -136,6 +136,37 @@ class V3CloudConfigurationTest {
     @Test
     void syntheticValidConfigurationPassesWithoutConnectingAnywhere() {
         assertThatCode(() -> V3CloudConfiguration.validate(validEnvironment())).doesNotThrowAnyException();
+    }
+
+    /** Render Free blocks outbound SMTP: the Brevo HTTPS API needs only its key, no SMTP settings. */
+    @Test
+    void brevoApiEmailNeedsItsKeyButNoSmtpSettings() {
+        MockEnvironment brevo = validEnvironment()
+                .withProperty("app.v3.auth.email-delivery-mode", "brevo-api")
+                .withProperty("app.v3.auth.brevo-api-key", "synthetic-brevo-key")
+                .withProperty("spring.mail.host", "")
+                .withProperty("spring.mail.username", "")
+                .withProperty("spring.mail.password", "");
+        assertThatCode(() -> V3CloudConfiguration.validate(brevo)).doesNotThrowAnyException();
+
+        assertThatThrownBy(() -> V3CloudConfiguration.validate(brevo.withProperty("app.v3.auth.brevo-api-key", " ")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Missing cloud setting: app.v3.auth.brevo-api-key");
+        assertThatThrownBy(() -> V3CloudConfiguration.validate(validEnvironment()
+                        .withProperty("app.v3.auth.email-delivery-mode", "log")))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("never log-only codes");
+    }
+
+    @Test
+    void frontendOriginsAcceptAListAndLocalhostForTestingOnly() {
+        assertThat(V3CloudConfiguration.frontendOrigins(FRONTEND + ", http://localhost:5173"))
+                .containsExactly(FRONTEND, "http://localhost:5173");
+        assertThat(V3CloudConfiguration.frontendOrigins("http://127.0.0.1:5173")).containsExactly("http://127.0.0.1:5173");
+        // Plain-http public hosts and local hostnames under https stay rejected.
+        assertThatThrownBy(() -> V3CloudConfiguration.frontendOrigins(FRONTEND + ",http://test.example"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> V3CloudConfiguration.frontendOrigins("http://localhost"))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @ParameterizedTest
@@ -257,7 +288,8 @@ class V3CloudConfigurationTest {
                         "V3_CLOUD_STORAGE_ROOT=/var/data/synthetic", "V3_CLOUD_FRONTEND_ORIGIN=" + FRONTEND,
                         "V3_CLOUD_PUBLIC_BASE_URL=" + PUBLIC_API, "V3_CLOUD_EMAIL_FROM=synthetic@example.invalid",
                         "V3_CLOUD_SMTP_HOST=smtp.example.invalid", "V3_CLOUD_SMTP_USERNAME=synthetic-smtp-user",
-                        "V3_CLOUD_SMTP_PASSWORD=synthetic-smtp-password", "V3_CLOUD_MFA_ENCRYPTION_KEY=" + TEST_KEY)
+                        "V3_CLOUD_SMTP_PASSWORD=synthetic-smtp-password", "V3_CLOUD_MFA_ENCRYPTION_KEY=" + TEST_KEY,
+                        "V3_CLOUD_BREVO_API_KEY=synthetic-brevo-key")
                 .withUserConfiguration(V3CloudConfiguration.class, CorsConfig.class);
     }
 

@@ -82,7 +82,7 @@ public class V3CloudConfiguration {
                 "Cloud requires the repaired TiDB baseline with startup validation enabled.");
         require("production".equals(environment.getProperty("app.v3.mobile.release.mode")),
                 "Cloud release mode must be production.");
-        httpsOrigin(required(environment, "app.v3.cloud.frontend-origin"));
+        frontendOrigins(required(environment, "app.v3.cloud.frontend-origin"));
         httpsOrigin(required(environment, "app.v3.mobile.release.public-base-url"));
         String storageRoot = required(environment, "V3_CLOUD_STORAGE_ROOT");
         require((storageRoot.equals("/var/data") || storageRoot.startsWith("/var/data/"))
@@ -93,11 +93,17 @@ public class V3CloudConfiguration {
         require((storageRoot + "/answer-sheets").equals(environment.getProperty("app.v3.answer-sheets.storage-directory"))
                         && (storageRoot + "/scan-evidence").equals(environment.getProperty("app.v3.scan-evidence.storage-directory")),
                 "Cloud answer sheets and scan evidence must use the configured permanent storage directories.");
-        require("smtp".equals(environment.getProperty("app.v3.auth.email-delivery-mode")),
-                "Cloud teacher verification requires configured email delivery, never log-only codes.");
-        required(environment, "spring.mail.host");
-        required(environment, "spring.mail.username");
-        required(environment, "spring.mail.password");
+        // brevo-api sends over HTTPS for hosts that block outbound SMTP ports (e.g. Render Free).
+        String emailMode = environment.getProperty("app.v3.auth.email-delivery-mode");
+        require("smtp".equals(emailMode) || "brevo-api".equals(emailMode),
+                "Cloud teacher verification requires configured email delivery (smtp or brevo-api), never log-only codes.");
+        if ("smtp".equals(emailMode)) {
+            required(environment, "spring.mail.host");
+            required(environment, "spring.mail.username");
+            required(environment, "spring.mail.password");
+        } else {
+            required(environment, "app.v3.auth.brevo-api-key");
+        }
         required(environment, "app.v3.auth.email-from-address");
         try {
             require(Base64.getDecoder().decode(required(environment, "app.v3.auth.mfa.encryption-key")).length == 32,
@@ -105,6 +111,23 @@ public class V3CloudConfiguration {
         } catch (IllegalArgumentException exception) {
             throw new IllegalStateException("Cloud MFA encryption key must be valid base64.");
         }
+    }
+
+    private static final java.util.regex.Pattern LOCAL_DEV_ORIGIN =
+            java.util.regex.Pattern.compile("http://(localhost|127\\.0\\.0\\.1):[0-9]{2,5}");
+
+    /** Comma-separated web origins allowed to call the API: exact public HTTPS origins, plus
+     *  http://localhost:PORT (or 127.0.0.1) so the web app can be tested locally against the
+     *  cloud backend before the frontend itself is deployed. */
+    static List<String> frontendOrigins(String value) {
+        List<String> origins = new java.util.ArrayList<>();
+        for (String part : value.split(",")) {
+            String origin = part.trim();
+            if (origin.isEmpty()) continue;
+            origins.add(LOCAL_DEV_ORIGIN.matcher(origin).matches() ? origin : httpsOrigin(origin));
+        }
+        require(!origins.isEmpty(), "Missing cloud setting: app.v3.cloud.frontend-origin");
+        return List.copyOf(origins);
     }
 
     static String httpsOrigin(String value) {
@@ -139,7 +162,7 @@ public class V3CloudConfiguration {
     @Bean
     CorsConfigurationSource corsConfigurationSource(Environment environment) {
         CorsConfiguration cors = new CorsConfiguration();
-        cors.setAllowedOrigins(List.of(httpsOrigin(required(environment, "app.v3.cloud.frontend-origin"))));
+        cors.setAllowedOrigins(frontendOrigins(required(environment, "app.v3.cloud.frontend-origin")));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
         cors.setAllowCredentials(true);

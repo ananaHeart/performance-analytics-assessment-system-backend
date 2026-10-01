@@ -2,11 +2,14 @@ package com.capstone.assessment.v3.auth.service;
 
 import com.capstone.assessment.v3.auth.config.V3AuthProperties;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
@@ -14,8 +17,18 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Profile("v3")
 @Component
@@ -23,15 +36,36 @@ public class V3VerificationEmailSender {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(V3VerificationEmailSender.class);
 
+    private static final String SUBJECT = "Verify your SMART Assessment teacher account";
+    private static final String SENDER_NAME = "SMART Assessment System";
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    /** Sends one Brevo transactional-email request; returns the HTTP status code. */
+    @FunctionalInterface
+    interface BrevoTransport {
+        int post(URI url, String apiKey, String jsonBody) throws IOException, InterruptedException;
+    }
+
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final V3AuthProperties properties;
+    private final BrevoTransport brevoTransport;
 
+    @Autowired
     public V3VerificationEmailSender(
             ObjectProvider<JavaMailSender> mailSenderProvider,
             V3AuthProperties properties
     ) {
+        this(mailSenderProvider, properties, V3VerificationEmailSender::postWithHttpClient);
+    }
+
+    V3VerificationEmailSender(
+            ObjectProvider<JavaMailSender> mailSenderProvider,
+            V3AuthProperties properties,
+            BrevoTransport brevoTransport
+    ) {
         this.mailSenderProvider = mailSenderProvider;
         this.properties = properties;
+        this.brevoTransport = brevoTransport;
     }
 
     public String sendVerificationCode(String recipient, String otp) {
@@ -40,8 +74,11 @@ public class V3VerificationEmailSender {
             LOGGER.warn("LOCAL-ONLY V3 teacher verification code for {}: {}", maskEmail(recipient), otp);
             return "local_log";
         }
+        if ("brevo-api".equals(mode)) {
+            return sendWithBrevoApi(recipient, otp);
+        }
         if (!"smtp".equals(mode)) {
-            throw unavailable("V3 email delivery mode must be either log or smtp.");
+            throw unavailable("V3 email delivery mode must be log, smtp or brevo-api.");
         }
 
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
@@ -52,9 +89,9 @@ public class V3VerificationEmailSender {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(properties.getEmailFromAddress(), "SMART Assessment System");
+            helper.setFrom(properties.getEmailFromAddress(), SENDER_NAME);
             helper.setTo(recipient);
-            helper.setSubject("Verify your SMART Assessment teacher account");
+            helper.setSubject(SUBJECT);
             helper.setText(plainText(otp), htmlText(otp));
             mailSender.send(message);
             return "smtp";
@@ -66,6 +103,68 @@ public class V3VerificationEmailSender {
                     HttpStatus.SERVICE_UNAVAILABLE
             );
         }
+    }
+
+    /** Same email as SMTP, over Brevo's HTTPS API: free hosts such as Render Free block the
+     *  outbound SMTP ports (25/465/587) but allow HTTPS. */
+    private String sendWithBrevoApi(String recipient, String otp) {
+        String apiKey = properties.getBrevoApiKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            throw unavailable("Brevo API email delivery is not configured.");
+        }
+        String body;
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("sender", Map.of("name", SENDER_NAME, "email", properties.getEmailFromAddress()));
+            payload.put("to", List.of(Map.of("email", recipient)));
+            payload.put("subject", SUBJECT);
+            payload.put("textContent", plainText(otp));
+            payload.put("htmlContent", htmlText(otp));
+            body = JSON.writeValueAsString(payload);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Could not build the verification email.", exception);
+        }
+        int status;
+        try {
+            status = brevoTransport.post(URI.create(properties.getBrevoApiUrl()), apiKey.trim(), body);
+        } catch (IOException | IllegalArgumentException exception) {
+            LOGGER.error("V3 teacher verification email (Brevo API) failed for {}.", maskEmail(recipient), exception);
+            throw deliveryFailed();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw deliveryFailed();
+        }
+        if (status < 200 || status >= 300) {
+            // The response body is not logged: it can echo the request, including the code.
+            LOGGER.error("V3 teacher verification email (Brevo API) rejected with HTTP {} for {}.",
+                    status, maskEmail(recipient));
+            throw deliveryFailed();
+        }
+        return "brevo_api";
+    }
+
+    private static int postWithHttpClient(URI url, String apiKey, String jsonBody)
+            throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(url)
+                .timeout(Duration.ofSeconds(15))
+                .header("api-key", apiKey)
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
+                .build();
+        return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
+    }
+
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+
+    private V3AuthException deliveryFailed() {
+        return new V3AuthException(
+                "EMAIL_DELIVERY_FAILED",
+                "The verification email could not be sent. Please try again shortly.",
+                HttpStatus.SERVICE_UNAVAILABLE
+        );
     }
 
     private V3AuthException unavailable(String message) {

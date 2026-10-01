@@ -111,6 +111,19 @@ class V3MobileReleaseReadinessServiceTest {
         assertFalse(service.checkReadiness().backendReady());
     }
 
+    /** Render Free blocks SMTP: production email may use the Brevo HTTPS API, but only with its key. */
+    @Test void productionAcceptsBrevoApiEmailOnlyWithItsKey() {
+        mobile.getRelease().setMode("production");
+        mobile.getRelease().setPublicBaseUrl("https://api.smart.test");
+        mfa.setEncryptionKey("deployment-secret");
+        auth.setEmailDeliveryMode("brevo-api");
+
+        assertFalse(service.checkReadiness().backendReady(), "no Brevo key yet");
+
+        auth.setBrevoApiKey("synthetic-brevo-key");
+        assertTrue(service.checkReadiness().backendReady());
+    }
+
     @Test void unknownModeCannotBypassHttpsCheck() {
         mobile.getRelease().setMode("prodution");
         assertFalse(service.checkReadiness().backendReady());
