@@ -52,6 +52,9 @@ class V3CloudConfigurationTest {
                     assertThat(environment.getProperty("app.v3.baseline.validate-on-startup")).isEqualTo("true");
                     assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("none");
                     assertThat(environment.getProperty("spring.sql.init.mode")).isEqualTo("never");
+                    assertThat(environment.getProperty("spring.datasource.hikari.connection-init-sql"))
+                            .isEqualTo(V3CloudConfiguration.APPROVED_CONNECTION_INIT_SQL)
+                            .doesNotContain("ONLY_FULL_GROUP_BY");
                     assertThat(environment.getProperty("app.v3.auth.email-delivery-mode")).isEqualTo("brevo-api");
                     assertThat(environment.getProperty("app.v3.mobile.release.mode")).isEqualTo("production");
                     assertThat(environment.getProperty("app.v3.mobile.release.public-base-url")).isEqualTo(PUBLIC_API);
@@ -271,6 +274,17 @@ class V3CloudConfigurationTest {
     })
     void rejectsAlternateDatasourceAndConnectionInitializationOverrides(String property, String value) {
         assertThatThrownBy(() -> V3CloudConfiguration.validate(validEnvironment().withProperty(property, value)))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void acceptsOnlyTheApprovedSqlModeConnectionInit() {
+        assertThatCode(() -> V3CloudConfiguration.validate(validEnvironment().withProperty(
+                "spring.datasource.hikari.connection-init-sql", V3CloudConfiguration.APPROVED_CONNECTION_INIT_SQL)))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> V3CloudConfiguration.validate(validEnvironment().withProperty(
+                "spring.datasource.hikari.connection-init-sql",
+                V3CloudConfiguration.APPROVED_CONNECTION_INIT_SQL + "; USE performance_assessment_v3_db")))
                 .isInstanceOf(IllegalStateException.class);
     }
 

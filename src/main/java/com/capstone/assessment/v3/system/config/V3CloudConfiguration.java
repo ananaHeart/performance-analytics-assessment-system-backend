@@ -23,6 +23,13 @@ import java.util.Set;
 public class V3CloudConfiguration {
     private static final String CLOUD_HOST = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com";
     private static final String CLOUD_DATABASE = "performance_assessment_v3_test";
+    /**
+     * TiDB's default sql_mode minus ONLY_FULL_GROUP_BY, matching the local MariaDB the V3 queries are
+     * verified on (several queries select or order by columns that depend on the grouped ids).
+     * The only connection-init statement the cloud accepts: it cannot change the destination.
+     */
+    static final String APPROVED_CONNECTION_INIT_SQL = "SET SESSION sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,"
+            + "NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'";
 
     @Bean
     static BeanFactoryPostProcessor v3CloudDestinationGuard(Environment environment) {
@@ -50,11 +57,13 @@ public class V3CloudConfiguration {
         require(hikariUrl == null || hikariUrl.isBlank() || hikariUrl.equals(environment.getProperty("spring.datasource.url")),
                 "A Hikari JDBC URL override cannot change the approved cloud destination.");
         for (String setting : List.of("spring.datasource.jndi-name", "spring.datasource.hikari.data-source-class-name",
-                "spring.datasource.hikari.connection-init-sql", "spring.datasource.hikari.catalog",
-                "spring.datasource.hikari.schema")) {
+                "spring.datasource.hikari.catalog", "spring.datasource.hikari.schema")) {
             String value = environment.getProperty(setting);
             require(value == null || value.isBlank(), "Cloud forbids alternate connection or initialization setting: " + setting);
         }
+        String initSql = environment.getProperty("spring.datasource.hikari.connection-init-sql");
+        require(initSql == null || initSql.isBlank() || APPROVED_CONNECTION_INIT_SQL.equals(initSql),
+                "Cloud forbids alternate connection or initialization setting: spring.datasource.hikari.connection-init-sql");
         List<String> parameters = Arrays.asList(database.getRawQuery() == null ? new String[0] : database.getRawQuery().split("&"));
         Map<String, String> allowedParameters = Map.of("sslMode", "VERIFY_IDENTITY",
                 "enabledTLSProtocols", "TLSv1.2,TLSv1.3", "serverTimezone", "UTC");
