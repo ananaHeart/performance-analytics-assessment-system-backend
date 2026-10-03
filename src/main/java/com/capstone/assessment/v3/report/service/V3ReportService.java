@@ -19,6 +19,7 @@ import com.capstone.assessment.v3.report.dto.V3SyncActivityReportResponse;
 import com.capstone.assessment.v3.report.model.V3ReportModels.AssessmentResultRow;
 import com.capstone.assessment.v3.report.model.V3ReportModels.AssessmentScopeRow;
 import com.capstone.assessment.v3.report.model.V3ReportModels.CompetencyScopeRow;
+import com.capstone.assessment.v3.report.model.V3ReportModels.ConsolidatedExportScope;
 import com.capstone.assessment.v3.report.model.V3ReportModels.ConsolidatedGroupRow;
 import com.capstone.assessment.v3.report.model.V3ReportModels.ConsolidatedSkillAnswerTotalRow;
 import com.capstone.assessment.v3.report.model.V3ReportModels.ConsolidatedSkillItemTotalRow;
@@ -511,14 +512,69 @@ public class V3ReportService {
             dataStatus = "available";
         }
 
+        BigDecimal earnedTotal = groupRows.stream().map(ConsolidatedGroupRow::earnedPoints)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal possibleTotal = groupRows.stream().map(ConsolidatedGroupRow::possiblePoints)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal overallMeanPercentage = possibleTotal.signum() == 0
+                ? null
+                : earnedTotal.multiply(BigDecimal.valueOf(100)).divide(possibleTotal, METRIC_SCALE, RoundingMode.HALF_UP);
+
         return new V3ConsolidatedReportResponse(
                 "principal_consolidated",
                 clock.instant(),
                 groupBy.name(),
                 dataStatus,
                 warnings,
-                groups
+                groups,
+                overallMeanPercentage
         );
+    }
+
+    /** Printed labels for a consolidated export; only the filters actually applied are looked up. */
+    @Transactional(readOnly = true)
+    public ConsolidatedExportScope describeConsolidatedScope(
+            V3AuthenticatedUser user,
+            Integer academicYearId,
+            Integer termPeriodId,
+            Integer gradeLevelId,
+            Long classId,
+            Long teacherUserId,
+            Integer subjectId,
+            Long testId
+    ) {
+        AccessContext access = requireActiveUser(user);
+        String schoolId = access.schoolId();
+        Long ownTeacher = access.isTeacher() ? access.userId() : null;
+        String preparedBy = reportRepository.findUserFullName(access.userId()).orElse(null);
+        String academicYear = academicYearId == null ? null : reportRepository.listAcademicYears(schoolId, ownTeacher)
+                .stream().filter(option -> option.academicYearId() == academicYearId)
+                .map(V3ReportReferenceDataResponse.AcademicYearOption::yearName).findFirst().orElse(null);
+        String term = termPeriodId == null ? null : reportRepository.listTermPeriods(schoolId, ownTeacher)
+                .stream().filter(option -> option.termPeriodId() == termPeriodId)
+                .map(V3ReportReferenceDataResponse.TermPeriodOption::termName).findFirst().orElse(null);
+        String gradeLevel = gradeLevelId == null ? null : reportRepository.listGradeLevels(schoolId, ownTeacher)
+                .stream().filter(option -> option.gradeLevelId() == gradeLevelId)
+                .map(V3ReportReferenceDataResponse.GradeLevelOption::gradeLevelName).findFirst().orElse(null);
+        String classLabel = classId == null ? null : reportRepository.listClasses(schoolId, ownTeacher)
+                .stream().filter(option -> option.classId() == classId)
+                .map(option -> option.gradeLevelName() + " - " + option.sectionName()).findFirst().orElse(null);
+        String teacher = access.isTeacher() ? preparedBy
+                : teacherUserId == null ? null : reportRepository.listTeachers(schoolId, null)
+                        .stream().filter(option -> option.teacherUserId() == teacherUserId)
+                        .map(V3ReportReferenceDataResponse.TeacherOption::fullName).findFirst().orElse(null);
+        String subject = subjectId == null ? null : reportRepository.listSubjects(schoolId, ownTeacher)
+                .stream().filter(option -> option.subjectId() == subjectId)
+                .map(V3ReportReferenceDataResponse.SubjectOption::subjectName).findFirst().orElse(null);
+        String assessment = testId == null ? null : reportRepository.listAssessments(schoolId, ownTeacher)
+                .stream().filter(option -> option.testId() == testId)
+                .map(V3ReportReferenceDataResponse.AssessmentOption::testName).findFirst().orElse(null);
+        return new ConsolidatedExportScope(
+                reportRepository.findSchool(schoolId).map(V3ReportReferenceDataResponse.SchoolOption::schoolName)
+                        .orElse(null),
+                preparedBy,
+                access.isTeacher() ? "Teacher" : "Principal",
+                academicYear, term, gradeLevel, classLabel, teacher, subject, assessment);
     }
 
     @Transactional(readOnly = true)

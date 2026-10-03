@@ -170,7 +170,9 @@ public class V3ReportController {
         var report = reportService.getConsolidatedReport(
                 user, groupBy, academicYearId, termPeriodId, gradeLevelId,
                 classId, teacherUserId, subjectId, testId);
-        byte[] bytes = exportService.exportConsolidatedExcel(report);
+        var scope = reportService.describeConsolidatedScope(
+                user, academicYearId, termPeriodId, gradeLevelId, classId, teacherUserId, subjectId, testId);
+        byte[] bytes = exportService.exportConsolidatedExcel(report, scope);
         return ResponseEntity.ok()
                 .contentType(EXCEL_MEDIA_TYPE)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -193,7 +195,9 @@ public class V3ReportController {
         var report = reportService.getConsolidatedReport(
                 user, groupBy, academicYearId, termPeriodId, gradeLevelId,
                 classId, teacherUserId, subjectId, testId);
-        byte[] bytes = exportService.exportConsolidatedPdf(report);
+        var scope = reportService.describeConsolidatedScope(
+                user, academicYearId, termPeriodId, gradeLevelId, classId, teacherUserId, subjectId, testId);
+        byte[] bytes = exportService.exportConsolidatedPdf(report, scope);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION,

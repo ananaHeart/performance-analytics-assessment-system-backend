@@ -48,7 +48,7 @@ public class V3QuestionnairePdfRenderer {
         }
         String schoolName = repository.findSchool(teacher.schoolId())
                 .map(school -> school.schoolName()).orElse(null);
-        String teacherName = repository.findTeacherName(teacher.userId()).orElse(null);
+        String teacherName = repository.findUserFullName(teacher.userId()).orElse(null);
         try {
             ReportPdfDocument pdf = new ReportPdfDocument(schoolName, "TEST QUESTIONNAIRE", FOOTER);
             writeDetails(pdf, assessment, teacherName);

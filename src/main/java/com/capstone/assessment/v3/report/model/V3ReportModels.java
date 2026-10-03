@@ -108,6 +108,24 @@ public final class V3ReportModels {
         ACADEMIC_YEAR, TERM_PERIOD, GRADE_LEVEL, CLASS, TEACHER, SUBJECT
     }
 
+    /**
+     * Printed context of a consolidated export: the school, who prepared it, and the label of
+     * each applied filter (null when that filter is not applied, i.e. "all").
+     */
+    public record ConsolidatedExportScope(
+            String schoolName,
+            String preparedByName,
+            String preparedByRole,
+            String academicYear,
+            String term,
+            String gradeLevel,
+            String classLabel,
+            String teacher,
+            String subject,
+            String assessment
+    ) {
+    }
+
     public record ConsolidatedGroupRow(
             String groupKey,
             String groupLabel,

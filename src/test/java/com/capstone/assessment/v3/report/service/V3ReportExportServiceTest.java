@@ -2,6 +2,7 @@ package com.capstone.assessment.v3.report.service;
 
 import com.capstone.assessment.v3.report.dto.V3ConsolidatedReportResponse;
 import com.capstone.assessment.v3.report.dto.V3LearningCompetencyReportResponse;
+import com.capstone.assessment.v3.report.model.V3ReportModels.ConsolidatedExportScope;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
@@ -46,33 +47,63 @@ class V3ReportExportServiceTest {
                                 new V3ConsolidatedReportResponse.MasteryStatusCount("priority_intervention", 1)
                         ),
                         List.of(new V3ConsolidatedReportResponse.LeastMasteredSkill(
-                                910120L, "Parts of Speech", BigDecimal.ZERO, "needs_support"))
-                ))
+                                910120L, "Parts of Speech", BigDecimal.ZERO, "needs_support"),
+                                // At the 80% line: mastered, so it is not listed as least mastered.
+                                new V3ConsolidatedReportResponse.LeastMasteredSkill(
+                                910121L, "Subject-Verb Agreement", new BigDecimal("80.00"), "mastered"))
+                )),
+                new BigDecimal("41.67")
         );
     }
 
+    private static ConsolidatedExportScope consolidatedScope() {
+        return new ConsolidatedExportScope("San Roque National High School", "MARIA SANTOS", "Principal",
+                "2026-2027", "Term 2", null, null, null, null, null);
+    }
+
     @Test
-    void consolidatedExcelCountsStudentsPerPerformanceBand() throws Exception {
-        byte[] bytes = exportService.exportConsolidatedExcel(consolidatedReport());
+    void consolidatedExcelCountsResultsPerPerformanceBand() throws Exception {
+        byte[] bytes = exportService.exportConsolidatedExcel(consolidatedReport(), consolidatedScope());
+        java.nio.file.Files.write(java.nio.file.Path.of("target", "consolidated-by-teacher.xlsx"), bytes);
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
-            Sheet sheet = workbook.getSheet("Consolidated Summary");
-            Row header = findRowStartingWith(sheet, "Group");
-            Row data = findRowStartingWith(sheet, "Heart Millan Añana");
-            assertEquals("Maintain", header.getCell(3).getStringCellValue());
-            assertEquals("Priority Intervention", header.getCell(6).getStringCellValue());
-            assertEquals(2, (int) data.getCell(3).getNumericCellValue(), "maintain");
-            assertEquals(0, (int) data.getCell(4).getNumericCellValue(), "review");
-            assertEquals(3, (int) data.getCell(5).getNumericCellValue(), "reteach");
-            assertEquals(1, (int) data.getCell(6).getNumericCellValue(), "priority_intervention");
+            Sheet sheet = workbook.getSheet("Summary");
+            Row header = findRowStartingWith(sheet, "#");
+            Row data = findRowWithCell(sheet, 1, "Heart Millan Añana");
+            assertEquals("Teacher", header.getCell(1).getStringCellValue());
+            assertEquals("Maintain", header.getCell(4).getStringCellValue());
+            assertEquals("Priority", header.getCell(7).getStringCellValue());
+            assertEquals(2, (int) data.getCell(4).getNumericCellValue(), "maintain");
+            assertEquals(0, (int) data.getCell(5).getNumericCellValue(), "review");
+            assertEquals(3, (int) data.getCell(6).getNumericCellValue(), "reteach");
+            assertEquals(1, (int) data.getCell(7).getNumericCellValue(), "priority_intervention");
+
+            Sheet skills = workbook.getSheet("Least Mastered");
+            findRowWithCell(skills, 2, "Parts of Speech");
+            for (Row row : skills) {
+                if (row.getCell(2) != null && row.getCell(2).getCellType() == org.apache.poi.ss.usermodel.CellType.STRING) {
+                    assertTrue(!"Subject-Verb Agreement".equals(row.getCell(2).getStringCellValue()),
+                            "a competency at 80% is mastered, not least mastered");
+                }
+            }
         }
     }
 
     @Test
-    void consolidatedPdfRenders() {
-        byte[] bytes = exportService.exportConsolidatedPdf(consolidatedReport());
+    void consolidatedPdfPrintsTheScopeTeachersAndOnlyLeastMastered() throws Exception {
+        byte[] bytes = exportService.exportConsolidatedPdf(consolidatedReport(), consolidatedScope());
+        java.nio.file.Files.write(java.nio.file.Path.of("target", "consolidated-by-teacher.pdf"), bytes);
 
-        assertTrue(new String(bytes, 0, 5, StandardCharsets.US_ASCII).startsWith("%PDF"));
+        String text;
+        try (PDDocument document = Loader.loadPDF(bytes)) {
+            text = new PDFTextStripper().getText(document);
+        }
+        assertTrue(text.contains("PERFORMANCE BY TEACHER"));
+        assertTrue(text.contains("SAN ROQUE NATIONAL HIGH SCHOOL"));
+        assertTrue(text.contains("All grade levels"));
+        assertTrue(text.contains("Maria Santos"), "prepared by, in proper case");
+        assertTrue(text.contains("Parts of Speech"));
+        assertTrue(!text.contains("Subject-Verb Agreement"), "mastered competencies are not listed");
     }
 
     private static V3LearningCompetencyReportResponse learningCompetencyReport(int weakStudentCount) {
@@ -200,6 +231,17 @@ class V3ReportExportServiceTest {
             }
         }
         assertTrue(checked >= 10, "expected to find the PDF column-width tables, found " + checked);
+    }
+
+    private static Row findRowWithCell(Sheet sheet, int column, String text) {
+        for (Row row : sheet) {
+            var cell = row.getCell(column);
+            if (cell != null && cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING
+                    && text.equals(cell.getStringCellValue())) {
+                return row;
+            }
+        }
+        return fail("No row with '" + text + "' in column " + column);
     }
 
     private static Row findRowStartingWith(Sheet sheet, String text) {

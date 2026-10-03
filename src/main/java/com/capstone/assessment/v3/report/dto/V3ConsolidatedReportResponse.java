@@ -10,7 +10,10 @@ public record V3ConsolidatedReportResponse(
         String groupedBy,
         String dataStatus,
         List<V3AssessmentResultsReportResponse.ReportWarning> warnings,
-        List<GroupRow> groups
+        List<GroupRow> groups,
+        // Weighted over every finalized result in scope (earned / possible points), not an
+        // average of the group means; null when nothing is finalized yet.
+        BigDecimal overallMeanPercentage
 ) {
 
     public V3ConsolidatedReportResponse {

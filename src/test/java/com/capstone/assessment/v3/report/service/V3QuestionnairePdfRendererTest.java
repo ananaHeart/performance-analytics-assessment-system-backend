@@ -42,7 +42,7 @@ class V3QuestionnairePdfRendererTest {
     void printsEveryQuestionNumberedLikeTheAnswerSheetAndNoAnswers() throws Exception {
         when(repository.findSchool("SCHOOL-001")).thenReturn(Optional.of(
                 new V3ReportReferenceDataResponse.SchoolOption("SCHOOL-001", "San Roque National High School")));
-        when(repository.findTeacherName(42L)).thenReturn(Optional.of("JUAN DELA CRUZ"));
+        when(repository.findUserFullName(42L)).thenReturn(Optional.of("JUAN DELA CRUZ"));
 
         byte[] pdf = renderer.render(TEACHER, sampleAssessment());
         Files.createDirectories(Path.of("target"));

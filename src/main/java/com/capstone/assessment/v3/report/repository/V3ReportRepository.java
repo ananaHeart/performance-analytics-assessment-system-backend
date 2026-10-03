@@ -65,19 +65,6 @@ public class V3ReportRepository {
         ).stream().findFirst();
     }
 
-    public Optional<String> findTeacherName(long userId) {
-        return jdbcTemplate.query(
-                "SELECT " + TEACHER_NAME_SQL + """
-                         AS teacher_name
-                          FROM users teacher
-                          LEFT JOIN suffixes suffix ON suffix.suffix_id = teacher.suffix_id
-                         WHERE teacher.user_id = ?
-                        """,
-                (resultSet, rowNumber) -> resultSet.getString("teacher_name"),
-                userId
-        ).stream().findFirst();
-    }
-
     public List<V3ReportReferenceDataResponse.AcademicYearOption> listAcademicYears(
             String schoolId,
             Long teacherUserId

@@ -11,26 +11,8 @@ import com.capstone.assessment.v3.report.dto.V3ItemAnalysisReportResponse.Questi
 import com.capstone.assessment.v3.report.dto.V3LearningCompetencyReportResponse;
 import com.capstone.assessment.v3.report.dto.V3StudentPerformanceProfileResponse;
 import com.capstone.assessment.v3.report.dto.V3SyncActivityReportResponse;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
-import org.apache.poi.ss.usermodel.BorderStyle;
+import com.capstone.assessment.v3.report.model.V3ReportModels.ConsolidatedExportScope;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.FillPatternType;
-import org.apache.poi.ss.usermodel.Font;
-import org.apache.poi.ss.usermodel.HorizontalAlignment;
-import org.apache.poi.ss.usermodel.IndexedColors;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.VerticalAlignment;
-import org.apache.poi.ss.util.CellRangeAddress;
-import org.apache.poi.xssf.usermodel.XSSFCellStyle;
-import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -56,19 +38,6 @@ import java.util.stream.Collectors;
 @Profile("v3")
 @Service
 public class V3ReportExportService {
-
-    private static final DateTimeFormatter DISPLAY_DATE =
-            DateTimeFormatter.ofPattern("MMMM d, uuuu h:mm a", Locale.ENGLISH).withZone(ZoneId.of("Asia/Manila"));
-
-    // ---------- Shared visual theme ----------
-
-    private static final float[] BRAND_RGB = {0.055f, 0.420f, 0.235f};
-    private static final float[] ZEBRA_RGB = {0.933f, 0.965f, 0.945f};
-    private static final float[] GRID_RGB = {0.80f, 0.85f, 0.82f};
-    private static final byte[] BRAND_RGB_BYTES = {(byte) 14, (byte) 107, (byte) 60};
-    private static final byte[] ZEBRA_RGB_BYTES = {(byte) 238, (byte) 247, (byte) 240};
-
-    // ---------- Excel ----------
 
     // ---------- Shared teacher-report formatting ----------
 
@@ -888,12 +857,7 @@ public class V3ReportExportService {
      *  test_results.performance_status (the student_score rule set's bands), not by
      *  masteryStatusCode - looking up "mastered"/"developing" there always yields 0. */
     private static final String[] PERFORMANCE_BAND_CODES = {"maintain", "review", "reteach", "priority_intervention"};
-    private static final String[] CONSOLIDATED_SUMMARY_EXCEL_COLUMNS =
-            {"Group", "Students", "Mean %", "Maintain", "Review", "Reteach", "Priority Intervention"};
-    private static final String[] CONSOLIDATED_SKILLS_EXCEL_COLUMNS =
-            {"Group", "Competency / Skill", "Mastery %", "Status"};
-
-    private int countForStatus(List<V3ConsolidatedReportResponse.MasteryStatusCount> counts, String status) {
+    private static int countForStatus(List<V3ConsolidatedReportResponse.MasteryStatusCount> counts, String status) {
         return counts.stream()
                 .filter(c -> status.equals(c.performanceStatus()))
                 .mapToInt(V3ConsolidatedReportResponse.MasteryStatusCount::count)
@@ -901,122 +865,265 @@ public class V3ReportExportService {
                 .orElse(0);
     }
 
-    public byte[] exportConsolidatedExcel(V3ConsolidatedReportResponse report) {
+    private static final String[] CONSOLIDATED_BAND_HEADERS = {"Maintain", "Review", "Reteach", "Priority"};
+    private static final float[] CONSOLIDATED_GROUP_WIDTHS = {24f, 160f, 52f, 58f, 52f, 52f, 52f, 65.28f};
+    private static final float[] CONSOLIDATED_SKILL_WIDTHS = {130f, 235f, 70f, 80.28f};
+    private static final String CONSOLIDATED_BANDS_NOTE = "Maintain, Review, Reteach and Priority count finalized "
+            + "results at each performance level. " + PERFORMANCE_LEGEND;
+    private static final String CONSOLIDATED_SKILLS_NOTE = "Lists up to five of each group's lowest learning "
+            + "competencies below 80% mastery, lowest first. Competencies at 80% and above are not listed.";
+
+    /** "Teacher", "Term", ...: what one row of the consolidated report stands for. */
+    private static String groupNoun(String groupedBy) {
+        return switch (groupedBy == null ? "" : groupedBy) {
+            case "TEACHER" -> "Teacher";
+            case "TERM_PERIOD" -> "Term";
+            case "GRADE_LEVEL" -> "Grade Level";
+            case "CLASS" -> "Class";
+            case "SUBJECT" -> "Subject";
+            case "ACADEMIC_YEAR" -> "School Year";
+            default -> "Group";
+        };
+    }
+
+    private static String consolidatedTitle(V3ConsolidatedReportResponse report) {
+        return "PERFORMANCE BY " + groupNoun(report.groupedBy()).toUpperCase(Locale.ROOT);
+    }
+
+    /** Teacher names print in proper case like every other report; other groups as stored. */
+    private static String groupLabel(V3ConsolidatedReportResponse report, GroupRow group) {
+        String label = "TEACHER".equals(report.groupedBy()) ? personName(group.groupLabel()) : group.groupLabel();
+        return orNotAvailable(label);
+    }
+
+    /** The performance level of a percentage, by the school's seeded bands (PERFORMANCE_LEGEND). */
+    private static String performanceBand(BigDecimal percentage) {
+        if (percentage == null) return null;
+        if (percentage.compareTo(MASTERY_LINE) >= 0) return "maintain";
+        if (percentage.compareTo(BigDecimal.valueOf(60)) >= 0) return "review";
+        if (percentage.compareTo(BigDecimal.valueOf(40)) >= 0) return "reteach";
+        return "priority_intervention";
+    }
+
+    private static String allOr(String label, String all) {
+        return label == null || label.isBlank() ? all : label;
+    }
+
+    private List<String[]> consolidatedDetailsLeft(ConsolidatedExportScope scope) {
+        return List.of(
+                new String[]{"School Year", allOr(scope.academicYear(), "All school years")},
+                new String[]{"Term", allOr(scope.term(), "All terms")},
+                new String[]{"Grade Level", allOr(scope.gradeLevel(), "All grade levels")},
+                new String[]{"Subject", allOr(scope.subject(), "All subjects")});
+    }
+
+    private List<String[]> consolidatedDetailsRight(V3ConsolidatedReportResponse report, ConsolidatedExportScope scope) {
+        List<String[]> right = new java.util.ArrayList<>();
+        right.add(new String[]{"Grouped By", groupNoun(report.groupedBy())});
+        if (scope.classLabel() != null) right.add(new String[]{"Class", scope.classLabel()});
+        if (scope.teacher() != null && !"TEACHER".equals(report.groupedBy())) {
+            right.add(new String[]{"Teacher", personName(scope.teacher())});
+        }
+        if (scope.assessment() != null) right.add(new String[]{"Assessment", scope.assessment()});
+        right.add(new String[]{"Prepared By", orNotAvailable(personName(scope.preparedByName()))});
+        right.add(new String[]{"Generated On", REPORT_DATE_TIME.format(report.generatedAt())});
+        return right;
+    }
+
+    private List<ReportPdfDocument.Card> consolidatedCards(V3ConsolidatedReportResponse report) {
+        long withResults = report.groups().stream().filter(group -> group.meanPercentage() != null).count();
+        int results = 0;
+        int maintain = 0;
+        int needing = 0;
+        for (GroupRow group : report.groups()) {
+            for (var count : group.masteryStatusCounts()) {
+                results += count.count();
+            }
+            maintain += countForStatus(group.masteryStatusCounts(), "maintain");
+            needing += countForStatus(group.masteryStatusCounts(), "reteach")
+                    + countForStatus(group.masteryStatusCounts(), "priority_intervention");
+        }
+        String maintainShare = results == 0 ? NOT_AVAILABLE
+                : percent(BigDecimal.valueOf(maintain * 100L).divide(BigDecimal.valueOf(results), 2,
+                        java.math.RoundingMode.HALF_UP));
+        String noun = groupNoun(report.groupedBy());
+        return List.of(
+                new ReportPdfDocument.Card(noun.endsWith("s") ? noun : noun + "s", Long.toString(withResults),
+                        "(with finalized results)"),
+                new ReportPdfDocument.Card("Overall Mean", percent(report.overallMeanPercentage()),
+                        "(all finalized results)", statusColor(performanceBand(report.overallMeanPercentage()))),
+                new ReportPdfDocument.Card("At Maintain Level", maintainShare, "(80% and above)"),
+                new ReportPdfDocument.Card("Needs Intervention", Integer.toString(needing),
+                        "(results below 60%)", needing == 0 ? ReportPdfDocument.GOOD : ReportPdfDocument.BAD));
+    }
+
+    /** Only competencies below the 80% mastery line, lowest first, per group. */
+    private static List<LeastMasteredSkill> belowMasteryLine(GroupRow group) {
+        return group.leastMasteredSkills().stream().filter(skill -> belowMastery(skill.masteryPercentage())).toList();
+    }
+
+    public byte[] exportConsolidatedPdf(V3ConsolidatedReportResponse report, ConsolidatedExportScope scope) {
+        String noun = groupNoun(report.groupedBy());
+        try {
+            ReportPdfDocument pdf = new ReportPdfDocument(scope.schoolName(), consolidatedTitle(report), SCHOOL_FOOTER);
+            pdf.section(null, "Report Details");
+            pdf.details(consolidatedDetailsLeft(scope), consolidatedDetailsRight(report, scope));
+            pdf.gap(10);
+
+            pdf.section(1, "Summary");
+            pdf.cards(consolidatedCards(report));
+            for (var warning : report.warnings()) {
+                pdf.note("Note: " + warning.message());
+            }
+            pdf.gap(10);
+
+            pdf.section(2, "Performance by " + noun);
+            if (report.groups().isEmpty()) {
+                pdf.note("No class or result matched the selected filters.");
+            } else {
+                List<ReportPdfDocument.Cell[]> rows = new java.util.ArrayList<>();
+                int number = 1;
+                for (GroupRow group : report.groups()) {
+                    ReportPdfDocument.Cell[] row = new ReportPdfDocument.Cell[4 + PERFORMANCE_BAND_CODES.length];
+                    row[0] = ReportPdfDocument.Cell.of(Integer.toString(number++));
+                    row[1] = ReportPdfDocument.Cell.of(groupLabel(report, group));
+                    row[2] = ReportPdfDocument.Cell.of(Integer.toString(group.studentCount()));
+                    row[3] = ReportPdfDocument.Cell.colored(percent(group.meanPercentage()),
+                            statusColor(performanceBand(group.meanPercentage())));
+                    for (int i = 0; i < PERFORMANCE_BAND_CODES.length; i++) {
+                        row[4 + i] = ReportPdfDocument.Cell.of(Integer.toString(
+                                countForStatus(group.masteryStatusCounts(), PERFORMANCE_BAND_CODES[i])));
+                    }
+                    rows.add(row);
+                }
+                List<ReportPdfDocument.Column> columns = new java.util.ArrayList<>(List.of(
+                        ReportPdfDocument.Column.center("No.", CONSOLIDATED_GROUP_WIDTHS[0]),
+                        ReportPdfDocument.Column.left(noun, CONSOLIDATED_GROUP_WIDTHS[1]),
+                        ReportPdfDocument.Column.center("Learners", CONSOLIDATED_GROUP_WIDTHS[2]),
+                        ReportPdfDocument.Column.center("Mean %", CONSOLIDATED_GROUP_WIDTHS[3])));
+                for (int i = 0; i < CONSOLIDATED_BAND_HEADERS.length; i++) {
+                    columns.add(ReportPdfDocument.Column.center(CONSOLIDATED_BAND_HEADERS[i],
+                            CONSOLIDATED_GROUP_WIDTHS[4 + i]));
+                }
+                pdf.table(columns, rows);
+                pdf.note(CONSOLIDATED_BANDS_NOTE);
+            }
+            pdf.gap(10);
+
+            pdf.section(3, "Least Mastered Competencies");
+            List<ReportPdfDocument.Cell[]> skills = new java.util.ArrayList<>();
+            for (GroupRow group : report.groups()) {
+                boolean first = true;
+                for (LeastMasteredSkill skill : belowMasteryLine(group)) {
+                    skills.add(new ReportPdfDocument.Cell[]{
+                            first ? new ReportPdfDocument.Cell(groupLabel(report, group), null, true)
+                                    : ReportPdfDocument.Cell.of(""),
+                            ReportPdfDocument.Cell.of(orNotAvailable(skill.skillName())),
+                            ReportPdfDocument.Cell.colored(percent(skill.masteryPercentage()),
+                                    statusColor(skill.masteryStatusCode())),
+                            ReportPdfDocument.Cell.colored(humanize(skill.masteryStatusCode()),
+                                    statusColor(skill.masteryStatusCode()))
+                    });
+                    first = false;
+                }
+            }
+            if (skills.isEmpty()) {
+                pdf.note("No learning competency is below 80% mastery for the selected filters.");
+            } else {
+                pdf.table(List.of(
+                        ReportPdfDocument.Column.left(noun, CONSOLIDATED_SKILL_WIDTHS[0]),
+                        ReportPdfDocument.Column.left("Learning Competency", CONSOLIDATED_SKILL_WIDTHS[1]),
+                        ReportPdfDocument.Column.center("Mastery %", CONSOLIDATED_SKILL_WIDTHS[2]),
+                        ReportPdfDocument.Column.centerWrap("Status", CONSOLIDATED_SKILL_WIDTHS[3])), skills, true);
+                pdf.note(CONSOLIDATED_SKILLS_NOTE);
+            }
+            pdf.signature(personName(scope.preparedByName()), scope.preparedByRole());
+            return pdf.finish();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to generate consolidated PDF export.", e);
+        }
+    }
+
+    public byte[] exportConsolidatedExcel(V3ConsolidatedReportResponse report, ConsolidatedExportScope scope) {
+        String noun = groupNoun(report.groupedBy());
+        String title = consolidatedTitle(report);
         try (XSSFWorkbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            Sheet summarySheet = workbook.createSheet("Consolidated Summary");
-            int rowIndex = writeTitleBlock(summarySheet,
-                    "Consolidated Report - Grouped by " + humanize(report.groupedBy()),
-                    "Generated " + DISPLAY_DATE.format(report.generatedAt()),
-                    CONSOLIDATED_SUMMARY_EXCEL_COLUMNS.length);
-            writeHeaderRow(summarySheet, rowIndex++, workbook, CONSOLIDATED_SUMMARY_EXCEL_COLUMNS);
-            int summaryCount = 0;
-            for (GroupRow group : report.groups()) {
-                Row dataRow = summarySheet.createRow(rowIndex++);
-                setCell(dataRow, 0, nullToEmpty(group.groupLabel()));
-                setCell(dataRow, 1, group.studentCount());
-                setCell(dataRow, 2, percentOrBlank(group.meanPercentage()));
-                for (int i = 0; i < PERFORMANCE_BAND_CODES.length; i++) {
-                    setCell(dataRow, 3 + i, countForStatus(group.masteryStatusCounts(), PERFORMANCE_BAND_CODES[i]));
-                }
-                applyBodyStyle(workbook, dataRow, CONSOLIDATED_SUMMARY_EXCEL_COLUMNS.length, summaryCount++ % 2 == 1);
-            }
-            summarySheet.createFreezePane(0, rowIndex - summaryCount);
-            for (int i = 0; i < CONSOLIDATED_SUMMARY_EXCEL_COLUMNS.length; i++) {
-                summarySheet.autoSizeColumn(i);
-            }
+            var styles = ReportExcelSheet.newStyleCache();
 
-            Sheet skillsSheet = workbook.createSheet("Least Mastered Skills");
-            int skillsRowIndex = writeTitleBlock(skillsSheet,
-                    "Consolidated Report - Grouped by " + humanize(report.groupedBy()),
-                    "Generated " + DISPLAY_DATE.format(report.generatedAt()),
-                    CONSOLIDATED_SKILLS_EXCEL_COLUMNS.length);
-            writeHeaderRow(skillsSheet, skillsRowIndex++, workbook, CONSOLIDATED_SKILLS_EXCEL_COLUMNS);
-            int skillsCount = 0;
+            ReportExcelSheet summary = new ReportExcelSheet(workbook, "Summary",
+                    new float[]{7f, 34f, 12f, 12f, 12f, 12f, 12f, 14f}, styles);
+            summary.header(scope.schoolName(), title);
+            summary.section("Report Details");
+            summary.details(consolidatedDetailsLeft(scope), consolidatedDetailsRight(report, scope), 1, 3, 4, 7);
+            summary.section("1  Summary");
+            summary.cards(consolidatedCards(report), new int[][]{{1, 1}, {2, 3}, {4, 5}, {6, 7}});
+            for (var warning : report.warnings()) {
+                summary.note("Note: " + warning.message());
+            }
+            summary.skip(1);
+            summary.section("2  Performance by " + noun);
+            String[] headers = new String[4 + CONSOLIDATED_BAND_HEADERS.length];
+            headers[0] = "#";
+            headers[1] = noun;
+            headers[2] = "Learners";
+            headers[3] = "Mean %";
+            System.arraycopy(CONSOLIDATED_BAND_HEADERS, 0, headers, 4, CONSOLIDATED_BAND_HEADERS.length);
+            summary.tableHeader(headers);
+            int number = 1;
             for (GroupRow group : report.groups()) {
-                for (LeastMasteredSkill skill : group.leastMasteredSkills()) {
-                    Row dataRow = skillsSheet.createRow(skillsRowIndex++);
-                    setCell(dataRow, 0, nullToEmpty(group.groupLabel()));
-                    setCell(dataRow, 1, nullToEmpty(skill.skillName()));
-                    setCell(dataRow, 2, percentOrBlank(skill.masteryPercentage()));
-                    setCell(dataRow, 3, humanize(skill.masteryStatusCode()));
-                    applyBodyStyle(workbook, dataRow, CONSOLIDATED_SKILLS_EXCEL_COLUMNS.length, skillsCount++ % 2 == 1);
+                Object[] values = new Object[headers.length];
+                java.awt.Color[] colors = new java.awt.Color[headers.length];
+                boolean[] centered = new boolean[headers.length];
+                java.util.Arrays.fill(centered, true);
+                centered[1] = false;
+                values[0] = number++;
+                values[1] = groupLabel(report, group);
+                values[2] = group.studentCount();
+                values[3] = group.meanPercentage() == null ? NOT_AVAILABLE : group.meanPercentage();
+                colors[3] = statusColor(performanceBand(group.meanPercentage()));
+                for (int i = 0; i < PERFORMANCE_BAND_CODES.length; i++) {
+                    values[4 + i] = countForStatus(group.masteryStatusCounts(), PERFORMANCE_BAND_CODES[i]);
                 }
+                summary.tableRow(values, colors, centered, "...%....");
             }
-            skillsSheet.createFreezePane(0, skillsRowIndex - skillsCount);
-            for (int i = 0; i < CONSOLIDATED_SKILLS_EXCEL_COLUMNS.length; i++) {
-                skillsSheet.autoSizeColumn(i);
+            summary.skip(1);
+            summary.note(report.groups().isEmpty()
+                    ? "No class or result matched the selected filters." : CONSOLIDATED_BANDS_NOTE);
+            summary.signature(personName(scope.preparedByName()), scope.preparedByRole(), 1);
+            summary.footer(SCHOOL_FOOTER);
+
+            ReportExcelSheet competencies = new ReportExcelSheet(workbook, "Least Mastered",
+                    new float[]{7f, 30f, 52f, 12f, 16f}, styles);
+            competencies.header(scope.schoolName(), title);
+            competencies.section("3  Least Mastered Competencies");
+            competencies.tableHeader(new String[]{"#", noun, "Learning Competency", "Mastery %", "Status"});
+            number = 1;
+            for (GroupRow group : report.groups()) {
+                int firstRow = -1;
+                int lastRow = -1;
+                for (LeastMasteredSkill skill : belowMasteryLine(group)) {
+                    int written = competencies.tableRow(new Object[]{number++, groupLabel(report, group),
+                                    orNotAvailable(skill.skillName()),
+                                    skill.masteryPercentage() == null ? NOT_AVAILABLE : skill.masteryPercentage(),
+                                    humanize(skill.masteryStatusCode())},
+                            new java.awt.Color[]{null, null, null, statusColor(skill.masteryStatusCode()),
+                                    statusColor(skill.masteryStatusCode())},
+                            new boolean[]{true, false, false, true, true}, "...%.");
+                    if (firstRow < 0) firstRow = written;
+                    lastRow = written;
+                }
+                if (firstRow >= 0) competencies.mergeColumn(firstRow, lastRow, 1);
             }
+            competencies.skip(1);
+            competencies.note(number == 1
+                    ? "No learning competency is below 80% mastery for the selected filters." : CONSOLIDATED_SKILLS_NOTE);
+            competencies.footer(SCHOOL_FOOTER);
 
             workbook.write(output);
             return output.toByteArray();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to generate consolidated Excel export.", e);
-        }
-    }
-
-    private static final float[] CONSOLIDATED_SUMMARY_WIDTHS = {145f, 55f, 60f, 60f, 55f, 60f, 80f};
-    private static final String[] CONSOLIDATED_SUMMARY_HEADERS =
-            {"Group", "Students", "Mean %", "Maintain", "Review", "Reteach", "Priority"};
-    private static final float[] CONSOLIDATED_SKILLS_WIDTHS = {140f, 185f, 80f, 110f};
-    private static final String[] CONSOLIDATED_SKILLS_HEADERS =
-            {"Group", "Competency / Skill", "Mastery %", "Status"};
-
-    public byte[] exportConsolidatedPdf(V3ConsolidatedReportResponse report) {
-        try (PDDocument document = new PDDocument();
-             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            PdfCursor cursor = newPage(document);
-            cursor.y = drawBrandedTitleBand(cursor.content,
-                    "Consolidated Report - Grouped by " + humanize(report.groupedBy()),
-                    "School-wide performance summary",
-                    "Generated " + DISPLAY_DATE.format(report.generatedAt()));
-            cursor.y = drawTableHeader(cursor.content, cursor.y, CONSOLIDATED_SUMMARY_HEADERS, CONSOLIDATED_SUMMARY_WIDTHS);
-
-            int summaryRowCount = 0;
-            for (GroupRow group : report.groups()) {
-                if (cursor.y < MARGIN + ROW_HEIGHT + FOOTER_RESERVE) {
-                    closePage(cursor);
-                    cursor = newPage(document);
-                    cursor.y = drawTableHeader(cursor.content, cursor.y, CONSOLIDATED_SUMMARY_HEADERS, CONSOLIDATED_SUMMARY_WIDTHS);
-                }
-                String[] values = new String[3 + PERFORMANCE_BAND_CODES.length];
-                values[0] = nullToEmpty(group.groupLabel());
-                values[1] = String.valueOf(group.studentCount());
-                values[2] = percentOrBlank(group.meanPercentage());
-                for (int i = 0; i < PERFORMANCE_BAND_CODES.length; i++) {
-                    values[3 + i] = String.valueOf(countForStatus(group.masteryStatusCounts(), PERFORMANCE_BAND_CODES[i]));
-                }
-                cursor.y = drawTableRow(cursor.content, cursor.y, values, CONSOLIDATED_SUMMARY_WIDTHS, summaryRowCount++ % 2 == 1);
-            }
-            closePage(cursor);
-
-            cursor = newPage(document);
-            drawText(cursor.content, FONT_BOLD, 13, MARGIN, cursor.y, "Least Mastered Skills");
-            cursor.y -= 22f;
-            cursor.y = drawTableHeader(cursor.content, cursor.y, CONSOLIDATED_SKILLS_HEADERS, CONSOLIDATED_SKILLS_WIDTHS);
-            int skillsRowCount = 0;
-            for (GroupRow group : report.groups()) {
-                for (LeastMasteredSkill skill : group.leastMasteredSkills()) {
-                    if (cursor.y < MARGIN + ROW_HEIGHT + FOOTER_RESERVE) {
-                        closePage(cursor);
-                        cursor = newPage(document);
-                        cursor.y = drawTableHeader(cursor.content, cursor.y, CONSOLIDATED_SKILLS_HEADERS, CONSOLIDATED_SKILLS_WIDTHS);
-                    }
-                    String[] values = {
-                            nullToEmpty(group.groupLabel()),
-                            nullToEmpty(skill.skillName()),
-                            skill.masteryPercentage() == null ? "" : skill.masteryPercentage() + "%",
-                            humanize(skill.masteryStatusCode())
-                    };
-                    cursor.y = drawTableRow(cursor.content, cursor.y, values, CONSOLIDATED_SKILLS_WIDTHS, skillsRowCount++ % 2 == 1);
-                }
-            }
-            closePage(cursor);
-            finalizeFooters(document);
-            document.save(output);
-            return output.toByteArray();
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to generate consolidated PDF export.", e);
         }
     }
 
@@ -1609,198 +1716,7 @@ public class V3ReportExportService {
         }
     }
 
-    // ---------- PDF page / drawing plumbing ----------
-
-    private static final float PAGE_WIDTH = PDRectangle.A4.getWidth();
-    private static final float PAGE_HEIGHT = PDRectangle.A4.getHeight();
-    private static final float MARGIN = 40f;
-    private static final float ROW_HEIGHT = 20f;
-    private static final float FOOTER_RESERVE = 24f;
-    private static final PDFont FONT_REGULAR = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
-    private static final PDFont FONT_BOLD = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-
-    private static final class PdfCursor {
-        final PDPage page;
-        PDPageContentStream content;
-        float y;
-
-        PdfCursor(PDPage page, PDPageContentStream content, float y) {
-            this.page = page;
-            this.content = content;
-            this.y = y;
-        }
-    }
-
-    private PdfCursor newPage(PDDocument document) throws IOException {
-        PDPage page = new PDPage(PDRectangle.A4);
-        document.addPage(page);
-        PDPageContentStream content = new PDPageContentStream(document, page);
-        return new PdfCursor(page, content, PAGE_HEIGHT - MARGIN);
-    }
-
-    private void closePage(PdfCursor cursor) throws IOException {
-        cursor.content.close();
-    }
-
-    /**
-     * Page numbers require knowing the final page count, which isn't known until every
-     * page has been drawn - so the footer is stamped in one pass at the end, over the
-     * already-closed pages, rather than while each page is being built.
-     */
-    private void finalizeFooters(PDDocument document) throws IOException {
-        int total = document.getNumberOfPages();
-        for (int i = 0; i < total; i++) {
-            try (PDPageContentStream footer = new PDPageContentStream(
-                    document, document.getPage(i), PDPageContentStream.AppendMode.APPEND, true)) {
-                footer.setNonStrokingColor(0.5f, 0.5f, 0.5f);
-                drawText(footer, FONT_REGULAR, 8, MARGIN, MARGIN - 18f,
-                        "SMART Assessment System  -  Page " + (i + 1) + " of " + total);
-                footer.setNonStrokingColor(0f, 0f, 0f);
-            }
-        }
-    }
-
-    private float drawBrandedTitleBand(PDPageContentStream content, String title, String subtitle, String meta) throws IOException {
-        float bandHeight = 52f;
-        float y = PAGE_HEIGHT - MARGIN;
-        content.setNonStrokingColor(BRAND_RGB[0], BRAND_RGB[1], BRAND_RGB[2]);
-        content.addRect(MARGIN, y - bandHeight + 12, PAGE_WIDTH - 2 * MARGIN, bandHeight);
-        content.fill();
-        content.setNonStrokingColor(1f, 1f, 1f);
-        drawText(content, FONT_BOLD, 16, MARGIN + 10, y - 18, title);
-        drawText(content, FONT_REGULAR, 10.5f, MARGIN + 10, y - 36, subtitle);
-        content.setNonStrokingColor(0f, 0f, 0f);
-        y -= bandHeight + 10;
-        if (meta != null && !meta.isBlank()) {
-            drawText(content, FONT_REGULAR, 9, MARGIN, y, meta);
-            y -= 16f;
-        }
-        return y - 6f;
-    }
-
-    private float drawTableHeader(PDPageContentStream content, float y, String[] headers, float[] widths) throws IOException {
-        float x = MARGIN;
-        content.setNonStrokingColor(BRAND_RGB[0], BRAND_RGB[1], BRAND_RGB[2]);
-        content.addRect(MARGIN, y - ROW_HEIGHT + 5, sum(widths), ROW_HEIGHT);
-        content.fill();
-        content.setNonStrokingColor(1f, 1f, 1f);
-        for (int i = 0; i < headers.length; i++) {
-            drawText(content, FONT_BOLD, 9.5f, x + 4, y - 13, headers[i]);
-            x += widths[i];
-        }
-        content.setNonStrokingColor(0f, 0f, 0f);
-        return y - ROW_HEIGHT;
-    }
-
-    private float drawTableRow(PDPageContentStream content, float y, String[] values, float[] widths, boolean striped) throws IOException {
-        float totalWidth = sum(widths);
-        if (striped) {
-            content.setNonStrokingColor(ZEBRA_RGB[0], ZEBRA_RGB[1], ZEBRA_RGB[2]);
-            content.addRect(MARGIN, y - ROW_HEIGHT + 5, totalWidth, ROW_HEIGHT);
-            content.fill();
-            content.setNonStrokingColor(0f, 0f, 0f);
-        }
-        float x = MARGIN;
-        for (int i = 0; i < values.length; i++) {
-            drawText(content, FONT_REGULAR, 9.5f, x + 4, y - 13, fitText(values[i], widths[i] - 8));
-            x += widths[i];
-        }
-        content.setStrokingColor(GRID_RGB[0], GRID_RGB[1], GRID_RGB[2]);
-        content.setLineWidth(0.4f);
-        content.moveTo(MARGIN, y - ROW_HEIGHT + 5);
-        content.lineTo(MARGIN + totalWidth, y - ROW_HEIGHT + 5);
-        content.stroke();
-        float vx = MARGIN;
-        for (float w : widths) {
-            content.moveTo(vx, y + 5);
-            content.lineTo(vx, y - ROW_HEIGHT + 5);
-            content.stroke();
-            vx += w;
-        }
-        content.moveTo(vx, y + 5);
-        content.lineTo(vx, y - ROW_HEIGHT + 5);
-        content.stroke();
-        return y - ROW_HEIGHT;
-    }
-
-    private String fitText(String text, float maxWidth) {
-        return fitText(text, FONT_REGULAR, 9.5f, maxWidth);
-    }
-
-    private String fitText(String text, PDFont font, float size, float maxWidth) {
-        if (text == null) {
-            return "";
-        }
-        try {
-            if (font.getStringWidth(text) / 1000f * size <= maxWidth) {
-                return text;
-            }
-            String truncated = text;
-            while (!truncated.isEmpty() && font.getStringWidth(truncated + "...") / 1000f * size > maxWidth) {
-                truncated = truncated.substring(0, truncated.length() - 1);
-            }
-            return truncated.isEmpty() ? text : truncated + "...";
-        } catch (IOException e) {
-            return text;
-        }
-    }
-
-    /** Word-wraps text to at most maxLines lines of maxWidth; the last line is truncated with
-     *  "..." if the text still does not fit. */
-    private List<String> wrapText(String text, PDFont font, float size, float maxWidth, int maxLines) {
-        List<String> lines = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        String[] words = text.trim().split("\\s+");
-        int index = 0;
-        try {
-            while (index < words.length && lines.size() < maxLines) {
-                String candidate = current.isEmpty() ? words[index] : current + " " + words[index];
-                if (current.isEmpty() || font.getStringWidth(candidate) / 1000f * size <= maxWidth) {
-                    current.setLength(0);
-                    current.append(candidate);
-                    index++;
-                } else {
-                    lines.add(current.toString());
-                    current.setLength(0);
-                }
-            }
-        } catch (IOException e) {
-            return List.of(fitText(text, font, size, maxWidth));
-        }
-        if (!current.isEmpty() && lines.size() < maxLines) {
-            lines.add(current.toString());
-        }
-        if (index < words.length && !lines.isEmpty()) {
-            // Ran out of lines: mark the cut on the last one.
-            String last = lines.remove(lines.size() - 1);
-            lines.add(last + " " + String.join(" ", List.of(words).subList(index, words.length)));
-        }
-        // Also trims a single word that is wider than the whole line on its own.
-        lines.replaceAll(line -> fitText(line, font, size, maxWidth));
-        return lines;
-    }
-
-    private void drawText(PDPageContentStream content, PDFont font, float size, float x, float y, String text) throws IOException {
-        content.beginText();
-        content.setFont(font, size);
-        content.newLineAtOffset(x, y);
-        content.showText(text == null ? "" : text);
-        content.endText();
-    }
-
-    private float sum(float[] values) {
-        float total = 0;
-        for (float v : values) {
-            total += v;
-        }
-        return total;
-    }
-
     // ---------- Shared helpers ----------
-
-    private String percentOrBlank(BigDecimal value) {
-        return value == null ? "" : value.toPlainString() + "%";
-    }
 
     private String nullToEmpty(String value) {
         return value == null ? "" : value;
@@ -1824,117 +1740,5 @@ public class V3ReportExportService {
             label.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1).toLowerCase(Locale.ROOT));
         }
         return label.toString();
-    }
-
-    // ---------- Excel styling / helpers ----------
-
-    private void setCell(Row row, int column, String value) {
-        row.createCell(column).setCellValue(value);
-    }
-
-    private void setCell(Row row, int column, int value) {
-        row.createCell(column).setCellValue(value);
-    }
-
-    private int writeTitleBlock(Sheet sheet, String title, String subtitle, int columnCount) {
-        XSSFWorkbook workbook = (XSSFWorkbook) sheet.getWorkbook();
-        int rowIndex = 0;
-
-        Row titleRow = sheet.createRow(rowIndex);
-        titleRow.setHeightInPoints(26f);
-        CellStyle titleStyle = createTitleStyle(workbook);
-        for (int i = 0; i < columnCount; i++) {
-            Cell cell = titleRow.createCell(i);
-            if (i == 0) {
-                cell.setCellValue(title);
-            }
-            cell.setCellStyle(titleStyle);
-        }
-        if (columnCount > 1) {
-            sheet.addMergedRegion(new CellRangeAddress(rowIndex, rowIndex, 0, columnCount - 1));
-        }
-        rowIndex++;
-
-        Row subtitleRow = sheet.createRow(rowIndex);
-        CellStyle subtitleStyle = createSubtitleStyle(workbook);
-        Cell subtitleCell = subtitleRow.createCell(0);
-        subtitleCell.setCellValue(subtitle);
-        subtitleCell.setCellStyle(subtitleStyle);
-        rowIndex++;
-
-        return rowIndex + 1;
-    }
-
-    private void writeHeaderRow(Sheet sheet, int rowIndex, XSSFWorkbook workbook, String[] columns) {
-        Row header = sheet.createRow(rowIndex);
-        CellStyle headerStyle = createHeaderStyle(workbook);
-        for (int i = 0; i < columns.length; i++) {
-            Cell cell = header.createCell(i);
-            cell.setCellValue(columns[i]);
-            cell.setCellStyle(headerStyle);
-        }
-    }
-
-    private void applyBodyStyle(XSSFWorkbook workbook, Row row, int columnCount, boolean striped) {
-        CellStyle style = createBodyStyle(workbook, striped);
-        for (int i = 0; i < columnCount; i++) {
-            Cell cell = row.getCell(i);
-            if (cell == null) {
-                cell = row.createCell(i);
-            }
-            cell.setCellStyle(style);
-        }
-    }
-
-    private CellStyle createTitleStyle(XSSFWorkbook workbook) {
-        Font font = workbook.createFont();
-        font.setBold(true);
-        font.setFontHeightInPoints((short) 15);
-        font.setColor(IndexedColors.WHITE.getIndex());
-        XSSFCellStyle style = (XSSFCellStyle) workbook.createCellStyle();
-        style.setFont(font);
-        style.setFillForegroundColor(new XSSFColor(BRAND_RGB_BYTES, null));
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
-        return style;
-    }
-
-    private CellStyle createSubtitleStyle(XSSFWorkbook workbook) {
-        Font font = workbook.createFont();
-        font.setFontHeightInPoints((short) 11);
-        CellStyle style = workbook.createCellStyle();
-        style.setFont(font);
-        return style;
-    }
-
-    private CellStyle createHeaderStyle(XSSFWorkbook workbook) {
-        Font font = workbook.createFont();
-        font.setBold(true);
-        font.setFontHeightInPoints((short) 12);
-        font.setColor(IndexedColors.WHITE.getIndex());
-        XSSFCellStyle style = (XSSFCellStyle) workbook.createCellStyle();
-        style.setFont(font);
-        style.setFillForegroundColor(new XSSFColor(BRAND_RGB_BYTES, null));
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        style.setAlignment(HorizontalAlignment.CENTER);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
-        style.setBorderBottom(BorderStyle.THIN);
-        return style;
-    }
-
-    private CellStyle createBodyStyle(XSSFWorkbook workbook, boolean striped) {
-        Font font = workbook.createFont();
-        font.setFontHeightInPoints((short) 11);
-        XSSFCellStyle style = (XSSFCellStyle) workbook.createCellStyle();
-        style.setFont(font);
-        style.setBorderTop(BorderStyle.THIN);
-        style.setBorderBottom(BorderStyle.THIN);
-        style.setBorderLeft(BorderStyle.THIN);
-        style.setBorderRight(BorderStyle.THIN);
-        if (striped) {
-            style.setFillForegroundColor(new XSSFColor(ZEBRA_RGB_BYTES, null));
-            style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        }
-        return style;
     }
 }
