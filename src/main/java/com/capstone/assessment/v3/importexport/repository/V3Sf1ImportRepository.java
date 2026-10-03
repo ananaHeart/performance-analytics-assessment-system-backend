@@ -327,7 +327,7 @@ public class V3Sf1ImportRepository {
         jdbcTemplate.update(connection -> {
             PreparedStatement statement = connection.prepareStatement("""
                     INSERT INTO sf1_import_items
-                        (sf1_import_id, row_number, student_lrn_snapshot, source_row_hash,
+                        (sf1_import_id, `row_number`, student_lrn_snapshot, source_row_hash,
                          student_id, class_list_id, outcome_status, warning_code,
                          outcome_message, processed_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -385,12 +385,12 @@ public class V3Sf1ImportRepository {
 
     public List<V3Sf1ImportResponse.Row> listImportRows(long sf1ImportId) {
         return jdbcTemplate.query("""
-                SELECT sf1_import_item_id, row_number, student_lrn_snapshot,
+                SELECT sf1_import_item_id, `row_number`, student_lrn_snapshot,
                        student_id, class_list_id, outcome_status, warning_code,
                        outcome_message, processed_at
                   FROM sf1_import_items
                  WHERE sf1_import_id = ?
-                 ORDER BY row_number
+                 ORDER BY `row_number`
                 """, (rs, rowNum) -> new V3Sf1ImportResponse.Row(
                 rs.getLong("sf1_import_item_id"),
                 rs.getInt("row_number"),

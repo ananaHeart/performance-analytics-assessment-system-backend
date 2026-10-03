@@ -33,6 +33,7 @@ public class V3AuthenticationFilter extends OncePerRequestFilter {
             "/api/v3/auth/verify-teacher-email",
             "/api/v3/auth/resend-teacher-verification",
             "/api/v3/auth/mfa/login/verify",
+            "/api/v3/system/ping",
             "/api/v3/system/readiness",
             "/api/v3/system/mobile-release-readiness"
     );
