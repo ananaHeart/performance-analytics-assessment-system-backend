@@ -106,7 +106,7 @@ public class V3DynamicAnswerSheetPreviewController {
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentLength(pdfBytes.length);
         headers.setContentDisposition(ContentDisposition.attachment()
-                .filename("SMART-Dynamic-Answer-Sheet-Preview-%s.pdf".formatted(manifest.paperSizeCode()))
+                .filename("Marka-Dynamic-Answer-Sheet-Preview-%s.pdf".formatted(manifest.paperSizeCode()))
                 .build());
         headers.setCacheControl("private, no-store, max-age=0");
         headers.add("X-Dynamic-Manifest-Hash", manifest.manifestHash());

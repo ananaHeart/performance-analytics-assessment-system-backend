@@ -522,7 +522,7 @@ public class V3AnswerSheetService {
                     HttpStatus.CONFLICT
             );
         }
-        String filename = "SMART-Bubble-Answer-Sheet-%d.pdf".formatted(answerSheetVersionId);
+        String filename = "Marka-Bubble-Answer-Sheet-%d.pdf".formatted(answerSheetVersionId);
         if (!fileStorage.exists(version.pdfStorageKey())) {
             return new PdfDownload(filename, rebuildPdf(user, version));
         }

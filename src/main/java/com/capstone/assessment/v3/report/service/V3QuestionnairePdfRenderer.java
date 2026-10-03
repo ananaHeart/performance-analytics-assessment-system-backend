@@ -25,7 +25,7 @@ import java.util.Locale;
 public class V3QuestionnairePdfRenderer {
 
     private static final String FOOTER =
-            "Do not write on this questionnaire. Shade or write all answers on the SMART answer sheet.";
+            "Do not write on this questionnaire. Shade or write all answers on the Marka answer sheet.";
 
     private final V3ReportRepository repository;
 
@@ -87,10 +87,12 @@ public class V3QuestionnairePdfRenderer {
                 : section == null || section.isBlank() ? grade : grade + " - " + section;
         List<String[]> left = new ArrayList<>();
         left.add(new String[]{"Assessment", orNotAvailable(assessment.testName())});
+        left.add(new String[]{"Type", orNotAvailable(typeLabel(assessment.testType()))});
         left.add(new String[]{"Subject", orNotAvailable(context == null ? null : context.subjectName())});
         left.add(new String[]{"Grade & Section", orNotAvailable(gradeSection)});
         List<String[]> right = new ArrayList<>();
-        right.add(new String[]{"Teacher", orNotAvailable(V3ReportExportService.personName(teacherName))});
+        right.add(new String[]{"Prepared By", orNotAvailable(V3ReportExportService.personName(teacherName))});
+        right.add(new String[]{"School Year", orNotAvailable(context == null ? null : context.academicYearName())});
         right.add(new String[]{"Term", orNotAvailable(assessment.termName())});
         right.add(new String[]{"Date Conducted",
                 V3ReportExportService.dateConducted(assessment.openAt(), assessment.closeAt())});
@@ -109,7 +111,7 @@ public class V3QuestionnairePdfRenderer {
                 .append(" worth ").append(points(points, false))
                 .append(" in ").append(parts.size()).append(parts.size() == 1 ? " part" : " parts")
                 .append(". Read the directions of each part carefully. Do not write on this questionnaire; "
-                        + "shade or write all your answers on the SMART answer sheet.");
+                        + "shade or write all your answers on the Marka answer sheet.");
         if (assessment.instructions() != null && !assessment.instructions().isBlank()) {
             text.append(' ').append(assessment.instructions().trim());
         }
@@ -199,7 +201,22 @@ public class V3QuestionnairePdfRenderer {
         return number + unit + (each ? " each" : "");
     }
 
+    /** "quiz" -> "Quiz", "long_test" -> "Long Test". */
+    private static String typeLabel(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        StringBuilder label = new StringBuilder();
+        for (String word : code.trim().toLowerCase(Locale.ROOT).split("[_\\s]+")) {
+            if (!word.isEmpty()) {
+                label.append(label.isEmpty() ? "" : " ")
+                        .append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+            }
+        }
+        return label.toString();
+    }
+
     private static String orNotAvailable(String value) {
-        return value == null || value.isBlank() ? "Not available" : value;
+        return value == null || value.isBlank() ? "N/A" : value;
     }
 }

@@ -53,7 +53,8 @@ class V3QuestionnairePdfRendererTest {
             text = new PDFTextStripper().getText(document);
         }
         assertThat(text).contains("TEST QUESTIONNAIRE", "SAN ROQUE NATIONAL HIGH SCHOOL", "Juan Dela Cruz",
-                "Sep 15 – 17, 2026", "This test has 11 items worth 21 pts in 5 parts");
+                "Sep 15 – 17, 2026", "This test has 11 items worth 21 pts in 5 parts",
+                "Prepared By", "2026-2027", "Quiz", "Marka answer sheet");
         // Numbered 1..11 across parts, in part order then item order, as on the answer sheet.
         for (int number = 1; number <= 11; number++) {
             assertThat(text).contains(number + ". ");

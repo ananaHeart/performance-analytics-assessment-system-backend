@@ -1136,7 +1136,7 @@ public class V3ReportExportService {
     private static final String[] SYNC_TEACHER_HEADERS = {"No.", "Teacher", "Last Synced", "Assessments", "Not Uploaded"};
     private static final float[] SYNC_FAILED_WIDTHS = {22f, 120f, 85f, 60f, 228f};
     private static final String[] SYNC_FAILED_HEADERS = {"No.", "Assessment", "Class", "Not Uploaded", "Error Details"};
-    private static final String SYNC_SUGGESTED_ACTION = "Suggested action: open the SMART mobile app and retry the upload."
+    private static final String SYNC_SUGGESTED_ACTION = "Suggested action: open the Marka mobile app and retry the upload."
             + " If a result keeps failing, check the error above, then rescan or re-verify that answer sheet.";
 
     private String uploadStatus(int resultsNotUploaded) {

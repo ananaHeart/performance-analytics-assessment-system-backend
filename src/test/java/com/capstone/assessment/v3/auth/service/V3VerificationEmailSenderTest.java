@@ -51,7 +51,7 @@ class V3VerificationEmailSenderTest {
         JsonNode json = new ObjectMapper().readTree(body.get());
         assertEquals("smart@example.invalid", json.at("/sender/email").asText());
         assertEquals("teacher@example.invalid", json.at("/to/0/email").asText());
-        assertEquals("Verify your SMART Assessment teacher account", json.get("subject").asText());
+        assertEquals("Verify your Marka teacher account", json.get("subject").asText());
         assertTrue(json.get("textContent").asText().contains("482915"));
         assertTrue(json.get("htmlContent").asText().contains("482915"));
         verifyNoInteractions(mailSender);

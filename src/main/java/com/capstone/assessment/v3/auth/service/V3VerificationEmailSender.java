@@ -36,8 +36,8 @@ public class V3VerificationEmailSender {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(V3VerificationEmailSender.class);
 
-    private static final String SUBJECT = "Verify your SMART Assessment teacher account";
-    private static final String SENDER_NAME = "SMART Assessment System";
+    private static final String SUBJECT = "Verify your Marka teacher account";
+    private static final String SENDER_NAME = "Marka";
     private static final ObjectMapper JSON = new ObjectMapper();
 
     /** Sends one Brevo transactional-email request; returns the HTTP status code. */
@@ -173,7 +173,7 @@ public class V3VerificationEmailSender {
 
     private String plainText(String otp) {
         return """
-                SMART Assessment System
+                Marka
 
                 Verify your teacher email address
 
@@ -193,13 +193,13 @@ public class V3VerificationEmailSender {
                     <tr><td align="center" style="padding:32px 16px;">
                       <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#fff;border:1px solid #dce5da;">
                         <tr><td style="padding:24px 32px;background:#173f2b;color:#fff;">
-                          <div style="font-size:20px;font-weight:700;">SMART Assessment</div>
-                          <div style="margin-top:4px;font-size:13px;color:#dcebd7;">Assessment System</div>
+                          <div style="font-size:20px;font-weight:700;">Marka</div>
+                          <div style="margin-top:4px;font-size:13px;color:#dcebd7;">Scan, score, and see how every learner is doing.</div>
                         </td></tr>
                         <tr><td style="padding:36px 32px 20px;">
                           <div style="font-size:13px;font-weight:700;color:#2d7d24;text-transform:uppercase;">Teacher email verification</div>
                           <h1 style="margin:10px 0 12px;font-size:28px;">Verify your email address</h1>
-                          <p style="margin:0;font-size:16px;line-height:1.6;color:#4d5d73;">Enter this code in SMART Assessment to continue registration.</p>
+                          <p style="margin:0;font-size:16px;line-height:1.6;color:#4d5d73;">Enter this code in Marka to continue registration.</p>
                         </td></tr>
                         <tr><td style="padding:8px 32px 24px;">
                           <div style="padding:22px;text-align:center;background:#eef9e8;border:1px solid #b9e5a7;">
@@ -209,7 +209,7 @@ public class V3VerificationEmailSender {
                           </div>
                         </td></tr>
                         <tr><td style="padding:0 32px 36px;font-size:14px;line-height:1.6;color:#4d5d73;">
-                          Keep this code private. SMART Assessment staff will never ask you to send it by message or phone.
+                          Keep this code private. Marka staff will never ask you to send it by message or phone.
                         </td></tr>
                       </table>
                     </td></tr>

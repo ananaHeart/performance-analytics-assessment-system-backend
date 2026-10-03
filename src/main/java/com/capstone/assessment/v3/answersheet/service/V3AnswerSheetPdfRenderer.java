@@ -65,8 +65,8 @@ public class V3AnswerSheetPdfRenderer {
             }
 
             }
-            document.getDocumentInformation().setTitle("SMART Assessment Bubble Answer Sheet");
-            document.getDocumentInformation().setAuthor("SMART Assessment System");
+            document.getDocumentInformation().setTitle("Marka Bubble Answer Sheet");
+            document.getDocumentInformation().setAuthor("Marka");
             document.getDocumentInformation().setSubject(
                     "Immutable answer-sheet template " + plan.template().code()
             );

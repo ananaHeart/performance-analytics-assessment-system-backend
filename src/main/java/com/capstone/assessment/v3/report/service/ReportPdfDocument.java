@@ -105,7 +105,7 @@ final class ReportPdfDocument {
         float logoSize = 36f;
         drawLogo(MARGIN, TOP - logoSize, logoSize);
         text(BOLD, 13.5f, TEXT, MARGIN + logoSize + 10, TOP - 15, upper(schoolName));
-        text(BOLD, 9.5f, BRAND, MARGIN + logoSize + 10, TOP - 29, "SMART Assessment System");
+        text(BOLD, 9.5f, BRAND, MARGIN + logoSize + 10, TOP - 29, "Marka");
         hline(TOP - logoSize - 8, MARGIN, MARGIN + CONTENT_WIDTH, GRID, 0.6f);
 
         float bandTop = TOP - logoSize - 16;
@@ -152,7 +152,7 @@ final class ReportPdfDocument {
                 hline(40f, MARGIN, MARGIN + CONTENT_WIDTH, GRID, 0.6f);
                 text(ITALIC, 7.5f, MUTED, MARGIN, 29f, footerLeft);
                 rightText(REGULAR, 7.5f, MUTED, MARGIN + CONTENT_WIDTH, 29f,
-                        "SMART Assessment System   |   Page " + (i + 1) + " of " + total);
+                        "Marka   |   Page " + (i + 1) + " of " + total);
                 content = saved;
             }
         }

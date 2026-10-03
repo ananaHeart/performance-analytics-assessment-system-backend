@@ -88,7 +88,7 @@ final class ReportExcelSheet {
         set(school, 1, schoolName == null ? "" : schoolName.toUpperCase(java.util.Locale.ROOT), style("school"));
         Row system = sheet.createRow(row++);
         system.setHeightInPoints(16);
-        set(system, 1, "SMART Assessment System", style("system"));
+        set(system, 1, "Marka", style("system"));
         row++;
         Row band = sheet.createRow(row);
         band.setHeightInPoints(26);
@@ -220,7 +220,7 @@ final class ReportExcelSheet {
 
     void footer(String left) {
         sheet.getFooter().setLeft(left);
-        sheet.getFooter().setRight("SMART Assessment System  |  Page &P of &N");
+        sheet.getFooter().setRight("Marka  |  Page &P of &N");
     }
 
     void skip(int rows) {
