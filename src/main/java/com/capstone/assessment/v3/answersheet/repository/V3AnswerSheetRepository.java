@@ -3,6 +3,7 @@ package com.capstone.assessment.v3.answersheet.repository;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.AssignmentContext;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.PaperSize;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.Question;
+import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.StoredPage;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.StoredVersion;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.Template;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.TemplateRegion;
@@ -708,6 +709,27 @@ public class V3AnswerSheetRepository {
         if (updated != 1) {
             throw new IllegalStateException("The answer-sheet version could not be marked ready.");
         }
+    }
+
+    public List<StoredPage> listPages(long answerSheetVersionId) {
+        return jdbcTemplate.query(
+                """
+                SELECT page.page_uuid, page.page_number, page.qr_payload_hash,
+                       page.page_geometry_hash, template.template_code
+                  FROM answer_sheet_pages page
+                  JOIN omr_templates template ON template.omr_template_id = page.omr_template_id
+                 WHERE page.answer_sheet_version_id = ?
+                 ORDER BY page.page_number
+                """,
+                (rs, rowNumber) -> new StoredPage(
+                        rs.getString("page_uuid"),
+                        rs.getInt("page_number"),
+                        rs.getString("qr_payload_hash"),
+                        rs.getString("page_geometry_hash"),
+                        rs.getString("template_code")
+                ),
+                answerSheetVersionId
+        );
     }
 
     public Optional<StoredVersion> findOwnedVersion(

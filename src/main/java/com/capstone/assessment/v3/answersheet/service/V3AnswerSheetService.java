@@ -8,6 +8,7 @@ import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.Assignme
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.GenerationPlan;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.PaperSize;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.Question;
+import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.StoredPage;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.StoredVersion;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.Template;
 import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels.TemplateRegion;
@@ -42,6 +43,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -352,54 +354,15 @@ public class V3AnswerSheetService {
         String sheetUuid = UUID.randomUUID().toString();
         Instant now = clock.instant();
         int generation = repository.nextGenerationNumber(assignment.testAssignmentId(), evaluation.paperSize().paperSizeId());
-
-        List<V3AnswerSheetRepository.QuestionContentRow> contentRows =
-                repository.findQuestionContents(assignment.testId());
-        Map<Long, List<V3AnswerSheetRepository.QuestionOptionRow>> optionsByQuestion =
-                repository.findQuestionOptions(assignment.testId()).stream()
-                        .collect(Collectors.groupingBy(V3AnswerSheetRepository.QuestionOptionRow::questionId,
-                                LinkedHashMap::new, Collectors.toList()));
         Map<Long, Integer> questionTypeIdByQuestionId = evaluation.questions().stream()
                 .collect(Collectors.toMap(Question::questionId, Question::questionTypeId));
 
-        Map<Integer, List<V3AnswerSheetRepository.QuestionContentRow>> byPart = contentRows.stream()
-                .collect(Collectors.groupingBy(V3AnswerSheetRepository.QuestionContentRow::partOrder,
-                        LinkedHashMap::new, Collectors.toList()));
-        List<DynamicPartInput> parts = new ArrayList<>();
-        for (List<V3AnswerSheetRepository.QuestionContentRow> rows : byPart.values()) {
-            V3AnswerSheetRepository.QuestionContentRow first = rows.get(0);
-            List<DynamicQuestionInput> questions = new ArrayList<>();
-            for (V3AnswerSheetRepository.QuestionContentRow row : rows) {
-                List<DynamicOptionInput> options = optionsByQuestion
-                        .getOrDefault(row.questionId(), List.of()).stream()
-                        .map(option -> new DynamicOptionInput(option.optionKey(), option.optionText()))
-                        .toList();
-                questions.add(new DynamicQuestionInput(
-                        row.questionId(), row.questionUuid(), row.questionType(),
-                        row.partItemNumber(), row.globalItemNumber(), row.maximumPoints(), row.questionText(),
-                        row.responseRegionSize(), row.expectedResponseCount(), row.forcePageBreakBefore(),
-                        options
-                ));
-            }
-            parts.add(new DynamicPartInput(
-                    first.testPartId(), first.partOrder(), first.partName(), first.partInstructions(), questions));
-        }
-
-        double totalPoints = contentRows.stream().mapToDouble(V3AnswerSheetRepository.QuestionContentRow::maximumPoints).sum();
-        DynamicSheetContext context = new DynamicSheetContext(
-                user.schoolId(), assignment.testName(), assignment.subjectName(),
-                "%s - %s".formatted(assignment.gradeLevelName(), assignment.sectionName()), totalPoints);
-        DynamicSheetRequest packerRequest = new DynamicSheetRequest(
-                sheetUuid, assignment.testAssignmentId(), assignment.assignmentUuid(),
-                evaluation.paperSize().code(), assignment.testVersionNumber(),
-                evaluation.template().minimumScannerVersion(), now.toString(), parts, context
-        );
-
-        DynamicManifest manifest;
+        MixedSheet sheet;
         byte[] pdf;
         try {
-            manifest = DynamicSheetPacker.buildManifest(packerRequest);
-            pdf = new DynamicSheetPdfRenderer().render(manifest, context);
+            sheet = buildMixedSheet(user.schoolId(), assignment, sheetUuid, evaluation.paperSize().code(),
+                    evaluation.template().minimumScannerVersion(), now);
+            pdf = new DynamicSheetPdfRenderer().render(sheet.manifest(), sheet.context());
         } catch (IllegalArgumentException exception) {
             throw new V3AuthException(
                     "ANSWER_SHEET_PDF_GENERATION_FAILED",
@@ -407,6 +370,7 @@ public class V3AnswerSheetService {
                     HttpStatus.INTERNAL_SERVER_ERROR
             );
         }
+        DynamicManifest manifest = sheet.manifest();
 
         long versionId = repository.insertGeneratingVersion(sheetUuid, assignment.testAssignmentId(),
                 evaluation.paperSize().paperSizeId(), generation, assignment.testVersionNumber(),
@@ -449,6 +413,58 @@ public class V3AnswerSheetService {
                         "templateCode", MIXED_DYNAMIC_TEMPLATE_CODE, "totalPages", manifest.totalPages(),
                         "totalQuestions", evaluation.questions().size()), now);
         return toResponse(repository.findOwnedVersion(versionId, user.userId(), user.schoolId()).orElseThrow());
+    }
+
+    private record MixedSheet(DynamicManifest manifest, DynamicSheetContext context) {
+    }
+
+    /**
+     * Packs the mixed-type sheet from the assessment's stored question content. Deterministic for the
+     * same inputs (page and region UUIDs derive from the sheet UUID), which is what lets a lost PDF be
+     * rebuilt. generatedAt is truncated to seconds, the precision answer_sheet_versions keeps.
+     */
+    private MixedSheet buildMixedSheet(String schoolId, AssignmentContext assignment, String sheetUuid,
+            String paperSizeCode, String scannerVersion, Instant generatedAt) {
+        List<V3AnswerSheetRepository.QuestionContentRow> contentRows =
+                repository.findQuestionContents(assignment.testId());
+        Map<Long, List<V3AnswerSheetRepository.QuestionOptionRow>> optionsByQuestion =
+                repository.findQuestionOptions(assignment.testId()).stream()
+                        .collect(Collectors.groupingBy(V3AnswerSheetRepository.QuestionOptionRow::questionId,
+                                LinkedHashMap::new, Collectors.toList()));
+
+        Map<Integer, List<V3AnswerSheetRepository.QuestionContentRow>> byPart = contentRows.stream()
+                .collect(Collectors.groupingBy(V3AnswerSheetRepository.QuestionContentRow::partOrder,
+                        LinkedHashMap::new, Collectors.toList()));
+        List<DynamicPartInput> parts = new ArrayList<>();
+        for (List<V3AnswerSheetRepository.QuestionContentRow> rows : byPart.values()) {
+            V3AnswerSheetRepository.QuestionContentRow first = rows.get(0);
+            List<DynamicQuestionInput> questions = new ArrayList<>();
+            for (V3AnswerSheetRepository.QuestionContentRow row : rows) {
+                List<DynamicOptionInput> options = optionsByQuestion
+                        .getOrDefault(row.questionId(), List.of()).stream()
+                        .map(option -> new DynamicOptionInput(option.optionKey(), option.optionText()))
+                        .toList();
+                questions.add(new DynamicQuestionInput(
+                        row.questionId(), row.questionUuid(), row.questionType(),
+                        row.partItemNumber(), row.globalItemNumber(), row.maximumPoints(), row.questionText(),
+                        row.responseRegionSize(), row.expectedResponseCount(), row.forcePageBreakBefore(),
+                        options
+                ));
+            }
+            parts.add(new DynamicPartInput(
+                    first.testPartId(), first.partOrder(), first.partName(), first.partInstructions(), questions));
+        }
+
+        double totalPoints = contentRows.stream().mapToDouble(V3AnswerSheetRepository.QuestionContentRow::maximumPoints).sum();
+        DynamicSheetContext context = new DynamicSheetContext(
+                schoolId, assignment.testName(), assignment.subjectName(),
+                "%s - %s".formatted(assignment.gradeLevelName(), assignment.sectionName()), totalPoints);
+        DynamicSheetRequest packerRequest = new DynamicSheetRequest(
+                sheetUuid, assignment.testAssignmentId(), assignment.assignmentUuid(),
+                paperSizeCode, assignment.testVersionNumber(), scannerVersion,
+                generatedAt.truncatedTo(ChronoUnit.SECONDS).toString(), parts, context
+        );
+        return new MixedSheet(DynamicSheetPacker.buildManifest(packerRequest), context);
     }
 
     /** Mirrors DynamicSheetPacker's own region geometry map so the persisted snapshot matches
@@ -506,6 +522,10 @@ public class V3AnswerSheetService {
                     HttpStatus.CONFLICT
             );
         }
+        String filename = "SMART-Bubble-Answer-Sheet-%d.pdf".formatted(answerSheetVersionId);
+        if (!fileStorage.exists(version.pdfStorageKey())) {
+            return new PdfDownload(filename, rebuildPdf(user, version));
+        }
         byte[] bytes = fileStorage.read(version.pdfStorageKey());
         String actualHash = sha256(bytes);
         if (!actualHash.equals(version.pdfContentHash()) || bytes.length != version.pdfFileSizeBytes()) {
@@ -515,9 +535,79 @@ public class V3AnswerSheetService {
                     HttpStatus.CONFLICT
             );
         }
-        return new PdfDownload(
-                "SMART-Bubble-Answer-Sheet-%d.pdf".formatted(answerSheetVersionId),
-                bytes
+        return new PdfDownload(filename, bytes);
+    }
+
+    /**
+     * Free hosting (Render Free) wipes stored files on every restart. The sheet is then rebuilt
+     * from its stored data, and served only when every page keeps its stored identity (page UUID,
+     * QR payload and bubble geometry), so the rebuilt PDF prints exactly what the scanner expects
+     * and copies printed from the original still scan. Nothing is written: no new version, no file.
+     */
+    private byte[] rebuildPdf(V3AuthenticatedUser user, StoredVersion version) {
+        List<StoredPage> storedPages = repository.listPages(version.answerSheetVersionId());
+        AssignmentContext assignment = repository.findOwnedAssignment(
+                version.testAssignmentId(), user.userId(), user.schoolId()).orElse(null);
+        if (storedPages.isEmpty() || assignment == null || version.generatedAt() == null
+                || assignment.testVersionNumber() != version.testVersionNumber()) {
+            throw pdfCannotBeRebuilt();
+        }
+        try {
+            if (MIXED_DYNAMIC_TEMPLATE_CODE.equals(storedPages.get(0).templateCode())) {
+                Template template = repository.findTemplateByCode(
+                        MIXED_DYNAMIC_TEMPLATE_CODE, version.paperSizeCode()).orElseThrow(this::pdfCannotBeRebuilt);
+                MixedSheet sheet = buildMixedSheet(user.schoolId(), assignment, version.answerSheetUuid(),
+                        version.paperSizeCode(), template.minimumScannerVersion(), version.generatedAt());
+                List<StoredPage> rebuiltPages = sheet.manifest().pages().stream()
+                        .map(page -> new StoredPage(page.pageUuid(), page.pageNumber(), page.qrPayloadHash(),
+                                page.pageGeometryHash(), MIXED_DYNAMIC_TEMPLATE_CODE))
+                        .toList();
+                if (!rebuiltPages.equals(storedPages)) {
+                    throw pdfCannotBeRebuilt();
+                }
+                // The printed footer shows the stored manifest hash, as on the original.
+                return new DynamicSheetPdfRenderer().render(
+                        sheet.manifest().withManifestHash(version.manifestHash()), sheet.context());
+            }
+            return rebuildValidatedTemplatePdf(assignment, version, storedPages);
+        } catch (IllegalArgumentException exception) {
+            throw pdfCannotBeRebuilt();
+        }
+    }
+
+    private byte[] rebuildValidatedTemplatePdf(
+            AssignmentContext assignment,
+            StoredVersion version,
+            List<StoredPage> storedPages
+    ) {
+        StoredPage page = storedPages.get(0);
+        PaperSize paperSize = repository.findActivePaperSize(version.paperSizeCode())
+                .orElseThrow(this::pdfCannotBeRebuilt);
+        Template template = repository.findValidatedTemplate(version.paperSizeCode())
+                .orElseThrow(this::pdfCannotBeRebuilt);
+        List<Question> questions = repository.findQuestions(assignment.testId());
+        String qrPayload = legacyFixedQrPayload(assignment.testId());
+        String geometryHash = pageGeometryHash(template, questions, page.pageUuid());
+        String manifestHash = manifestHash(assignment, paperSize, template, questions, version.answerSheetUuid(),
+                page.pageUuid(), version.generationNumber(), geometryHash);
+        if (storedPages.size() != 1
+                || !template.code().equals(page.templateCode())
+                || !sha256(qrPayload).equals(page.qrPayloadHash())
+                || !geometryHash.equals(page.pageGeometryHash())
+                || !manifestHash.equals(version.manifestHash())) {
+            throw pdfCannotBeRebuilt();
+        }
+        return pdfRenderer.render(new GenerationPlan(assignment, paperSize, template, questions,
+                version.answerSheetUuid(), page.pageUuid(), version.generationNumber(), qrPayload,
+                page.qrPayloadHash(), geometryHash, manifestHash, version.generatedAt()));
+    }
+
+    private V3AuthException pdfCannotBeRebuilt() {
+        return new V3AuthException(
+                "ANSWER_SHEET_PDF_NOT_FOUND",
+                "The stored answer-sheet PDF is unavailable and could not be rebuilt to match the printed "
+                        + "sheet. Printed copies still scan.",
+                HttpStatus.NOT_FOUND
         );
     }
 

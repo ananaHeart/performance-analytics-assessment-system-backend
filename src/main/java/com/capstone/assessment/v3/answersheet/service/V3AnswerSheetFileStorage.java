@@ -46,6 +46,10 @@ public class V3AnswerSheetFileStorage {
         }
     }
 
+    public boolean exists(String storageKey) {
+        return Files.isRegularFile(resolve(storageKey));
+    }
+
     public byte[] read(String storageKey) {
         Path path = resolve(storageKey);
         try {

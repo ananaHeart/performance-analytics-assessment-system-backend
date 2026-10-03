@@ -158,6 +158,13 @@ public final class DynamicSheetModels {
             List<DynamicPage> pages,
             String canonicalManifestJson
     ) {
+        /** The same manifest printing a stored hash, for a sheet rebuilt after its PDF file was lost. */
+        public DynamicManifest withManifestHash(String storedManifestHash) {
+            return new DynamicManifest(contractVersion, manifestVersion, designSystemCode, designSystemVersion,
+                    answerSheetUuid, testAssignmentId, assignmentUuid, paperSizeCode, widthPt, heightPt,
+                    testVersionNumber, totalQuestions, totalPages, storedManifestHash, requiredScannerVersion,
+                    generatedAt, pages, canonicalManifestJson);
+        }
     }
 
     /** Fixed per-paper-size geometry, matching PAPER_PROFILES in the reference generator. */

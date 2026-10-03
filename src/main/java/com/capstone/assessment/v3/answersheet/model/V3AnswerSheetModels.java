@@ -114,6 +114,16 @@ public final class V3AnswerSheetModels {
     ) {
     }
 
+    /** The printed identity of one stored page: what the scanner reads from its QR and geometry. */
+    public record StoredPage(
+            String pageUuid,
+            int pageNumber,
+            String qrPayloadHash,
+            String pageGeometryHash,
+            String templateCode
+    ) {
+    }
+
     public record StoredVersion(
             long answerSheetVersionId,
             String answerSheetUuid,
