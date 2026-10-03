@@ -450,6 +450,108 @@ final class ReportPdfDocument {
         }
     }
 
+    // ---------------------------------------------------------------- test questionnaire blocks
+
+    private static final float QUESTION_SIZE = 10f;
+    private static final float QUESTION_LINE = 13.5f;
+    private static final float QUESTION_INDENT = 26f;
+
+    /** A light green box with a bold heading over wrapped text, e.g. the general directions. */
+    void directions(String heading, String value) throws IOException {
+        float textWidth = CONTENT_WIDTH - 20;
+        List<String> lines = wrap(value, REGULAR, 9.2f, textWidth, 12);
+        float height = 24 + lines.size() * 12f;
+        ensure(height);
+        fillRect(MARGIN, y - height, CONTENT_WIDTH, height, BRAND_SOFT);
+        strokeRect(MARGIN, y - height, CONTENT_WIDTH, height, BRAND_LINE, 0.6f);
+        text(BOLD, 8.8f, BRAND, MARGIN + 10, y - 13, upper(heading));
+        for (int i = 0; i < lines.size(); i++) {
+            text(REGULAR, 9.2f, TEXT, MARGIN + 10, y - 27 - i * 12f, lines.get(i));
+        }
+        y -= height;
+    }
+
+    /** Wrapped text across as many lines as it needs, e.g. a part's directions. */
+    void paragraph(String value, PDFont font, float size, Color color) throws IOException {
+        float line = size * 1.35f;
+        for (String part : wrap(value, font, size, CONTENT_WIDTH, 40)) {
+            ensure(line);
+            y -= line;
+            text(font, size, color, MARGIN, y + 3, part);
+        }
+    }
+
+    /**
+     * One numbered test question with its lettered choices, kept on one page. Short choices
+     * share a row (all on one line, or a 2 x 2 grid); long ones take a line each.
+     */
+    void question(String number, String value, String note, List<String> choices) throws IOException {
+        float textWidth = CONTENT_WIDTH - QUESTION_INDENT;
+        List<String> lines = wrap(value, REGULAR, QUESTION_SIZE, textWidth, 30);
+        List<String> noteLines = note == null || note.isBlank()
+                ? List.of() : wrap(note, ITALIC, 8.6f, textWidth, 4);
+        int perRow = choicesPerRow(choices, textWidth);
+        List<List<String>> choiceLines = new ArrayList<>();
+        int choiceRows = 0;
+        for (int i = 0; i < choices.size(); i++) {
+            List<String> wrapped = perRow == 1
+                    ? wrap(choices.get(i), REGULAR, QUESTION_SIZE, textWidth - 14, 6)
+                    : List.of(choices.get(i));
+            choiceLines.add(wrapped);
+            if (perRow == 1) {
+                choiceRows += wrapped.size();
+            } else if (i % perRow == 0) {
+                choiceRows++;
+            }
+        }
+        float height = lines.size() * QUESTION_LINE + noteLines.size() * 11f
+                + choiceRows * QUESTION_LINE + (choices.isEmpty() ? 6 : 9);
+        ensure(height);
+        float lineY = y - QUESTION_LINE + 3;
+        rightText(BOLD, QUESTION_SIZE, TEXT, MARGIN + QUESTION_INDENT - 7, lineY, number);
+        for (String line : lines) {
+            text(REGULAR, QUESTION_SIZE, TEXT, MARGIN + QUESTION_INDENT, lineY, line);
+            lineY -= QUESTION_LINE;
+        }
+        for (String line : noteLines) {
+            text(ITALIC, 8.6f, MUTED, MARGIN + QUESTION_INDENT, lineY + 2, line);
+            lineY -= 11f;
+        }
+        float columnWidth = textWidth / Math.max(perRow, 1);
+        for (int i = 0; i < choiceLines.size(); i++) {
+            List<String> wrapped = choiceLines.get(i);
+            float x = MARGIN + QUESTION_INDENT + 8 + (perRow == 1 ? 0 : (i % perRow) * columnWidth);
+            for (int l = 0; l < wrapped.size(); l++) {
+                text(REGULAR, QUESTION_SIZE, TEXT, x + (l == 0 ? 0 : 14), lineY, wrapped.get(l));
+                if (perRow == 1) {
+                    lineY -= QUESTION_LINE;
+                }
+            }
+            if (perRow > 1 && (i % perRow == perRow - 1 || i == choiceLines.size() - 1)) {
+                lineY -= QUESTION_LINE;
+            }
+        }
+        y -= height;
+    }
+
+    /** 4 (or all, if fewer) on one row when every choice fits a quarter; 2 when they fit a half. */
+    private static int choicesPerRow(List<String> choices, float textWidth) {
+        if (choices.isEmpty()) {
+            return 1;
+        }
+        float widest = 0;
+        for (String choice : choices) {
+            widest = Math.max(widest, width(REGULAR, QUESTION_SIZE, choice));
+        }
+        if (choices.size() <= 4 && widest <= textWidth / 4 - 10) {
+            return choices.size();
+        }
+        if (widest <= textWidth / 2 - 10) {
+            return 2;
+        }
+        return 1;
+    }
+
     /** Printed name over a signature line, e.g. the teacher who owns the report. */
     void signature(String name, String role) throws IOException {
         ensure(64);

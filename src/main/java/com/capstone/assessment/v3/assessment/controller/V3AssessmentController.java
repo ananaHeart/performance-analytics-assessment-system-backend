@@ -8,10 +8,13 @@ import com.capstone.assessment.v3.assessment.dto.V3AssessmentSummaryResponse;
 import com.capstone.assessment.v3.assessment.service.V3AssessmentService;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
+import com.capstone.assessment.v3.report.service.V3QuestionnairePdfRenderer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,9 +34,14 @@ import java.util.List;
 public class V3AssessmentController {
 
     private final V3AssessmentService assessmentService;
+    private final V3QuestionnairePdfRenderer questionnaireRenderer;
 
-    public V3AssessmentController(V3AssessmentService assessmentService) {
+    public V3AssessmentController(
+            V3AssessmentService assessmentService,
+            V3QuestionnairePdfRenderer questionnaireRenderer
+    ) {
         this.assessmentService = assessmentService;
+        this.questionnaireRenderer = questionnaireRenderer;
     }
 
     @GetMapping("/reference-data")
@@ -80,6 +88,20 @@ public class V3AssessmentController {
                 "V3 assessment retrieved successfully.",
                 assessmentService.getAssessment(user, testId)
         ));
+    }
+
+    /** The printable Test Questionnaire: questions and choices only, never the answer keys. */
+    @GetMapping("/{testId}/questionnaire/pdf")
+    public ResponseEntity<byte[]> questionnairePdf(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @PathVariable long testId
+    ) {
+        byte[] pdf = questionnaireRenderer.render(user, assessmentService.getAssessment(user, testId));
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=test-questionnaire-%d.pdf".formatted(testId))
+                .body(pdf);
     }
 
     @PutMapping("/{testId}")
