@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @Profile("v3")
 @RestController
 @RequestMapping("/api/v3/system")
@@ -19,6 +21,15 @@ public class V3SystemController {
 
     public V3SystemController(V3DatabaseReadinessService readinessService) {
         this.readinessService = readinessService;
+    }
+
+    /**
+     * Keep-alive target for an external pinger: answers without touching the database, so pinging
+     * every few minutes costs no TiDB request units (readiness runs the full schema check).
+     */
+    @GetMapping("/ping")
+    public ResponseEntity<ApiResponse<Map<String, String>>> ping() {
+        return ResponseEntity.ok(ApiResponse.success("V3 backend is awake.", Map.of("status", "up")));
     }
 
     @GetMapping("/readiness")

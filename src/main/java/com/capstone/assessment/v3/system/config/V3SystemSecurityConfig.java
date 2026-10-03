@@ -49,6 +49,7 @@ public class V3SystemSecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v3/system/ping").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/system/readiness").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/system/mobile-release-readiness").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/auth/teacher-registration/reference-data").permitAll()
