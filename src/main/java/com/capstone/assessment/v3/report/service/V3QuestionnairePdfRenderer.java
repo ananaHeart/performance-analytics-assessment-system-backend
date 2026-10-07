@@ -17,7 +17,7 @@ import java.util.Locale;
 
 /**
  * The printable Test Questionnaire: questions and lettered choices only, never answer keys,
- * accepted answers or rubrics. Learners answer on the SMART answer sheet, so items are numbered
+ * accepted answers or rubrics. Learners answer on the Marka answer sheet, so items are numbered
  * 1..N across parts exactly as that sheet numbers them (part order, then item order).
  */
 @Profile("v3")

@@ -8,7 +8,7 @@ import java.time.Duration;
 public class V3MfaProperties {
 
     private boolean enabled = true;
-    private String issuer = "SMART Assessment";
+    private String issuer = "Marka";
     private Duration challengeTtl = Duration.ofMinutes(5);
     private int maxAttempts = 5;
     private int recoveryCodeCount = 10;

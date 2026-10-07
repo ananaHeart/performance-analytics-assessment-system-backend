@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Excel counterpart of {@link ReportPdfDocument}: the same SMART identity header, title
+ * Excel counterpart of {@link ReportPdfDocument}: the same Marka identity header, title
  * band, detail block, summary row, green table header and footer, laid out on a sheet that
  * also prints cleanly (A4 portrait, fit to width, repeated table header, Page X of Y).
  * Cell styles are cached per workbook - POI caps a workbook at 64k styles.
@@ -335,7 +335,7 @@ final class ReportExcelSheet {
 
     private static byte[] cachedLogo;
 
-    /** The SMART mark (same geometry as ReportPdfDocument#drawLogo) rendered once to PNG. */
+    /** The Marka mark (same geometry as ReportPdfDocument#drawLogo) rendered once to PNG. */
     static synchronized byte[] logoPng() throws IOException {
         if (cachedLogo != null) {
             return cachedLogo;

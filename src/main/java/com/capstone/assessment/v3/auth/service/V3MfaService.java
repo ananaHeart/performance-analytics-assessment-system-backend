@@ -706,7 +706,7 @@ public class V3MfaService {
     }
 
     private String normalizeIssuer(String issuer) {
-        return issuer == null || issuer.isBlank() ? "SMART Assessment" : issuer.trim();
+        return issuer == null || issuer.isBlank() ? "Marka" : issuer.trim();
     }
 
     private String normalizeFactorName(String factorName) {

@@ -564,10 +564,10 @@ final class ReportPdfDocument {
         y -= 26;
     }
 
-    // ---------------------------------------------------------------- the SMART logo
+    // ---------------------------------------------------------------- the Marka logo
 
     /**
-     * The SMART system mark (web-dashboard/public/favicon.svg): a navy graduation cap with a
+     * The Marka mark (web-dashboard/public/favicon.svg): a navy graduation cap with a
      * green base on a light green rounded tile. Drawn as vectors so it stays sharp in print;
      * coordinates are the SVG's 64x64 viewBox, flipped to PDF's upward y axis.
      */

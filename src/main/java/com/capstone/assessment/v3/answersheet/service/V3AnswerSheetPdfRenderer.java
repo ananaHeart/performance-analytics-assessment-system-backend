@@ -100,7 +100,7 @@ public class V3AnswerSheetPdfRenderer {
         }
 
         drawCenteredText(content, FONT_BOLD, 15, pageWidth / 2, pageHeight - 45,
-                "Performance Analytics Assessment System");
+                "Marka");
         drawCenteredText(content, FONT_BOLD, 11, pageWidth / 2, pageHeight - 63,
                 "BUBBLE ANSWER SHEET");
         drawRightText(content, FONT_REGULAR, 7, pageWidth - 36, pageHeight - 45,
