@@ -9,6 +9,7 @@ import org.apache.poi.ss.usermodel.PrintSetup;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.util.Units;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
 import org.apache.poi.xssf.usermodel.XSSFColor;
@@ -18,12 +19,9 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import javax.imageio.ImageIO;
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -77,11 +75,13 @@ final class ReportExcelSheet {
         byte[] logo = logoPng();
         int picture = workbook.addPicture(logo, XSSFWorkbook.PICTURE_TYPE_PNG);
         XSSFDrawing drawing = sheet.createDrawingPatriarch();
-        // A fixed 48x48 px square in the top-left corner, whatever column A's width is
-        // (keep column A at least ~7 characters wide so it doesn't cover the school name).
-        XSSFClientAnchor anchor = new XSSFClientAnchor(0, 0, 0, 0, 0, 0, 1, 2);
+        // A 48x48 px (36 pt, like the PDF logo) square over A1:A2: 48 px wide inside column A,
+        // and exactly as tall as the school and system rows below (20 + 16 pt). Keep column A
+        // at least ~7 characters (49 px) wide so it doesn't cover the school name. The size is
+        // set on the anchor directly: Picture#resize scales the anchor's cells, not the image.
+        XSSFClientAnchor anchor = new XSSFClientAnchor(0, 0, Units.pixelToEMU(48), 0, 0, 0, 0, 2);
         anchor.setAnchorType(ClientAnchor.AnchorType.MOVE_DONT_RESIZE);
-        drawing.createPicture(anchor, picture).resize(0.5);
+        drawing.createPicture(anchor, picture);
 
         Row school = sheet.createRow(row++);
         school.setHeightInPoints(20);
@@ -333,35 +333,26 @@ final class ReportExcelSheet {
 
     // ---------------------------------------------------------------- logo image
 
+    /** Rendered at 4x the 48 px it is shown at, so the mark stays crisp when printed. */
+    private static final int LOGO_PIXELS = 192;
     private static byte[] cachedLogo;
 
-    /** The Marka mark (same geometry as ReportPdfDocument#drawLogo) rendered once to PNG. */
+    /** The Marka mark on its tile (same drawing as ReportPdfDocument#drawLogo) rendered once to PNG. */
     static synchronized byte[] logoPng() throws IOException {
         if (cachedLogo != null) {
             return cachedLogo;
         }
-        int size = 96;
-        float s = size / 64f;
-        BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        float s = LOGO_PIXELS / 64f;
+        BufferedImage image = new BufferedImage(LOGO_PIXELS, LOGO_PIXELS, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = image.createGraphics();
         try {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
             g.scale(s, s);
-            g.setColor(new Color(230, 248, 232));
+            g.setColor(MarkaMark.TILE);
             g.fill(new RoundRectangle2D.Float(0, 0, 64, 64, 28, 28));
-            Path2D cap = new Path2D.Float();
-            cap.moveTo(32, 12); cap.lineTo(6, 24); cap.lineTo(32, 36); cap.lineTo(54, 25.85);
-            cap.lineTo(54, 42); cap.curveTo(54, 43.1, 54.9, 44, 56, 44); cap.curveTo(57.1, 44, 58, 43.1, 58, 42);
-            cap.lineTo(58, 24); cap.closePath();
-            g.setColor(new Color(21, 36, 55));
-            g.fill(cap);
-            Path2D base = new Path2D.Float();
-            base.moveTo(18, 33.7); base.lineTo(18, 41.85); base.curveTo(18, 46.9, 24.2, 51, 32, 51);
-            base.curveTo(39.8, 51, 46, 46.9, 46, 41.85); base.lineTo(46, 33.7); base.lineTo(32, 40.15); base.closePath();
-            g.setColor(new Color(50, 207, 67));
-            g.fill(base);
-            g.fill(new Ellipse2D.Float(53, 44, 6, 6));
-            g.setStroke(new BasicStroke(0));
+            g.setColor(MarkaMark.GREEN);
+            g.fill(MarkaMark.onTile());
         } finally {
             g.dispose();
         }

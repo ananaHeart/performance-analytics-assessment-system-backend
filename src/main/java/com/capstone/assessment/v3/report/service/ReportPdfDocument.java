@@ -9,6 +9,8 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 
 import java.awt.Color;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.PathIterator;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -567,50 +569,28 @@ final class ReportPdfDocument {
     // ---------------------------------------------------------------- the Marka logo
 
     /**
-     * The Marka mark (web-dashboard/public/favicon.svg): a navy graduation cap with a
-     * green base on a light green rounded tile. Drawn as vectors so it stays sharp in print;
-     * coordinates are the SVG's 64x64 viewBox, flipped to PDF's upward y axis.
+     * The Marka mark ({@link MarkaMark}) on its light green rounded tile, placed as in
+     * web-dashboard/public/favicon.svg. Drawn as vectors so it stays sharp in print; the tile's
+     * 64x64 units are flipped to PDF's upward y axis.
      */
     private void drawLogo(float x, float y0, float size) throws IOException {
         float s = size / 64f;
-        roundedRect(x, y0, size, size, 14 * s, new Color(230, 248, 232));
-        content.setNonStrokingColor(new Color(21, 36, 55));
-        moveTo(x, y0, s, 32, 12);
-        lineTo(x, y0, s, 6, 24);
-        lineTo(x, y0, s, 32, 36);
-        lineTo(x, y0, s, 54, 25.85f);
-        lineTo(x, y0, s, 54, 42);
-        curveTo(x, y0, s, 54, 43.1f, 54.9f, 44, 56, 44);
-        curveTo(x, y0, s, 57.1f, 44, 58, 43.1f, 58, 42);
-        lineTo(x, y0, s, 58, 24);
-        lineTo(x, y0, s, 32, 12);
-        content.closePath();
+        roundedRect(x, y0, size, size, 14 * s, MarkaMark.TILE);
+        content.setNonStrokingColor(MarkaMark.GREEN);
+        float[] point = new float[6];
+        PathIterator path = MarkaMark.onTile().getPathIterator(new AffineTransform(s, 0, 0, -s, x, y0 + size));
+        for (; !path.isDone(); path.next()) {
+            switch (path.currentSegment(point)) {
+                case PathIterator.SEG_MOVETO -> content.moveTo(point[0], point[1]);
+                case PathIterator.SEG_LINETO -> content.lineTo(point[0], point[1]);
+                case PathIterator.SEG_CUBICTO ->
+                        content.curveTo(point[0], point[1], point[2], point[3], point[4], point[5]);
+                case PathIterator.SEG_CLOSE -> content.closePath();
+                default -> throw new IllegalStateException("The Marka mark has only lines and cubic curves.");
+            }
+        }
         content.fill();
-        content.setNonStrokingColor(new Color(50, 207, 67));
-        moveTo(x, y0, s, 18, 33.7f);
-        lineTo(x, y0, s, 18, 41.85f);
-        curveTo(x, y0, s, 18, 46.9f, 24.2f, 51, 32, 51);
-        curveTo(x, y0, s, 39.8f, 51, 46, 46.9f, 46, 41.85f);
-        lineTo(x, y0, s, 46, 33.7f);
-        lineTo(x, y0, s, 32, 40.15f);
-        lineTo(x, y0, s, 18, 33.7f);
-        content.closePath();
-        content.fill();
-        circle(x + 56 * s, y0 + (64 - 47) * s, 3 * s, new Color(50, 207, 67));
         content.setNonStrokingColor(Color.BLACK);
-    }
-
-    private void moveTo(float x, float y0, float s, float px, float py) throws IOException {
-        content.moveTo(x + px * s, y0 + (64 - py) * s);
-    }
-
-    private void lineTo(float x, float y0, float s, float px, float py) throws IOException {
-        content.lineTo(x + px * s, y0 + (64 - py) * s);
-    }
-
-    private void curveTo(float x, float y0, float s, float x1, float y1, float x2, float y2, float x3, float y3)
-            throws IOException {
-        content.curveTo(x + x1 * s, y0 + (64 - y1) * s, x + x2 * s, y0 + (64 - y2) * s, x + x3 * s, y0 + (64 - y3) * s);
     }
 
     // ---------------------------------------------------------------- primitives
