@@ -36,3 +36,6 @@ build/
 /output/v3-scan-evidence/
 /output/local-mobile-staging/
 /output/local-dynamic-staging-*/
+
+# Local credentials: never commit
+/docs/TiDB_host_info
