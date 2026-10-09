@@ -552,24 +552,28 @@ public class V3ReportRepository {
                   FROM class_lists class_list
                   JOIN students student ON student.student_id = class_list.student_id
                   LEFT JOIN suffixes suffix ON suffix.suffix_id = student.suffix_id
-                  LEFT JOIN test_results result
-                    ON result.test_assignment_id = ?
-                   AND result.class_list_id = class_list.class_list_id
-                   AND result.result_status <> 'superseded'
-                   AND NOT EXISTS (
-                       SELECT 1
-                         FROM test_results newer_result
-                        WHERE newer_result.test_assignment_id = result.test_assignment_id
-                          AND newer_result.class_list_id = result.class_list_id
-                          AND newer_result.result_status <> 'superseded'
-                          AND (
-                              newer_result.attempt_number > result.attempt_number
-                              OR (
-                                  newer_result.attempt_number = result.attempt_number
-                                  AND newer_result.test_result_id > result.test_result_id
-                              )
-                          )
-                   )
+                  -- The latest non-superseded attempt per learner. A derived table, not a
+                  -- subquery in the ON clause: TiDB rejects subqueries in join conditions.
+                  LEFT JOIN (
+                      SELECT candidate.*
+                        FROM test_results candidate
+                       WHERE candidate.test_assignment_id = ?
+                         AND candidate.result_status <> 'superseded'
+                         AND NOT EXISTS (
+                             SELECT 1
+                               FROM test_results newer_result
+                              WHERE newer_result.test_assignment_id = candidate.test_assignment_id
+                                AND newer_result.class_list_id = candidate.class_list_id
+                                AND newer_result.result_status <> 'superseded'
+                                AND (
+                                    newer_result.attempt_number > candidate.attempt_number
+                                    OR (
+                                        newer_result.attempt_number = candidate.attempt_number
+                                        AND newer_result.test_result_id > candidate.test_result_id
+                                    )
+                                )
+                         )
+                  ) result ON result.class_list_id = class_list.class_list_id
                   LEFT JOIN performance_rule_sets rule_set
                     ON rule_set.performance_rule_set_id = result.performance_rule_set_id
                  WHERE class_list.class_id = ?
@@ -624,13 +628,15 @@ public class V3ReportRepository {
                   LEFT JOIN part_skill_mappings mapping
                     ON mapping.test_part_id = question.test_part_id
                    AND question.item_number BETWEEN mapping.start_item_number AND mapping.end_item_number
-                  LEFT JOIN student_answers answer_row
-                    ON answer_row.question_id = question.question_id
-                   AND answer_row.test_result_id IN (
-                       SELECT result.test_result_id
-                         FROM test_results result
-                        WHERE result.test_assignment_id = ? AND result.result_status = 'finalized'
-                   )
+                  -- Answers of finalized results only, as a derived table (TiDB rejects
+                  -- subqueries in join conditions).
+                  LEFT JOIN (
+                      SELECT finalized_answer.question_id, finalized_answer.test_result_id,
+                             finalized_answer.is_correct
+                        FROM student_answers finalized_answer
+                        JOIN test_results result ON result.test_result_id = finalized_answer.test_result_id
+                       WHERE result.test_assignment_id = ? AND result.result_status = 'finalized'
+                  ) answer_row ON answer_row.question_id = question.question_id
                  WHERE part.test_id = ?
                  GROUP BY question.question_id, question.test_part_id, question.item_number,
                           type.question_type_code
@@ -943,9 +949,8 @@ public class V3ReportRepository {
                 """
                 + CONSOLIDATED_BASE_JOIN
                 + """
-                      JOIN part_skill_mappings mapping ON mapping.test_part_id IN (
-                          SELECT test_part_id FROM test_parts WHERE test_id = test.test_id
-                      )
+                      JOIN test_parts mapped_part ON mapped_part.test_id = test.test_id
+                      JOIN part_skill_mappings mapping ON mapping.test_part_id = mapped_part.test_part_id
                       JOIN skills skill ON skill.skill_id = mapping.skill_id
                       JOIN competency_tags competency ON competency.competency_id = skill.competency_id
                       JOIN questions question
@@ -993,9 +998,8 @@ public class V3ReportRepository {
                         ON result.test_assignment_id = test_assignment.test_assignment_id
                        AND result.class_list_id = class_list.class_list_id
                        AND result.result_status = 'finalized'
-                      JOIN part_skill_mappings mapping ON mapping.test_part_id IN (
-                          SELECT test_part_id FROM test_parts WHERE test_id = test.test_id
-                      )
+                      JOIN test_parts mapped_part ON mapped_part.test_id = test.test_id
+                      JOIN part_skill_mappings mapping ON mapping.test_part_id = mapped_part.test_part_id
                       JOIN skills skill ON skill.skill_id = mapping.skill_id
                       JOIN questions question
                         ON question.test_part_id = mapping.test_part_id
