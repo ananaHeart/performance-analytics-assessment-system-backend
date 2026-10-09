@@ -52,3 +52,6 @@ replay_pid*.log
 /patch_fix/
 *.patch
 *.diff
+
+# Local credentials: never commit
+/docs/TiDB_host_info
