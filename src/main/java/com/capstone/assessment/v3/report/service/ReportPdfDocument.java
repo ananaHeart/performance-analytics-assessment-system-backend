@@ -555,15 +555,19 @@ final class ReportPdfDocument {
     }
 
     /** Printed name over a signature line, e.g. the teacher who owns the report. */
+    /** Signature over printed name: room to sign above, the name already printed in capitals on the
+     *  line (nobody writes it by hand), and the role under the line. */
     void signature(String name, String role) throws IOException {
-        ensure(64);
-        y -= 40;
+        ensure(72);
+        y -= 46;
+        String printed = name == null || name.isBlank() ? " " : upper(name);
         float lineX = MARGIN + 30;
-        float lineWidth = 180f;
+        float lineWidth = Math.max(200f, width(BOLD, 9.5f, printed) + 20);
+        float center = lineX + lineWidth / 2;
+        centered(BOLD, 9.5f, TEXT, center, y + 3, printed);
         hline(y, lineX, lineX + lineWidth, MUTED, 0.6f);
-        centered(BOLD, 9f, TEXT, lineX + lineWidth / 2, y - 12, name == null || name.isBlank() ? " " : name);
-        centered(REGULAR, 8f, MUTED, lineX + lineWidth / 2, y - 23, role);
-        y -= 26;
+        centered(REGULAR, 8f, MUTED, center, y - 11, role);
+        y -= 16;
     }
 
     // ---------------------------------------------------------------- the Marka logo

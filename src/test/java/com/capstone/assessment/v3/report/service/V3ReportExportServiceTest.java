@@ -102,6 +102,7 @@ class V3ReportExportServiceTest {
         assertTrue(text.contains("SAN ROQUE NATIONAL HIGH SCHOOL"));
         assertTrue(text.contains("All grade levels"));
         assertTrue(text.contains("Maria Santos"), "prepared by, in proper case");
+        assertTrue(text.contains("MARIA SANTOS"), "the signature prints the name in capitals on the line");
         assertTrue(text.contains("Parts of Speech"));
         assertTrue(!text.contains("Subject-Verb Agreement"), "mastered competencies are not listed");
     }

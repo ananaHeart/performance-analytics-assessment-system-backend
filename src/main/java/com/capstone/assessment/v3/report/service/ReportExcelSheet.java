@@ -205,13 +205,14 @@ final class ReportExcelSheet {
         row++;
     }
 
+    /** Signature over printed name: blank rows to sign in, the name in capitals on the line, the
+     *  role below - as on the PDF. */
     void signature(String name, String role, int column) {
-        row += 2;
-        Row lineRow = sheet.createRow(row++);
-        set(lineRow, column, "", style("signLine"));
-        set(lineRow, column + 1, "", style("signLine"));
+        row += 3;
         Row nameRow = sheet.createRow(row++);
-        set(nameRow, column, name == null ? "" : name, style("signName"));
+        nameRow.setHeightInPoints(18);
+        set(nameRow, column, name == null ? "" : name.toUpperCase(java.util.Locale.ROOT), style("signName"));
+        set(nameRow, column + 1, "", style("signName"));
         merge(nameRow.getRowNum(), nameRow.getRowNum(), column, column + 1);
         Row roleRow = sheet.createRow(row++);
         set(roleRow, column, role, style("signRole"));
@@ -280,8 +281,11 @@ final class ReportExcelSheet {
                     style.setWrapText(true); thinBorders(style);
                 }
                 case "note" -> { font.setItalic(true); font.setFontHeightInPoints((short) 9); font.setColor(xssf(ReportPdfDocument.MUTED)); style.setWrapText(false); }
-                case "signLine" -> { style.setBorderBottom(BorderStyle.THIN); style.setBottomBorderColor(xssf(ReportPdfDocument.MUTED)); }
-                case "signName" -> { font.setBold(true); font.setFontHeightInPoints((short) 10); style.setAlignment(HorizontalAlignment.CENTER); }
+                case "signName" -> {
+                    font.setBold(true); font.setFontHeightInPoints((short) 10); style.setAlignment(HorizontalAlignment.CENTER);
+                    style.setVerticalAlignment(VerticalAlignment.BOTTOM);
+                    style.setBorderBottom(BorderStyle.THIN); style.setBottomBorderColor(xssf(ReportPdfDocument.MUTED));
+                }
                 case "signRole" -> { font.setFontHeightInPoints((short) 9); font.setColor(xssf(ReportPdfDocument.MUTED)); style.setAlignment(HorizontalAlignment.CENTER); }
                 case "groupLabel" -> {
                     font.setBold(true); font.setFontHeightInPoints((short) 10);
