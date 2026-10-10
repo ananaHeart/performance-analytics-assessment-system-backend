@@ -10,6 +10,7 @@ public record V3EmailVerificationResponse(
         String deliveryStatus,
         Instant otpExpiresAt,
         Instant resendAvailableAt,
-        Instant registrationExpiresAt
+        Instant registrationExpiresAt,
+        boolean contactVerified
 ) {
 }

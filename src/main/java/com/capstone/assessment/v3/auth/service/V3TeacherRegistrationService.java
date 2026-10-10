@@ -9,6 +9,7 @@ import com.capstone.assessment.v3.auth.dto.V3TeacherRegistrationRequest;
 import com.capstone.assessment.v3.auth.dto.V3VerifyEmailRequest;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
 import com.capstone.assessment.v3.auth.exception.V3FieldValidationException;
+import com.capstone.assessment.v3.auth.model.V3PendingContactChallenge;
 import com.capstone.assessment.v3.auth.model.V3PendingEmailChallenge;
 import com.capstone.assessment.v3.auth.model.V3VerificationChallenge;
 import com.capstone.assessment.v3.auth.repository.V3RegistrationRepository;
@@ -33,6 +34,7 @@ import java.util.regex.Pattern;
 public class V3TeacherRegistrationService {
 
     private static final int MINIMUM_TEACHER_AGE = 18;
+    private static final String RATE_LIMITED = "rate_limited";
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\\.[A-Za-z]{2,}$"
     );
@@ -45,6 +47,7 @@ public class V3TeacherRegistrationService {
     private final V3RegistrationRepository repository;
     private final V3RegistrationPersistenceService persistenceService;
     private final V3VerificationEmailSender emailSender;
+    private final V3SmsVerificationSender smsSender;
     private final V3AuthProperties properties;
     private final Clock clock;
 
@@ -53,9 +56,10 @@ public class V3TeacherRegistrationService {
             V3RegistrationRepository repository,
             V3RegistrationPersistenceService persistenceService,
             V3VerificationEmailSender emailSender,
+            V3SmsVerificationSender smsSender,
             V3AuthProperties properties
     ) {
-        this(repository, persistenceService, emailSender, properties, Clock.systemUTC());
+        this(repository, persistenceService, emailSender, smsSender, properties, Clock.systemUTC());
     }
 
     V3TeacherRegistrationService(
@@ -65,9 +69,21 @@ public class V3TeacherRegistrationService {
             V3AuthProperties properties,
             Clock clock
     ) {
+        this(repository, persistenceService, emailSender, new V3SmsVerificationSender(properties), properties, clock);
+    }
+
+    V3TeacherRegistrationService(
+            V3RegistrationRepository repository,
+            V3RegistrationPersistenceService persistenceService,
+            V3VerificationEmailSender emailSender,
+            V3SmsVerificationSender smsSender,
+            V3AuthProperties properties,
+            Clock clock
+    ) {
         this.repository = repository;
         this.persistenceService = persistenceService;
         this.emailSender = emailSender;
+        this.smsSender = smsSender;
         this.properties = properties;
         this.clock = clock;
     }
@@ -82,15 +98,20 @@ public class V3TeacherRegistrationService {
                 List.of(
                         new V3RegistrationReferenceDataResponse.VerificationMethodOption(
                                 "email", "Email", true, null),
+                        // Not a separate choice: while SMS is on, the contact number is verified
+                        // by an SMS code together with the email code.
                         new V3RegistrationReferenceDataResponse.VerificationMethodOption(
                                 "sms", "Text message (SMS)", false,
-                                "SMS verification is not available yet.")
+                                smsSender.isEnabled()
+                                        ? "Your contact number is also verified with an SMS code."
+                                        : "SMS verification is not available yet.")
                 ),
                 new V3RegistrationReferenceDataResponse.VerificationPolicy(
                         properties.getOtpTtl().toSeconds(),
                         properties.getResendCooldown().toSeconds(),
                         properties.getMaxOtpAttempts(),
-                        properties.getRegistrationRetention().toDays()
+                        properties.getRegistrationRetention().toDays(),
+                        smsSender.isEnabled()
                 )
         );
     }
@@ -114,8 +135,68 @@ public class V3TeacherRegistrationService {
         } catch (DataIntegrityViolationException exception) {
             throw duplicateAccountData();
         }
-        deliver(challenge, now);
-        return registrationResponse(challenge, "sent");
+        V3RegistrationResponse.ContactVerification contact =
+                startContactVerification(challenge.userId(), normalized.contactNumber(), now);
+        deliver(challenge, now, contact);
+        return registrationResponse(challenge, "sent", contact);
+    }
+
+    /** A new SMS code for the registration identified by its email challenge uuid. */
+    public V3RegistrationResponse.ContactVerification resendContact(
+            V3ResendVerificationRequest request,
+            V3RequestMetadata metadata
+    ) {
+        Instant now = clock.instant();
+        V3PendingContactChallenge challenge = persistenceService.prepareContactResend(
+                request.challengeUuid().trim(), metadata, now);
+        V3RegistrationResponse.ContactVerification contact = sendContactCode(challenge, now);
+        if (RATE_LIMITED.equals(contact.deliveryStatus())) {
+            throw new V3AuthException(
+                    "SMS_RATE_LIMITED",
+                    "Too many SMS codes were requested for this number. Use the last code you received "
+                            + "or try again in 10 minutes.",
+                    HttpStatus.TOO_MANY_REQUESTS
+            );
+        }
+        return contact;
+    }
+
+    /** Null while SMS is off; never throws, so an SMS problem can't block the email path. */
+    private V3RegistrationResponse.ContactVerification startContactVerification(
+            long userId,
+            String contactNumber,
+            Instant now
+    ) {
+        if (!smsSender.isEnabled() || contactNumber == null) {
+            return null;
+        }
+        return sendContactCode(persistenceService.createContactChallenge(userId, contactNumber, 0, now), now);
+    }
+
+    private V3RegistrationResponse.ContactVerification sendContactCode(V3PendingContactChallenge challenge, Instant now) {
+        boolean sent;
+        String provider;
+        try {
+            provider = smsSender.send(challenge.contactNumber(), challenge.rawCode());
+            sent = true;
+        } catch (V3SmsVerificationSender.SmsRateLimitedException rateLimited) {
+            // Twilio keeps the code it already sent to this number valid, so the SMS stays required.
+            return new V3RegistrationResponse.ContactVerification(
+                    true, challenge.contactMasked(), RATE_LIMITED,
+                    challenge.codeExpiresAt(), challenge.resendAvailableAt());
+        } catch (V3SmsVerificationSender.SmsUnavailableException exception) {
+            provider = smsSender.checksOwnCode() ? V3SmsVerificationSender.LOG_PROVIDER
+                    : V3SmsVerificationSender.TWILIO_PROVIDER;
+            sent = false;
+        }
+        persistenceService.markContactDelivery(challenge, sent, provider, now);
+        return new V3RegistrationResponse.ContactVerification(
+                sent,
+                challenge.contactMasked(),
+                sent ? "sent" : "failed",
+                challenge.codeExpiresAt(),
+                challenge.resendAvailableAt()
+        );
     }
 
     public V3EmailVerificationResponse resend(
@@ -139,6 +220,7 @@ public class V3TeacherRegistrationService {
         V3VerificationChallenge challenge = persistenceService.verify(
                 request.challengeUuid().trim(),
                 request.otp(),
+                request.smsCode(),
                 metadata,
                 clock.instant()
         );
@@ -150,7 +232,8 @@ public class V3TeacherRegistrationService {
                 challenge.deliveryStatus(),
                 challenge.expiresAt(),
                 challenge.nextResendAt(),
-                challenge.userCreatedAt().plus(properties.getRegistrationRetention())
+                challenge.userCreatedAt().plus(properties.getRegistrationRetention()),
+                challenge.contactVerified()
         );
     }
 
@@ -268,6 +351,14 @@ public class V3TeacherRegistrationService {
     }
 
     private void deliver(V3PendingEmailChallenge challenge, Instant now) {
+        deliver(challenge, now, null);
+    }
+
+    private void deliver(
+            V3PendingEmailChallenge challenge,
+            Instant now,
+            V3RegistrationResponse.ContactVerification contact
+    ) {
         try {
             String provider = emailSender.sendVerificationCode(challenge.recipientEmail(), challenge.rawOtp());
             persistenceService.markDeliverySent(challenge, provider, now);
@@ -275,11 +366,18 @@ public class V3TeacherRegistrationService {
             persistenceService.markDeliveryFailed(challenge, "smtp", now);
             Map<String, Object> details = challengeDetails(challenge, "failed");
             details.put("accountCreated", true);
+            if (contact != null) {
+                details.put("contactVerification", contact);
+            }
             throw new V3AuthException(exception.getCode(), exception.getMessage(), exception.getStatus(), details);
         }
     }
 
-    private V3RegistrationResponse registrationResponse(V3PendingEmailChallenge challenge, String deliveryStatus) {
+    private V3RegistrationResponse registrationResponse(
+            V3PendingEmailChallenge challenge,
+            String deliveryStatus,
+            V3RegistrationResponse.ContactVerification contact
+    ) {
         return new V3RegistrationResponse(
                 V3RegistrationPersistenceService.PENDING_EMAIL_STATUS,
                 "email",
@@ -288,7 +386,8 @@ public class V3TeacherRegistrationService {
                 deliveryStatus,
                 challenge.otpExpiresAt(),
                 challenge.resendAvailableAt(),
-                challenge.registrationExpiresAt()
+                challenge.registrationExpiresAt(),
+                contact
         );
     }
 
@@ -304,7 +403,8 @@ public class V3TeacherRegistrationService {
                 deliveryStatus,
                 challenge.otpExpiresAt(),
                 challenge.resendAvailableAt(),
-                challenge.registrationExpiresAt()
+                challenge.registrationExpiresAt(),
+                false
         );
     }
 

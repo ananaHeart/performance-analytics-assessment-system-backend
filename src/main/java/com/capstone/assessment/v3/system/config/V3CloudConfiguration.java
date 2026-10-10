@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -114,6 +115,10 @@ public class V3CloudConfiguration {
             required(environment, "app.v3.auth.brevo-api-key");
         }
         required(environment, "app.v3.auth.email-from-address");
+        // Log mode never sends the SMS, so a required code would never reach the teacher.
+        String smsMode = environment.getProperty("app.v3.auth.sms-mode", "off").trim().toLowerCase(Locale.ROOT);
+        require("off".equals(smsMode) || "twilio-verify".equals(smsMode),
+                "Cloud SMS verification must be off or twilio-verify, never log-only codes.");
         try {
             require(Base64.getDecoder().decode(required(environment, "app.v3.auth.mfa.encryption-key")).length == 32,
                     "Cloud MFA requires a stable base64-encoded 32-byte encryption key.");

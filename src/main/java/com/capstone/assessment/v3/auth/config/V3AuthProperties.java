@@ -26,6 +26,17 @@ public class V3AuthProperties {
     private String emailFromAddress = "no-reply@smart-assessment.local";
     private String brevoApiKey;
     private String brevoApiUrl = "https://api.brevo.com/v3/smtp/email";
+    /**
+     * Contact-number (SMS) verification at registration: off, log (local only: the code is written
+     * to the server log, no SMS is sent) or twilio-verify. While on, a teacher confirms both the
+     * email code and the SMS code; when off or when an SMS can't be sent, registration falls back
+     * to the email code alone and the contact number stays unverified.
+     */
+    private String smsMode = "off";
+    private String twilioAccountSid;
+    private String twilioAuthToken;
+    private String twilioVerifyServiceSid;
+    private String twilioVerifyUrl = "https://verify.twilio.com/v2";
 
     public Duration getSessionTtl() {
         return sessionTtl;
@@ -145,5 +156,45 @@ public class V3AuthProperties {
 
     public void setBrevoApiUrl(String brevoApiUrl) {
         this.brevoApiUrl = brevoApiUrl;
+    }
+
+    public String getSmsMode() {
+        return smsMode;
+    }
+
+    public void setSmsMode(String smsMode) {
+        this.smsMode = smsMode;
+    }
+
+    public String getTwilioAccountSid() {
+        return twilioAccountSid;
+    }
+
+    public void setTwilioAccountSid(String twilioAccountSid) {
+        this.twilioAccountSid = twilioAccountSid;
+    }
+
+    public String getTwilioAuthToken() {
+        return twilioAuthToken;
+    }
+
+    public void setTwilioAuthToken(String twilioAuthToken) {
+        this.twilioAuthToken = twilioAuthToken;
+    }
+
+    public String getTwilioVerifyServiceSid() {
+        return twilioVerifyServiceSid;
+    }
+
+    public void setTwilioVerifyServiceSid(String twilioVerifyServiceSid) {
+        this.twilioVerifyServiceSid = twilioVerifyServiceSid;
+    }
+
+    public String getTwilioVerifyUrl() {
+        return twilioVerifyUrl;
+    }
+
+    public void setTwilioVerifyUrl(String twilioVerifyUrl) {
+        this.twilioVerifyUrl = twilioVerifyUrl;
     }
 }

@@ -297,6 +297,8 @@ class V3AuthServiceTest {
                 user.addressId(),
                 user.schoolId(),
                 user.email(),
+                "+639171234567",
+                "teacher_registration",
                 "t***r@example.com",
                 "otp-hash",
                 "pending",
@@ -308,6 +310,7 @@ class V3AuthServiceTest {
                 otpExpiresAt,
                 user.createdAt(),
                 user.status(),
+                false,
                 false
         );
     }

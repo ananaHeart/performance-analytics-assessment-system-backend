@@ -3,11 +3,13 @@ package com.capstone.assessment.v3.auth.service;
 import com.capstone.assessment.v3.auth.config.V3AuthProperties;
 import com.capstone.assessment.v3.auth.dto.V3TeacherRegistrationRequest;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
+import com.capstone.assessment.v3.auth.model.V3PendingContactChallenge;
 import com.capstone.assessment.v3.auth.model.V3PendingEmailChallenge;
 import com.capstone.assessment.v3.auth.model.V3ProvisionalUser;
 import com.capstone.assessment.v3.auth.model.V3VerificationChallenge;
 import com.capstone.assessment.v3.auth.repository.V3RegistrationRepository;
 import com.capstone.assessment.v3.notification.service.V3NotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +20,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Profile("v3")
@@ -32,20 +35,35 @@ public class V3RegistrationPersistenceService {
     private final V3AuthProperties properties;
     private final V3AuditService auditService;
     private final V3NotificationService notificationService;
+    private final V3SmsVerificationSender smsSender;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public V3RegistrationPersistenceService(
+    V3RegistrationPersistenceService(
             V3RegistrationRepository repository,
             PasswordEncoder passwordEncoder,
             V3AuthProperties properties,
             V3AuditService auditService,
             V3NotificationService notificationService
     ) {
+        this(repository, passwordEncoder, properties, auditService, notificationService,
+                new V3SmsVerificationSender(properties));
+    }
+
+    @Autowired
+    public V3RegistrationPersistenceService(
+            V3RegistrationRepository repository,
+            PasswordEncoder passwordEncoder,
+            V3AuthProperties properties,
+            V3AuditService auditService,
+            V3NotificationService notificationService,
+            V3SmsVerificationSender smsSender
+    ) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
         this.properties = properties;
         this.auditService = auditService;
         this.notificationService = notificationService;
+        this.smsSender = smsSender;
     }
 
     @Transactional
@@ -101,8 +119,7 @@ public class V3RegistrationPersistenceService {
             V3RequestMetadata metadata,
             Instant now
     ) {
-        V3VerificationChallenge current = repository.findChallengeForUpdate(challengeUuid)
-                .orElseThrow(this::invalidChallenge);
+        V3VerificationChallenge current = requireEmailChallenge(challengeUuid);
         ensureRegistrationUsable(current, now);
 
         if ("verified".equals(current.challengeStatus()) || current.emailVerified()) {
@@ -158,15 +175,30 @@ public class V3RegistrationPersistenceService {
         return replacement;
     }
 
-    @Transactional(noRollbackFor = V3AuthException.class)
     public V3VerificationChallenge verify(
             String challengeUuid,
             String otp,
             V3RequestMetadata metadata,
             Instant now
     ) {
-        V3VerificationChallenge challenge = repository.findChallengeForUpdate(challengeUuid)
-                .orElseThrow(this::invalidChallenge);
+        return verify(challengeUuid, otp, null, metadata, now);
+    }
+
+    /**
+     * Confirms the email code and, while an SMS code was sent for this registration, the SMS code
+     * too: both must be right before the account moves to pending approval. If the SMS provider
+     * can't check the code (not configured, trial over, outage), the email code alone completes
+     * the registration and the contact number stays unverified.
+     */
+    @Transactional(noRollbackFor = V3AuthException.class)
+    public V3VerificationChallenge verify(
+            String challengeUuid,
+            String otp,
+            String smsCode,
+            V3RequestMetadata metadata,
+            Instant now
+    ) {
+        V3VerificationChallenge challenge = requireEmailChallenge(challengeUuid);
         ensureRegistrationUsable(challenge, now);
 
         if (challenge.emailVerified() || "verified".equals(challenge.challengeStatus())) {
@@ -213,6 +245,8 @@ public class V3RegistrationPersistenceService {
             );
         }
 
+        boolean contactVerified = confirmContactCode(challenge, smsCode, metadata, now);
+
         int changed = repository.markUserEmailVerified(
                 challenge.userId(),
                 repository.findStatusId(PENDING_EMAIL_STATUS),
@@ -235,11 +269,183 @@ public class V3RegistrationPersistenceService {
                 challenge.challengeUuid(),
                 "success",
                 metadata,
-                Map.of("accountStatus", PENDING_APPROVAL_STATUS),
+                Map.of("accountStatus", PENDING_APPROVAL_STATUS, "contactVerified", contactVerified),
                 now
         );
         notificationService.notifyTeacherPendingApproval(challenge.userId(), now);
-        return challenge;
+        return challenge.withContactVerified(contactVerified || challenge.contactVerified());
+    }
+
+    /**
+     * Returns true when the contact number was verified by SMS just now. Throws when an SMS code
+     * is required and missing or wrong; returns false (email alone completes) when no SMS code is
+     * pending or the provider is unavailable.
+     */
+    private boolean confirmContactCode(
+            V3VerificationChallenge emailChallenge,
+            String smsCode,
+            V3RequestMetadata metadata,
+            Instant now
+    ) {
+        if (emailChallenge.contactVerified() || !smsSender.isEnabled()) {
+            return false;
+        }
+        Optional<V3VerificationChallenge> latest =
+                repository.findLatestContactChallengeForUpdate(emailChallenge.userId());
+        // No SMS for this registration, or the provider could not send or check it: email alone.
+        if (latest.isEmpty() || "cancelled".equals(latest.get().challengeStatus())
+                || "failed".equals(latest.get().deliveryStatus())) {
+            return false;
+        }
+        V3VerificationChallenge contact = latest.get();
+        if ("verified".equals(contact.challengeStatus())) {
+            return true;
+        }
+        // Once an SMS code was sent it stays required: a locked or expired code needs a new one,
+        // never the email code alone.
+        if ("locked".equals(contact.challengeStatus())) {
+            throw contactChallengeLocked();
+        }
+        if (!"pending".equals(contact.challengeStatus()) || !now.isBefore(contact.expiresAt())) {
+            repository.markChallengeExpired(contact.challengeId(), now);
+            throw new V3AuthException(
+                    "CONTACT_CODE_EXPIRED",
+                    "The SMS code has expired. Request a new SMS code.",
+                    HttpStatus.GONE
+            );
+        }
+        if (smsCode == null || smsCode.isBlank()) {
+            throw new V3AuthException(
+                    "CONTACT_CODE_REQUIRED",
+                    "Enter the code sent to your contact number too.",
+                    HttpStatus.BAD_REQUEST,
+                    Map.of("contactMasked", contact.emailMasked())
+            );
+        }
+        boolean valid;
+        try {
+            valid = smsSender.checksOwnCode()
+                    ? passwordEncoder.matches(smsCode.trim(), contact.codeHash())
+                    : smsSender.checkWithProvider(contact.contactNumber(), smsCode.trim());
+        } catch (V3SmsVerificationSender.SmsRateLimitedException rateLimited) {
+            // Twilio stopped accepting guesses for this number: lock, don't fall back.
+            repository.recordInvalidAttempt(contact.challengeId(), contact.maximumAttemptCount(), true, now);
+            auditService.record(contact.userId(), "VERIFY_TEACHER_CONTACT", "verification_challenges",
+                    contact.challengeUuid(), "failed", metadata, Map.of("reason", "maximum_attempts"), now);
+            throw contactChallengeLocked();
+        } catch (V3SmsVerificationSender.SmsUnavailableException unavailable) {
+            // The provider is gone (e.g. the free trial ended): finish with the email code alone.
+            repository.cancelChallenge(contact.challengeId(), now);
+            auditService.record(contact.userId(), "VERIFY_TEACHER_CONTACT", "verification_challenges",
+                    contact.challengeUuid(), "failed", metadata, Map.of("reason", "sms_unavailable"), now);
+            return false;
+        }
+        if (!valid) {
+            int nextAttempt = contact.attemptCount() + 1;
+            boolean locked = nextAttempt >= contact.maximumAttemptCount();
+            repository.recordInvalidAttempt(contact.challengeId(), nextAttempt, locked, now);
+            auditService.record(contact.userId(), "VERIFY_TEACHER_CONTACT", "verification_challenges",
+                    contact.challengeUuid(), "failed", metadata,
+                    Map.of("reason", locked ? "maximum_attempts" : "invalid_code"), now);
+            if (locked) {
+                throw contactChallengeLocked();
+            }
+            throw new V3AuthException(
+                    "INVALID_CONTACT_CODE",
+                    "The SMS code is invalid.",
+                    HttpStatus.BAD_REQUEST,
+                    Map.of("remainingAttempts", contact.maximumAttemptCount() - nextAttempt)
+            );
+        }
+        repository.markChallengeVerified(contact.challengeId(), now);
+        repository.markContactVerified(contact.userId(), now);
+        auditService.record(contact.userId(), "VERIFY_TEACHER_CONTACT", "verification_challenges",
+                contact.challengeUuid(), "success", metadata, Map.of(), now);
+        return true;
+    }
+
+    /** Creates the SMS challenge for a registration (the code itself is only used in log mode). */
+    @Transactional
+    public V3PendingContactChallenge createContactChallenge(
+            long userId,
+            String contactNumber,
+            int resendCount,
+            Instant now
+    ) {
+        String code = "%06d".formatted(secureRandom.nextInt(1_000_000));
+        // Twilio Verify makes and checks its own code; store an unguessable placeholder instead.
+        String stored = smsSender.checksOwnCode() ? code : UUID.randomUUID().toString();
+        String challengeUuid = UUID.randomUUID().toString();
+        Instant expiresAt = now.plus(properties.getOtpTtl());
+        Instant resendAt = now.plus(properties.getResendCooldown());
+        String masked = V3SmsVerificationSender.maskPhone(contactNumber);
+        long challengeId = repository.insertChallenge(
+                challengeUuid, userId, "contact_verification", "sms", masked,
+                passwordEncoder.encode(stored), properties.getMaxOtpAttempts(), resendCount,
+                resendAt, expiresAt, now);
+        return new V3PendingContactChallenge(challengeId, challengeUuid, userId, contactNumber, masked,
+                code, resendCount, expiresAt, resendAt);
+    }
+
+    /** A fresh SMS code for the registration that owns {@code emailChallengeUuid}. */
+    @Transactional(noRollbackFor = V3AuthException.class)
+    public V3PendingContactChallenge prepareContactResend(
+            String emailChallengeUuid,
+            V3RequestMetadata metadata,
+            Instant now
+    ) {
+        V3VerificationChallenge registration = requireEmailChallenge(emailChallengeUuid);
+        ensureRegistrationUsable(registration, now);
+        if (!smsSender.isEnabled()) {
+            throw new V3AuthException("SMS_NOT_AVAILABLE", "SMS verification is not available.",
+                    HttpStatus.CONFLICT);
+        }
+        if (registration.contactVerified()) {
+            throw new V3AuthException("CONTACT_ALREADY_VERIFIED", "The contact number is already verified.",
+                    HttpStatus.CONFLICT);
+        }
+        Optional<V3VerificationChallenge> current =
+                repository.findLatestContactChallengeForUpdate(registration.userId());
+        if (current.isPresent() && current.get().nextResendAt() != null
+                && now.isBefore(current.get().nextResendAt())) {
+            throw new V3AuthException(
+                    "VERIFICATION_RESEND_COOLDOWN",
+                    "Please wait before requesting another SMS code.",
+                    HttpStatus.TOO_MANY_REQUESTS,
+                    Map.of("resendAvailableAt", current.get().nextResendAt())
+            );
+        }
+        if (repository.countContactMessagesSince(registration.userId(), now.minusSeconds(24 * 60 * 60))
+                >= properties.getMaxVerificationMessagesPerDay()) {
+            throw new V3AuthException(
+                    "VERIFICATION_DAILY_LIMIT_REACHED",
+                    "The daily SMS limit has been reached.",
+                    HttpStatus.TOO_MANY_REQUESTS
+            );
+        }
+        current.filter(challenge -> "pending".equals(challenge.challengeStatus()))
+                .ifPresent(challenge -> repository.cancelChallenge(challenge.challengeId(), now));
+        V3PendingContactChallenge replacement = createContactChallenge(
+                registration.userId(),
+                registration.contactNumber(),
+                current.map(challenge -> challenge.resendCount() + 1).orElse(0),
+                now
+        );
+        auditService.record(registration.userId(), "RESEND_CONTACT_VERIFICATION", "verification_challenges",
+                replacement.challengeUuid(), "success", metadata,
+                Map.of("resendCount", replacement.resendCount()), now);
+        return replacement;
+    }
+
+    @Transactional
+    public void markContactDelivery(V3PendingContactChallenge challenge, boolean sent, String provider, Instant now) {
+        if (sent) {
+            repository.markDeliverySent(challenge.challengeId(), now, provider);
+        } else {
+            repository.markDeliveryFailed(challenge.challengeId(), now, provider);
+        }
+        auditService.record(challenge.userId(), "SEND_CONTACT_VERIFICATION", "verification_challenges",
+                challenge.challengeUuid(), sent ? "success" : "failed", null, Map.of("provider", provider), now);
     }
 
     @Transactional
@@ -358,6 +564,17 @@ public class V3RegistrationPersistenceService {
         );
     }
 
+    /** The registration's email challenge; an SMS challenge uuid is rejected here. */
+    private V3VerificationChallenge requireEmailChallenge(String challengeUuid) {
+        V3VerificationChallenge challenge = repository.findChallengeForUpdate(challengeUuid)
+                .orElseThrow(this::invalidChallenge);
+        if (challenge.verificationPurpose() != null
+                && !"teacher_registration".equals(challenge.verificationPurpose())) {
+            throw invalidChallenge();
+        }
+        return challenge;
+    }
+
     private void ensureRegistrationUsable(V3VerificationChallenge challenge, Instant now) {
         Instant registrationExpiresAt = challenge.userCreatedAt().plus(properties.getRegistrationRetention());
         if (!now.isBefore(registrationExpiresAt)) {
@@ -386,6 +603,15 @@ public class V3RegistrationPersistenceService {
                 "INVALID_VERIFICATION_CHALLENGE",
                 "The verification challenge is invalid.",
                 HttpStatus.BAD_REQUEST
+        );
+    }
+
+    private V3AuthException contactChallengeLocked() {
+        return new V3AuthException(
+                "CONTACT_CHALLENGE_LOCKED",
+                "Too many incorrect SMS codes. Request a new SMS code.",
+                HttpStatus.LOCKED,
+                Map.of("remainingAttempts", 0)
         );
     }
 }

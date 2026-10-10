@@ -10,6 +10,20 @@ public record V3RegistrationResponse(
         String deliveryStatus,
         Instant otpExpiresAt,
         Instant resendAvailableAt,
-        Instant registrationExpiresAt
+        Instant registrationExpiresAt,
+        // Null while SMS verification is off.
+        ContactVerification contactVerification
 ) {
+    /**
+     * The SMS code for the contact number. While {@code required}, the teacher enters it together
+     * with the email code; when the SMS could not be sent it is not required.
+     */
+    public record ContactVerification(
+            boolean required,
+            String contactMasked,
+            String deliveryStatus,
+            Instant codeExpiresAt,
+            Instant resendAvailableAt
+    ) {
+    }
 }

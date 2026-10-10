@@ -194,7 +194,8 @@ class V3CloudConfigurationTest {
             "app.v3.baseline.expected-check-constraint-count,27",
             "app.v3.baseline.validate-on-startup,false",
             "app.v3.mobile.release.mode,development",
-            "app.v3.auth.email-delivery-mode,log"
+            "app.v3.auth.email-delivery-mode,log",
+            "app.v3.auth.sms-mode,log"
     })
     void rejectsUnsafeCloudOverrides(String property, String value) {
         assertThatThrownBy(() -> V3CloudConfiguration.validate(validEnvironment().withProperty(property, value)))

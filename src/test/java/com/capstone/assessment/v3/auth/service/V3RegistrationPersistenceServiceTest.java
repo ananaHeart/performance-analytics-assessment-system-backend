@@ -175,6 +175,8 @@ class V3RegistrationPersistenceServiceTest {
                 77L,
                 "SCHOOL-001",
                 "teacher@example.com",
+                "+639171234567",
+                "teacher_registration",
                 "t***r@example.com",
                 "otp-hash",
                 status,
@@ -186,6 +188,7 @@ class V3RegistrationPersistenceServiceTest {
                 expiresAt,
                 USER_CREATED_AT,
                 "pending_email_verification",
+                false,
                 false
         );
     }

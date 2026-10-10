@@ -2,9 +2,11 @@ package com.capstone.assessment.v3.auth.service;
 
 import com.capstone.assessment.v3.auth.config.V3AuthProperties;
 import com.capstone.assessment.v3.auth.dto.V3RegistrationResponse;
+import com.capstone.assessment.v3.auth.dto.V3ResendVerificationRequest;
 import com.capstone.assessment.v3.auth.dto.V3TeacherRegistrationRequest;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
 import com.capstone.assessment.v3.auth.exception.V3FieldValidationException;
+import com.capstone.assessment.v3.auth.model.V3PendingContactChallenge;
 import com.capstone.assessment.v3.auth.model.V3PendingEmailChallenge;
 import com.capstone.assessment.v3.auth.repository.V3RegistrationRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -132,6 +135,62 @@ class V3TeacherRegistrationServiceTest {
         assertEquals(true, exception.getDetails().get("accountCreated"));
         assertEquals(challenge.challengeUuid(), exception.getDetails().get("challengeUuid"));
         verify(persistenceService).markDeliveryFailed(challenge, "smtp", NOW);
+    }
+
+    @Test
+    void registrationFinishesWithEmailAloneWhenTheSmsCannotBeSent() {
+        V3TeacherRegistrationService smsService = serviceWithTwilio(403, "{\"code\":20003,\"message\":\"Trial ended\"}");
+        V3TeacherRegistrationRequest request = validRequest(LocalDate.of(1990, 1, 1));
+        V3PendingEmailChallenge challenge = pendingChallenge();
+        V3PendingContactChallenge contact = pendingContactChallenge();
+        when(persistenceService.createRegistration(
+                eq("SCHOOL-001"), eq(request), eq("teacher@example.com"), eq(NORMALIZED_CONTACT),
+                any(V3RequestMetadata.class), eq(NOW)
+        )).thenReturn(challenge);
+        when(persistenceService.createContactChallenge(42L, NORMALIZED_CONTACT, 0, NOW)).thenReturn(contact);
+        when(emailSender.sendVerificationCode(challenge.recipientEmail(), challenge.rawOtp()))
+                .thenReturn("local_log");
+
+        V3RegistrationResponse response = smsService.register(request, metadata());
+
+        assertEquals("sent", response.deliveryStatus());
+        assertEquals(false, response.contactVerification().required());
+        assertEquals("failed", response.contactVerification().deliveryStatus());
+        verify(persistenceService).markContactDelivery(contact, false, V3SmsVerificationSender.TWILIO_PROVIDER, NOW);
+        verify(persistenceService).markDeliverySent(challenge, "local_log", NOW);
+    }
+
+    @Test
+    void aRateLimitedSmsResendIsRefusedInsteadOfSkippingTheSms() {
+        V3TeacherRegistrationService smsService = serviceWithTwilio(429, "{\"code\":60203,\"message\":\"Max send attempts reached\"}");
+        V3PendingContactChallenge contact = pendingContactChallenge();
+        when(persistenceService.prepareContactResend(eq("challenge-uuid"), any(V3RequestMetadata.class), eq(NOW)))
+                .thenReturn(contact);
+
+        V3AuthException exception = assertThrows(
+                V3AuthException.class,
+                () -> smsService.resendContact(new V3ResendVerificationRequest("challenge-uuid"), metadata())
+        );
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatus());
+        assertEquals("SMS_RATE_LIMITED", exception.getCode());
+        verify(persistenceService, never()).markContactDelivery(any(), anyBoolean(), any(), any());
+    }
+
+    private V3TeacherRegistrationService serviceWithTwilio(int status, String body) {
+        properties.setSmsMode("twilio-verify");
+        properties.setTwilioAccountSid("ACtest");
+        properties.setTwilioAuthToken("secret");
+        properties.setTwilioVerifyServiceSid("VAtest");
+        V3SmsVerificationSender sender = new V3SmsVerificationSender(properties,
+                (url, auth, form) -> new V3SmsVerificationSender.Response(status, body));
+        return new V3TeacherRegistrationService(repository, persistenceService, emailSender, sender, properties,
+                Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    private V3PendingContactChallenge pendingContactChallenge() {
+        return new V3PendingContactChallenge(202L, "sms-uuid", 42L, NORMALIZED_CONTACT, "+63 9** *** 6789",
+                "654321", 0, NOW.plus(Duration.ofMinutes(10)), NOW.plus(Duration.ofMinutes(1)));
     }
 
     private V3TeacherRegistrationRequest validRequest(LocalDate birthDate) {

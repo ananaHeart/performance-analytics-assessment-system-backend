@@ -9,6 +9,8 @@ public record V3VerificationChallenge(
         long addressId,
         String schoolId,
         String email,
+        String contactNumber,
+        String verificationPurpose,
         String emailMasked,
         String codeHash,
         String challengeStatus,
@@ -20,6 +22,13 @@ public record V3VerificationChallenge(
         Instant expiresAt,
         Instant userCreatedAt,
         String accountStatus,
-        boolean emailVerified
+        boolean emailVerified,
+        boolean contactVerified
 ) {
+    public V3VerificationChallenge withContactVerified(boolean verified) {
+        return new V3VerificationChallenge(challengeId, challengeUuid, userId, addressId, schoolId, email,
+                contactNumber, verificationPurpose, emailMasked, codeHash, challengeStatus, deliveryStatus,
+                attemptCount, maximumAttemptCount, resendCount, nextResendAt, expiresAt, userCreatedAt,
+                accountStatus, emailVerified, verified);
+    }
 }
