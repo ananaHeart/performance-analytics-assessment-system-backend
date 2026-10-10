@@ -541,6 +541,45 @@ class V3AssessmentServiceTest {
     }
 
     @Test
+    void resavingKeepsTheDraftRubricTheEssayStillReferences() {
+        stubValidCreationContext();
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("draft", 5)));
+        when(repository.updateTestHeader(eq(1000L), anyInt(), anyString(), anyString(), anyString(), anyInt()))
+                .thenReturn(1);
+        when(repository.updateTestAssignment(eq(2000L), any(), any(), anyBoolean(), anyBoolean(),
+                nullable(String.class), nullable(Long.class), nullable(Instant.class))).thenReturn(1);
+        // 600: the saved inline rubric, reloaded by the editor and sent back by id.
+        // 601: an older draft rubric this save no longer uses.
+        when(repository.findUsableRubric(600L, "SCHOOL-001", 42L)).thenReturn(Optional.of(
+                new com.capstone.assessment.v3.assessment.model.V3AssessmentModels.RubricRow(
+                        600L, "rubric-600", "SCHOOL-001", 42L, "Science Explanation Rubric",
+                        null, new BigDecimal("5"), "draft")));
+        when(repository.findDraftRubricIdsForTest(1000L, 42L)).thenReturn(List.of(600L, 601L));
+
+        service.updateAssessment(TEACHER, 1000L, requestWithParts(List.of(
+                multipleChoicePart(1, List.of(mcQuestion(1)), 1, fullMapping(1)),
+                trueFalsePart(2, "B"),
+                part(3, "Identification", "identification", "2", identificationQuestion()),
+                part(4, "Enumeration", "enumeration", "2", enumerationQuestion()),
+                part(5, "Essay", "essay", "5", essayQuestionUsingRubric(600L))
+        )), null);
+
+        verify(repository).deleteParts(1000L);
+        verify(repository, never()).deleteDraftRubricIfUnused(eq(600L), anyLong());
+        verify(repository).deleteDraftRubricIfUnused(601L, 42L);
+    }
+
+    private V3AssessmentQuestionRequest essayQuestionUsingRubric(long rubricId) {
+        V3AssessmentQuestionRequest inline = essayQuestion();
+        return new V3AssessmentQuestionRequest(
+                inline.itemNumber(), inline.questionText(), inline.maximumPoints(),
+                inline.responseInstructions(), inline.maximumResponseLength(), inline.expectedResponseCount(),
+                inline.responseRegionSize(), inline.forcePageBreakBefore(), inline.options(),
+                inline.correctOptionKey(), inline.answerExplanation(), inline.matchingMode(),
+                inline.acceptedAnswers(), rubricId, null);
+    }
+
+    @Test
     void persistenceConflictIsTranslatedAndWriteMethodsAreTransactional() throws Exception {
         stubValidCreationContext();
         when(repository.insertTest(

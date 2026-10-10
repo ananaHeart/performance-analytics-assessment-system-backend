@@ -254,7 +254,19 @@ public class V3AssessmentService {
 
         Instant now = clock.instant();
         PreparedAssessment prepared = prepareAssessment(user, request, header, now);
-        List<Long> replacedDraftRubrics = repository.findDraftRubricIdsForTest(testId, user.userId());
+        // The editor reloads a saved inline rubric (now the teacher's draft rubric) as an existing
+        // one and sends its rubricId back. A draft rubric the edited graph still references must
+        // survive the rebuild; deleting it would leave the re-inserted essay pointing at nothing.
+        Set<Long> stillReferencedRubrics = prepared.parts().stream()
+                .flatMap(part -> part.questions().stream())
+                .map(PreparedQuestion::rubric)
+                .filter(Objects::nonNull)
+                .map(PreparedRubric::existingRubricId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        List<Long> replacedDraftRubrics = repository.findDraftRubricIdsForTest(testId, user.userId()).stream()
+                .filter(rubricId -> !stillReferencedRubrics.contains(rubricId))
+                .toList();
         try {
             int updatedHeaders = repository.updateTestHeader(
                     testId,
