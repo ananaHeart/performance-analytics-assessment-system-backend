@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -1209,11 +1210,22 @@ public class V3AssessmentService {
         if (rubric.existingRubricId() != null) {
             return rubric.existingRubricId();
         }
+        // Rubric names are unique per school. A taken name reuses that rubric when the teacher may
+        // use it and it has the same content (no duplicate rubric); otherwise the new rubric is
+        // saved as "Name (2)", "Name (3)"...
+        String rubricName = rubric.rubricName();
+        Optional<RubricRow> sameName = repository.findRubricByName(user.schoolId(), rubricName);
+        if (sameName.isPresent()) {
+            if (isUsableBy(sameName.get(), user) && hasSameContent(sameName.get(), rubric)) {
+                return sameName.get().rubricId();
+            }
+            rubricName = nextFreeRubricName(user.schoolId(), rubricName);
+        }
         long rubricId = repository.insertRubric(
                 UUID.randomUUID().toString(),
                 user.schoolId(),
                 user.userId(),
-                rubric.rubricName(),
+                rubricName,
                 rubric.description(),
                 rubric.totalPoints()
         );
@@ -1229,6 +1241,66 @@ public class V3AssessmentService {
             );
         }
         return rubricId;
+    }
+
+    /** Same rule as choosing an existing rubric: any active rubric of the school, or the teacher's own draft. */
+    private static boolean isUsableBy(RubricRow rubric, V3AuthenticatedUser user) {
+        return "active".equals(rubric.status())
+                || ("draft".equals(rubric.status()) && rubric.createdByUserId() == user.userId());
+    }
+
+    private boolean hasSameContent(RubricRow stored, PreparedRubric rubric) {
+        if (stored.totalPoints().compareTo(rubric.totalPoints()) != 0
+                || !Objects.equals(blankToNull(stored.description()), blankToNull(rubric.description()))) {
+            return false;
+        }
+        List<RubricCriterionRow> storedCriteria = repository.findRubricCriteria(stored.rubricId());
+        if (storedCriteria.size() != rubric.criteria().size()) {
+            return false;
+        }
+        for (int index = 0; index < storedCriteria.size(); index++) {
+            RubricCriterionRow saved = storedCriteria.get(index);
+            PreparedRubricCriterion wanted = rubric.criteria().get(index);
+            if (saved.criterionOrder() != wanted.criterionOrder()
+                    || !saved.criterionName().equals(wanted.criterionName())
+                    || !Objects.equals(blankToNull(saved.criterionDescription()),
+                            blankToNull(wanted.criterionDescription()))
+                    || saved.maximumPoints().compareTo(wanted.maximumPoints()) != 0
+                    || saved.required() != wanted.required()
+                    || !sameJson(saved.levelDefinition(), wanted.levelDefinition())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String nextFreeRubricName(String schoolId, String rubricName) {
+        for (int number = 2; number <= 999; number++) {
+            String suffix = " (" + number + ")";
+            String base = rubricName.length() + suffix.length() > 120
+                    ? rubricName.substring(0, 120 - suffix.length()).stripTrailing()
+                    : rubricName;
+            String candidate = base + suffix;
+            if (repository.findRubricByName(schoolId, candidate).isEmpty()) {
+                return candidate;
+            }
+        }
+        throw conflict("RUBRIC_NAME_UNAVAILABLE", "Choose a different rubric name.");
+    }
+
+    private boolean sameJson(JsonNode stored, String wanted) {
+        if (stored == null || stored.isNull() || wanted == null) {
+            return (stored == null || stored.isNull()) && wanted == null;
+        }
+        try {
+            return stored.equals(objectMapper.readTree(wanted));
+        } catch (JsonProcessingException exception) {
+            return false;
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private V3AssessmentResponse requireAssessment(V3AuthenticatedUser user, long testId) {

@@ -399,6 +399,27 @@ public class V3AssessmentRepository {
         ).stream().findFirst();
     }
 
+    /** The school's rubric with this name; names are unique per school (same collation as the key). */
+    public Optional<RubricRow> findRubricByName(String schoolId, String rubricName) {
+        return jdbcTemplate.query("""
+                        SELECT rubric_id,
+                               rubric_uuid,
+                               school_id,
+                               created_by_user_id,
+                               rubric_name,
+                               description,
+                               total_points,
+                               rubric_status
+                        FROM rubrics
+                        WHERE school_id = ?
+                          AND rubric_name = ?
+                        """,
+                this::mapRubric,
+                schoolId,
+                rubricName
+        ).stream().findFirst();
+    }
+
     public List<RubricCriterionRow> findRubricCriteria(long rubricId) {
         return jdbcTemplate.query("""
                         SELECT rubric_criterion_id,

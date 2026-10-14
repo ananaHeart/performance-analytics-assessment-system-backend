@@ -16,6 +16,8 @@ import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.OptionRow;
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.PartRow;
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.QuestionRow;
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.QuestionType;
+import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.RubricCriterionRow;
+import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.RubricRow;
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.SkillMappingRow;
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.TermWindow;
 import com.capstone.assessment.v3.assessment.repository.V3AssessmentRepository;
@@ -567,6 +569,53 @@ class V3AssessmentServiceTest {
         verify(repository).deleteParts(1000L);
         verify(repository, never()).deleteDraftRubricIfUnused(eq(600L), anyLong());
         verify(repository).deleteDraftRubricIfUnused(601L, 42L);
+    }
+
+    @Test
+    void anInlineRubricMatchingTheTeachersSameNamedRubricReusesItInsteadOfDuplicating() {
+        stubValidCreationContext();
+        when(repository.insertTest(anyString(), anyString(), anyLong(), anyInt(), anyString(), anyString(),
+                nullable(String.class), anyInt())).thenReturn(1000L);
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("draft", 5)));
+        // Same name, saved earlier in another assessment, with the same criteria.
+        when(repository.findRubricByName("SCHOOL-001", "Science Explanation Rubric")).thenReturn(Optional.of(
+                new RubricRow(700L, "rubric-700", "SCHOOL-001", 42L, "Science Explanation Rubric",
+                        "Scores scientific accuracy and clarity.", new BigDecimal("5.00"), "draft")));
+        when(repository.findRubricCriteria(700L)).thenReturn(List.of(
+                new RubricCriterionRow(1L, 700L, 1, "Scientific accuracy", "Uses correct scientific ideas.",
+                        new BigDecimal("3.00"), null, true),
+                new RubricCriterionRow(2L, 700L, 2, "Clarity", "Explains the answer clearly.",
+                        new BigDecimal("2.00"), null, true)));
+
+        service.createAssessment(TEACHER, validFiveTypeRequest(), null);
+
+        verify(repository, never()).insertRubric(anyString(), anyString(), anyLong(), anyString(),
+                nullable(String.class), any(BigDecimal.class));
+        verify(repository).insertQuestion(anyString(), anyLong(), anyInt(), eq(1),
+                eq("Explain how matter changes state."), any(BigDecimal.class), eq(700L),
+                nullable(String.class), anyBoolean(), nullable(Integer.class), nullable(Integer.class),
+                anyString(), anyBoolean());
+    }
+
+    @Test
+    void anInlineRubricWhoseNameIsTakenByADifferentRubricIsSavedWithTheNextNumber() {
+        stubValidCreationContext();
+        when(repository.insertTest(anyString(), anyString(), anyLong(), anyInt(), anyString(), anyString(),
+                nullable(String.class), anyInt())).thenReturn(1000L);
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("draft", 5)));
+        // Another teacher's draft (not usable here) holds the name, and "(2)" is taken too.
+        when(repository.findRubricByName("SCHOOL-001", "Science Explanation Rubric")).thenReturn(Optional.of(
+                new RubricRow(700L, "rubric-700", "SCHOOL-001", 99L, "Science Explanation Rubric",
+                        null, new BigDecimal("5"), "draft")));
+        when(repository.findRubricByName("SCHOOL-001", "Science Explanation Rubric (2)")).thenReturn(Optional.of(
+                new RubricRow(701L, "rubric-701", "SCHOOL-001", 99L, "Science Explanation Rubric (2)",
+                        null, new BigDecimal("5"), "draft")));
+
+        service.createAssessment(TEACHER, validFiveTypeRequest(), null);
+
+        verify(repository).insertRubric(anyString(), eq("SCHOOL-001"), eq(42L),
+                eq("Science Explanation Rubric (3)"), nullable(String.class), eq(new BigDecimal("5")));
+        verify(repository, never()).findRubricCriteria(anyLong());
     }
 
     private V3AssessmentQuestionRequest essayQuestionUsingRubric(long rubricId) {
