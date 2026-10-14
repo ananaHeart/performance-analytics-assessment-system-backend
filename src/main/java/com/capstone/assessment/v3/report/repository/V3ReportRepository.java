@@ -346,7 +346,11 @@ public class V3ReportRepository {
                        test.status,
                        test_assignment.assignment_status,
                        test_assignment.open_at,
-                       test_assignment.close_at
+                       test_assignment.close_at,
+                       (SELECT MAX(result.created_at)
+                          FROM test_results result
+                         WHERE result.test_assignment_id = test_assignment.test_assignment_id
+                           AND result.result_status <> 'draft') AS last_uploaded_at
                   FROM tests test
                   JOIN test_assignments test_assignment ON test_assignment.test_id = test.test_id
                   JOIN class_assignments assignment
@@ -375,7 +379,8 @@ public class V3ReportRepository {
                         resultSet.getString("status"),
                         resultSet.getString("assignment_status"),
                         nullableInstant(resultSet, "open_at"),
-                        nullableInstant(resultSet, "close_at")
+                        nullableInstant(resultSet, "close_at"),
+                        nullableInstant(resultSet, "last_uploaded_at")
                 ), arguments);
     }
 

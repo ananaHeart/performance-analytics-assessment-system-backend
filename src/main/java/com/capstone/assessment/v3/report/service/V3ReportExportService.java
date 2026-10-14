@@ -222,40 +222,45 @@ public class V3ReportExportService {
     public byte[] exportAssessmentResultsExcel(V3AssessmentResultsReportResponse report) {
         try (XSSFWorkbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            var styles = ReportExcelSheet.newStyleCache();
-            ReportExcelSheet sheet = new ReportExcelSheet(workbook, "Class Record",
-                    new float[]{7f, 34f, 14f, 14f, 14f, 22f}, styles);
-            sheet.header(report.scope().schoolName(), "ASSESSMENT RESULTS / CLASS RECORD");
-            sheet.section("Assessment Details");
-            List<String[]> details = new java.util.ArrayList<>(classRecordDetailsLeft(report));
-            details.addAll(classRecordDetailsRight(report));
-            sheet.details(details, List.of(), 1, 5, 0, 0);
-            sheet.section("Class Summary");
-            sheet.cards(classRecordCards(report), new int[][]{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}});
-            sheet.section("Class Record");
-            sheet.tableHeader(CLASS_RECORD_HEADERS);
-            boolean[] centered = {true, false, true, true, true, true};
-            for (ClassRecordLine line : classRecordLines(report)) {
-                sheet.tableRow(new Object[]{
-                        Integer.valueOf(line.number()), line.name(),
-                        line.scoreValue() == null ? NOT_AVAILABLE : line.scoreValue(),
-                        line.maximumValue() == null ? NOT_AVAILABLE : line.maximumValue(),
-                        line.percentageValue() == null ? NOT_AVAILABLE : line.percentageValue(),
-                        line.performance()
-                }, new java.awt.Color[]{null, null, null, null, null, line.color()}, centered, "....%.");
-            }
-            sheet.skip(1);
-            for (var warning : report.warnings()) {
-                sheet.note("Note: " + warning.message());
-            }
-            sheet.note(PERFORMANCE_LEGEND);
-            sheet.signature(personName(report.scope().teacherName()), "Teacher", 1);
-            sheet.footer(SCHOOL_FOOTER);
+            writeClassRecordSheet(workbook, ReportExcelSheet.newStyleCache(), "Class Record", report);
             workbook.write(output);
             return output.toByteArray();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to generate assessment-results Excel export.", e);
         }
+    }
+
+    /** One assessment's class record as a complete, printable sheet. */
+    private void writeClassRecordSheet(XSSFWorkbook workbook, Map<String, org.apache.poi.xssf.usermodel.XSSFCellStyle> styles,
+                                       String sheetName, V3AssessmentResultsReportResponse report) throws IOException {
+        ReportExcelSheet sheet = new ReportExcelSheet(workbook, sheetName,
+                new float[]{7f, 34f, 14f, 14f, 14f, 22f}, styles);
+        sheet.header(report.scope().schoolName(), "ASSESSMENT RESULTS / CLASS RECORD");
+        sheet.section("Assessment Details");
+        List<String[]> details = new java.util.ArrayList<>(classRecordDetailsLeft(report));
+        details.addAll(classRecordDetailsRight(report));
+        sheet.details(details, List.of(), 1, 5, 0, 0);
+        sheet.section("Class Summary");
+        sheet.cards(classRecordCards(report), new int[][]{{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}});
+        sheet.section("Class Record");
+        sheet.tableHeader(CLASS_RECORD_HEADERS);
+        boolean[] centered = {true, false, true, true, true, true};
+        for (ClassRecordLine line : classRecordLines(report)) {
+            sheet.tableRow(new Object[]{
+                    Integer.valueOf(line.number()), line.name(),
+                    line.scoreValue() == null ? NOT_AVAILABLE : line.scoreValue(),
+                    line.maximumValue() == null ? NOT_AVAILABLE : line.maximumValue(),
+                    line.percentageValue() == null ? NOT_AVAILABLE : line.percentageValue(),
+                    line.performance()
+            }, new java.awt.Color[]{null, null, null, null, null, line.color()}, centered, "....%.");
+        }
+        sheet.skip(1);
+        for (var warning : report.warnings()) {
+            sheet.note("Note: " + warning.message());
+        }
+        sheet.note(PERFORMANCE_LEGEND);
+        sheet.signature(personName(report.scope().teacherName()), "Teacher", 1);
+        sheet.footer(SCHOOL_FOOTER);
     }
 
     // ---------- Item Analysis and Competency Mastery ----------
@@ -886,9 +891,8 @@ public class V3ReportExportService {
         };
     }
 
-    private static String consolidatedTitle(V3ConsolidatedReportResponse report) {
-        return "PERFORMANCE BY " + groupNoun(report.groupedBy()).toUpperCase(Locale.ROOT);
-    }
+    /** The report's name; "Performance by Teacher" is section 2's heading, so it isn't repeated here. */
+    private static final String CONSOLIDATED_TITLE = "CONSOLIDATED PERFORMANCE REPORT";
 
     /** Teacher names print in proper case like every other report; other groups as stored. */
     private static String groupLabel(V3ConsolidatedReportResponse report, GroupRow group) {
@@ -965,7 +969,7 @@ public class V3ReportExportService {
     public byte[] exportConsolidatedPdf(V3ConsolidatedReportResponse report, ConsolidatedExportScope scope) {
         String noun = groupNoun(report.groupedBy());
         try {
-            ReportPdfDocument pdf = new ReportPdfDocument(scope.schoolName(), consolidatedTitle(report), SCHOOL_FOOTER);
+            ReportPdfDocument pdf = new ReportPdfDocument(scope.schoolName(), CONSOLIDATED_TITLE, SCHOOL_FOOTER);
             pdf.section(null, "Report Details");
             pdf.details(consolidatedDetailsLeft(scope), consolidatedDetailsRight(report, scope));
             pdf.gap(10);
@@ -1046,7 +1050,7 @@ public class V3ReportExportService {
 
     public byte[] exportConsolidatedExcel(V3ConsolidatedReportResponse report, ConsolidatedExportScope scope) {
         String noun = groupNoun(report.groupedBy());
-        String title = consolidatedTitle(report);
+        String title = CONSOLIDATED_TITLE;
         try (XSSFWorkbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             var styles = ReportExcelSheet.newStyleCache();
@@ -1692,28 +1696,209 @@ public class V3ReportExportService {
             pdf.cards(classRecordCards(report));
             pdf.gap(10);
             pdf.section(null, "Class Record");
-            List<ReportPdfDocument.Cell[]> rows = new java.util.ArrayList<>();
-            for (ClassRecordLine line : classRecordLines(report)) {
-                rows.add(new ReportPdfDocument.Cell[]{
-                        ReportPdfDocument.Cell.of(line.number()),
-                        ReportPdfDocument.Cell.of(line.name()),
-                        ReportPdfDocument.Cell.of(line.score()),
-                        ReportPdfDocument.Cell.of(line.maximum()),
-                        ReportPdfDocument.Cell.of(line.percentage()),
-                        ReportPdfDocument.Cell.colored(line.performance(), line.color())
-                });
-            }
-            pdf.table(columns(CLASS_RECORD_HEADERS, CLASS_RECORD_WIDTHS,
-                    new boolean[]{true, false, true, true, true, true}), rows);
-            for (var warning : report.warnings()) {
-                pdf.note("Note: " + warning.message());
-            }
+            classRecordTable(pdf, report);
             pdf.note(PERFORMANCE_LEGEND);
             pdf.signature(personName(report.scope().teacherName()), "Teacher");
             return pdf.finish();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to generate assessment-results PDF export.", e);
         }
+    }
+
+    /** The class record table, followed by the report's warnings. */
+    private void classRecordTable(ReportPdfDocument pdf, V3AssessmentResultsReportResponse report) throws IOException {
+        List<ReportPdfDocument.Cell[]> rows = new java.util.ArrayList<>();
+        for (ClassRecordLine line : classRecordLines(report)) {
+            rows.add(new ReportPdfDocument.Cell[]{
+                    ReportPdfDocument.Cell.of(line.number()),
+                    ReportPdfDocument.Cell.of(line.name()),
+                    ReportPdfDocument.Cell.of(line.score()),
+                    ReportPdfDocument.Cell.of(line.maximum()),
+                    ReportPdfDocument.Cell.of(line.percentage()),
+                    ReportPdfDocument.Cell.colored(line.performance(), line.color())
+            });
+        }
+        pdf.table(columns(CLASS_RECORD_HEADERS, CLASS_RECORD_WIDTHS,
+                new boolean[]{true, false, true, true, true, true}), rows);
+        for (var warning : report.warnings()) {
+            pdf.note("Note: " + warning.message());
+        }
+    }
+
+    // ---------- All Assessment Results ("Download all") ----------
+
+    private static final String ALL_ASSESSMENTS_TITLE = "ALL ASSESSMENT RESULTS";
+    private static final float[] ALL_ASSESSMENTS_WIDTHS = {22f, 140f, 80f, 52f, 50f, 43f, 43f, 43f, 42.28f};
+    private static final String[] ALL_ASSESSMENTS_HEADERS =
+            {"No.", "Assessment", "Date Conducted", "Checked", "Mean %", "Maintain", "Review", "Reteach", "Priority"};
+
+    /** The value every assessment shares, or a count such as "3 classes" when they differ. */
+    private static String sharedOr(List<V3AssessmentResultsReportResponse> reports,
+                                   java.util.function.Function<V3AssessmentResultsReportResponse.Scope, String> value,
+                                   String plural) {
+        List<String> distinct = reports.stream().map(report -> value.apply(report.scope()))
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        return distinct.size() == 1 ? distinct.get(0) : distinct.size() + " " + plural;
+    }
+
+    private static boolean sameClassAndSubject(List<V3AssessmentResultsReportResponse> reports) {
+        return reports.stream().map(report -> report.scope().classId() + "/" + report.scope().subjectId())
+                .distinct().count() == 1;
+    }
+
+    /** The assessment's name, plus its class and subject when the file mixes several. */
+    private static String assessmentLabel(V3AssessmentResultsReportResponse report, boolean sameClassAndSubject) {
+        var scope = report.scope();
+        String name = orNotAvailable(scope.testName());
+        return sameClassAndSubject ? name
+                : name + " (" + gradeSection(scope.gradeLevelName(), scope.sectionName()) + ", "
+                        + orNotAvailable(scope.subjectName()) + ")";
+    }
+
+    private List<String[]> allAssessmentsDetailsLeft(List<V3AssessmentResultsReportResponse> reports) {
+        return List.of(
+                new String[]{"Teacher", sharedOr(reports, scope -> personName(scope.teacherName()), "teachers")},
+                new String[]{"Grade & Section", sharedOr(reports,
+                        scope -> gradeSection(scope.gradeLevelName(), scope.sectionName()), "classes")},
+                new String[]{"Subject", sharedOr(reports, V3AssessmentResultsReportResponse.Scope::subjectName,
+                        "subjects")},
+                new String[]{"Term", sharedOr(reports, V3AssessmentResultsReportResponse.Scope::termName, "terms")});
+    }
+
+    private List<String[]> allAssessmentsDetailsRight(List<V3AssessmentResultsReportResponse> reports,
+                                                      ConsolidatedExportScope scope) {
+        return List.of(
+                new String[]{"School Year", sharedOr(reports,
+                        V3AssessmentResultsReportResponse.Scope::academicYearName, "school years")},
+                new String[]{"Assessments", Integer.toString(reports.size())},
+                new String[]{"Prepared By", orNotAvailable(personName(scope.preparedByName()))},
+                new String[]{"Generated On", REPORT_DATE_TIME.format(reports.get(0).generatedAt())});
+    }
+
+    /** Finalized results of one assessment at each performance level, in PERFORMANCE_BAND_CODES order. */
+    private static int[] bandCounts(V3AssessmentResultsReportResponse report) {
+        int[] counts = new int[PERFORMANCE_BAND_CODES.length];
+        for (StudentResultRow row : report.rows()) {
+            if (!"finalized".equals(row.resultStatus())) continue;
+            for (int i = 0; i < PERFORMANCE_BAND_CODES.length; i++) {
+                if (PERFORMANCE_BAND_CODES[i].equals(row.performanceStatusCode())) counts[i]++;
+            }
+        }
+        return counts;
+    }
+
+    /** Every assessment in the filters: a summary table, then each class record on its own page. */
+    public byte[] exportAllAssessmentResultsPdf(List<V3AssessmentResultsReportResponse> reports,
+                                                ConsolidatedExportScope scope) {
+        boolean sameClassAndSubject = sameClassAndSubject(reports);
+        try {
+            ReportPdfDocument pdf = new ReportPdfDocument(scope.schoolName(), ALL_ASSESSMENTS_TITLE, SCHOOL_FOOTER);
+            pdf.section(null, "Report Details");
+            pdf.details(allAssessmentsDetailsLeft(reports), allAssessmentsDetailsRight(reports, scope));
+            pdf.gap(10);
+
+            pdf.section(1, "Summary of Assessments");
+            List<ReportPdfDocument.Cell[]> rows = new java.util.ArrayList<>();
+            int number = 1;
+            for (V3AssessmentResultsReportResponse report : reports) {
+                var summary = report.summary();
+                int[] bands = bandCounts(report);
+                ReportPdfDocument.Cell[] row = new ReportPdfDocument.Cell[5 + bands.length];
+                row[0] = ReportPdfDocument.Cell.of(Integer.toString(number++));
+                row[1] = ReportPdfDocument.Cell.of(assessmentLabel(report, sameClassAndSubject));
+                row[2] = ReportPdfDocument.Cell.of(dateConducted(report.scope().openAt(), report.scope().closeAt()));
+                row[3] = ReportPdfDocument.Cell.of(summary.verifiedCount() + " of " + summary.studentCount());
+                row[4] = ReportPdfDocument.Cell.colored(percent(summary.classMeanPercentage()),
+                        statusColor(performanceBand(summary.classMeanPercentage())));
+                for (int i = 0; i < bands.length; i++) {
+                    row[5 + i] = ReportPdfDocument.Cell.of(Integer.toString(bands[i]));
+                }
+                rows.add(row);
+            }
+            pdf.table(columns(ALL_ASSESSMENTS_HEADERS, ALL_ASSESSMENTS_WIDTHS,
+                    new boolean[]{true, false, true, true, true, true, true, true, true}), rows);
+            pdf.note("Checked counts verified results out of enrolled learners; Mean % averages the verified "
+                    + "results. " + PERFORMANCE_LEGEND);
+
+            int section = 2;
+            for (V3AssessmentResultsReportResponse report : reports) {
+                pdf.newPage();
+                pdf.section(section++, assessmentLabel(report, sameClassAndSubject) + "  ·  "
+                        + dateConducted(report.scope().openAt(), report.scope().closeAt()));
+                pdf.cards(classRecordCards(report));
+                pdf.gap(8);
+                classRecordTable(pdf, report);
+            }
+            pdf.signature(personName(scope.preparedByName()), scope.preparedByRole());
+            return pdf.finish();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to generate the all-assessment-results PDF export.", e);
+        }
+    }
+
+    /** A "Summary" sheet, then one class-record sheet per assessment. */
+    public byte[] exportAllAssessmentResultsExcel(List<V3AssessmentResultsReportResponse> reports,
+                                                  ConsolidatedExportScope scope) {
+        boolean sameClassAndSubject = sameClassAndSubject(reports);
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            var styles = ReportExcelSheet.newStyleCache();
+            ReportExcelSheet summarySheet = new ReportExcelSheet(workbook, "Summary",
+                    new float[]{6f, 34f, 18f, 11f, 10f, 10f, 10f, 10f, 10f}, styles);
+            summarySheet.header(scope.schoolName(), ALL_ASSESSMENTS_TITLE);
+            summarySheet.section("Report Details");
+            summarySheet.details(allAssessmentsDetailsLeft(reports), allAssessmentsDetailsRight(reports, scope),
+                    1, 3, 4, 8);
+            summarySheet.section("1  Summary of Assessments");
+            summarySheet.tableHeader(ALL_ASSESSMENTS_HEADERS);
+            boolean[] centered = {true, false, true, true, true, true, true, true, true};
+            int number = 1;
+            for (V3AssessmentResultsReportResponse report : reports) {
+                var summary = report.summary();
+                int[] bands = bandCounts(report);
+                Object[] values = new Object[5 + bands.length];
+                values[0] = number++;
+                values[1] = assessmentLabel(report, sameClassAndSubject);
+                values[2] = dateConducted(report.scope().openAt(), report.scope().closeAt());
+                values[3] = summary.verifiedCount() + " of " + summary.studentCount();
+                values[4] = summary.classMeanPercentage() == null ? NOT_AVAILABLE : summary.classMeanPercentage();
+                for (int i = 0; i < bands.length; i++) {
+                    values[5 + i] = bands[i];
+                }
+                java.awt.Color[] colors = new java.awt.Color[values.length];
+                colors[4] = statusColor(performanceBand(summary.classMeanPercentage()));
+                summarySheet.tableRow(values, colors, centered, "....%....");
+            }
+            summarySheet.skip(1);
+            summarySheet.note(PERFORMANCE_LEGEND);
+            summarySheet.signature(personName(scope.preparedByName()), scope.preparedByRole(), 1);
+            summarySheet.footer(SCHOOL_FOOTER);
+
+            java.util.Set<String> used = new java.util.HashSet<>(java.util.Set.of("summary"));
+            for (V3AssessmentResultsReportResponse report : reports) {
+                writeClassRecordSheet(workbook, styles, uniqueSheetName(report.scope().testName(), used), report);
+            }
+            workbook.write(output);
+            return output.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to generate the all-assessment-results Excel export.", e);
+        }
+    }
+
+    /** Excel sheet names: at most 31 characters, no []:*?/\, unique ignoring case. */
+    private static String uniqueSheetName(String testName, java.util.Set<String> used) {
+        String base = org.apache.poi.ss.util.WorkbookUtil.createSafeSheetName(
+                testName == null || testName.isBlank() ? "Assessment" : testName.trim())
+                .replaceAll("\\s+", " ").strip();
+        if (base.isEmpty()) {
+            base = "Assessment";
+        }
+        String name = base;
+        for (int copy = 2; !used.add(name.toLowerCase(Locale.ROOT)); copy++) {
+            String suffix = " (" + copy + ")";
+            name = (base.length() + suffix.length() > 31 ? base.substring(0, 31 - suffix.length()) : base) + suffix;
+        }
+        return name;
     }
 
     // ---------- Shared helpers ----------

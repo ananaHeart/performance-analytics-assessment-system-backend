@@ -622,6 +622,70 @@ class V3ReportServiceTest {
         );
     }
 
+    @Test
+    void aChosenClassGivesTheExportItsGradeLevelAndSchoolYear() {
+        when(reportRepository.findUserFullName(10L)).thenReturn(Optional.of("MARIA SANTOS"));
+        when(reportRepository.listClasses(SCHOOL_ID, null)).thenReturn(List.of(
+                new V3ReportReferenceDataResponse.ClassOption(77L, 1, "2026-2027", 7, "Grade 7", 3, "Mabini",
+                        "active")));
+        when(reportRepository.findSchool(SCHOOL_ID)).thenReturn(Optional.of(
+                new V3ReportReferenceDataResponse.SchoolOption(SCHOOL_ID, "San Roque National High School")));
+
+        var scope = reportService.describeConsolidatedScope(PRINCIPAL, null, null, null, 77L, null, null, null);
+
+        assertEquals("Grade 7 - Mabini", scope.classLabel());
+        assertEquals("Grade 7", scope.gradeLevel(), "not 'All grade levels' next to a Grade 7 class");
+        assertEquals("2026-2027", scope.academicYear());
+    }
+
+    @Test
+    void downloadAllTakesTheFilteredClassesActiveAndClosedAssessmentsOldestFirst() {
+        when(reportRepository.listClassAssignments(SCHOOL_ID, null)).thenReturn(List.of(
+                classAssignment(3001L, 77L), classAssignment(3002L, 78L)));
+        when(reportRepository.listAssessments(SCHOOL_ID, null)).thenReturn(List.of(
+                assessment(1L, 3001L, 2, "active", "2026-10-05T00:00:00Z"),
+                assessment(2L, 3001L, 2, "draft", "2026-10-01T00:00:00Z"),
+                assessment(3L, 3002L, 2, "active", "2026-10-02T00:00:00Z"),
+                assessment(4L, 3001L, 2, "closed", "2026-10-03T00:00:00Z"),
+                assessment(5L, 3001L, 3, "active", "2026-10-04T00:00:00Z"),
+                assessment(6L, 3001L, 2, "archived", "2026-10-06T00:00:00Z")));
+        V3ReportService service = org.mockito.Mockito.spy(reportService);
+        org.mockito.Mockito.doReturn(null).when(service).getAssessmentResults(
+                org.mockito.ArgumentMatchers.eq(PRINCIPAL), org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyLong());
+
+        var reports = service.getAssessmentResultsInScope(PRINCIPAL, null, 2, null, 77L, 20L, 4);
+
+        assertEquals(2, reports.size());
+        var order = org.mockito.Mockito.inOrder(service);
+        order.verify(service).getAssessmentResults(PRINCIPAL, 4L, 3001L);
+        order.verify(service).getAssessmentResults(PRINCIPAL, 1L, 3001L);
+    }
+
+    @Test
+    void downloadAllWithNothingToShowSaysSo() {
+        when(reportRepository.listClassAssignments(SCHOOL_ID, null)).thenReturn(List.of(classAssignment(3001L, 77L)));
+        when(reportRepository.listAssessments(SCHOOL_ID, null)).thenReturn(List.of(
+                assessment(2L, 3001L, 2, "draft", "2026-10-01T00:00:00Z")));
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> reportService.getAssessmentResultsInScope(PRINCIPAL, null, null, null, 77L, null, null));
+
+        assertEquals("REPORT_NO_ASSESSMENTS", exception.getCode());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+    }
+
+    private static V3ReportReferenceDataResponse.ClassAssignmentOption classAssignment(long id, long classId) {
+        return new V3ReportReferenceDataResponse.ClassAssignmentOption(id, classId, 20L, 4, 1, 7, 3,
+                "HEART MILLAN AÑANA", "English", "2026-2027", "Grade 7", "Mabini", "active");
+    }
+
+    private static V3ReportReferenceDataResponse.AssessmentOption assessment(
+            long testId, long classAssignmentId, int termPeriodId, String status, String openAt) {
+        return new V3ReportReferenceDataResponse.AssessmentOption(testId, testId + 100, classAssignmentId,
+                termPeriodId, "Test " + testId, "quiz", status, "open", Instant.parse(openAt), null, null);
+    }
+
     private static V3AuthenticatedUser user(long userId, String role, String schoolId) {
         return new V3AuthenticatedUser(
                 userId,

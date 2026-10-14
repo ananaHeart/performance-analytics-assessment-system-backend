@@ -143,6 +143,11 @@ final class ReportPdfDocument {
         y -= points;
     }
 
+    /** Continues on a fresh page (compact header), e.g. one assessment per page. */
+    void newPage() throws IOException {
+        addPage(false);
+    }
+
     byte[] finish() throws IOException {
         content.close();
         int total = document.getNumberOfPages();

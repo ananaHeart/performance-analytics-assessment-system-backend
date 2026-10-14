@@ -15,6 +15,10 @@ public record V3AssessmentSummaryResponse(
         String assignmentStatus,
         Instant openAt,
         Instant closeAt,
-        Instant updatedAt
+        Instant updatedAt,
+        // Enrolled learners of the class, and how many of them have a finalized result:
+        // equal (and above zero) means every learner's result is in.
+        int learnerCount,
+        int uploadedCount
 ) {
 }

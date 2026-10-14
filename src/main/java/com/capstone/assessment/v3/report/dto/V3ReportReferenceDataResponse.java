@@ -103,7 +103,9 @@ public record V3ReportReferenceDataResponse(
             String status,
             String assignmentStatus,
             Instant openAt,
-            Instant closeAt
+            Instant closeAt,
+            // When the newest result of this assessment was uploaded; null before any upload.
+            Instant lastUploadedAt
     ) {
     }
 

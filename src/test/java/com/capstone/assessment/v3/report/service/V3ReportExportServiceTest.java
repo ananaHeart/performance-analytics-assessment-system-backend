@@ -1,5 +1,6 @@
 package com.capstone.assessment.v3.report.service;
 
+import com.capstone.assessment.v3.report.dto.V3AssessmentResultsReportResponse;
 import com.capstone.assessment.v3.report.dto.V3ConsolidatedReportResponse;
 import com.capstone.assessment.v3.report.dto.V3LearningCompetencyReportResponse;
 import com.capstone.assessment.v3.report.model.V3ReportModels.ConsolidatedExportScope;
@@ -98,13 +99,66 @@ class V3ReportExportServiceTest {
         try (PDDocument document = Loader.loadPDF(bytes)) {
             text = new PDFTextStripper().getText(document);
         }
-        assertTrue(text.contains("PERFORMANCE BY TEACHER"));
+        assertTrue(text.contains("CONSOLIDATED PERFORMANCE REPORT"));
+        assertEquals(1, text.split("PERFORMANCE BY TEACHER", -1).length - 1,
+                "the grouping is section 2's heading only, not repeated as the title");
         assertTrue(text.contains("SAN ROQUE NATIONAL HIGH SCHOOL"));
         assertTrue(text.contains("All grade levels"));
         assertTrue(text.contains("Maria Santos"), "prepared by, in proper case");
         assertTrue(text.contains("MARIA SANTOS"), "the signature prints the name in capitals on the line");
         assertTrue(text.contains("Parts of Speech"));
         assertTrue(!text.contains("Subject-Verb Agreement"), "mastered competencies are not listed");
+    }
+
+    private static V3AssessmentResultsReportResponse classRecord(long testId, String testName, String openAt) {
+        var scope = new V3AssessmentResultsReportResponse.Scope("SCHOOL-001", "San Roque National High School",
+                1, "2026-2027", 2, "Term 2", 77L, 7, "Grade 7", 3, "Mabini", 3001L, 20L, "HEART MILLAN AÑANA",
+                4, "English", testId, testId + 100, testName, "quiz", "active", "open", Instant.parse(openAt), null);
+        List<V3AssessmentResultsReportResponse.StudentResultRow> rows = new ArrayList<>();
+        String[][] results = {{"90", "maintain", "Maintain"}, {"65", "review", "Review"}, {"45", "reteach", "Reteach"}};
+        for (int i = 0; i < results.length; i++) {
+            BigDecimal percentage = new BigDecimal(results[i][0]);
+            rows.add(new V3AssessmentResultsReportResponse.StudentResultRow(i + 1, 500 + i, null, "LEARNER " + i,
+                    "enrolled", (long) i, "result-" + i, "finalized", null, null,
+                    percentage.movePointLeft(1), BigDecimal.TEN, percentage, results[i][1], results[i][2], 0));
+        }
+        return new V3AssessmentResultsReportResponse("assessment_results", Instant.parse("2026-10-14T02:00:00Z"),
+                scope, null, "available", List.of(),
+                new V3AssessmentResultsReportResponse.Summary(4, 3, 3, 0, BigDecimal.TEN, new BigDecimal("6.67"),
+                        new BigDecimal("66.67")), rows);
+    }
+
+    @Test
+    void allAssessmentResultsPdfSummarizesThenGivesEachAssessmentItsOwnPage() throws Exception {
+        byte[] bytes = exportService.exportAllAssessmentResultsPdf(List.of(
+                classRecord(1L, "Test 1", "2026-10-03T05:00:00Z"),
+                classRecord(2L, "English Quiz 1", "2026-10-04T16:00:00Z")), consolidatedScope());
+
+        try (PDDocument document = Loader.loadPDF(bytes)) {
+            assertEquals(3, document.getNumberOfPages(), "summary page, then one page per assessment");
+            String text = new PDFTextStripper().getText(document);
+            assertTrue(text.contains("ALL ASSESSMENT RESULTS"));
+            assertTrue(text.contains("SUMMARY OF ASSESSMENTS"));
+            assertTrue(text.contains("3 of 4"), "checked = verified out of enrolled");
+            assertTrue(text.contains("Heart Millan Añana"), "one teacher, printed once in the details");
+            assertTrue(text.contains("ENGLISH QUIZ 1  ·  OCT 5, 2026"), "each assessment's own section");
+            assertTrue(text.contains("MARIA SANTOS"), "signed by whoever prepared it");
+        }
+    }
+
+    @Test
+    void allAssessmentResultsExcelHasASummaryAndOneUniqueSheetPerAssessment() throws Exception {
+        byte[] bytes = exportService.exportAllAssessmentResultsExcel(List.of(
+                classRecord(1L, "Quiz: Chapter 1/2", "2026-10-03T05:00:00Z"),
+                classRecord(2L, "Quiz: Chapter 1/2", "2026-10-04T05:00:00Z")), consolidatedScope());
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            assertEquals(3, workbook.getNumberOfSheets());
+            assertEquals("Summary", workbook.getSheetName(0));
+            assertEquals("Quiz Chapter 1 2", workbook.getSheetName(1), "Excel-safe name");
+            assertEquals("Quiz Chapter 1 2 (2)", workbook.getSheetName(2), "same name made unique");
+            assertEquals(2, numberedRows(workbook.getSheet("Summary")).size(), "one summary row per assessment");
+        }
     }
 
     private static V3LearningCompetencyReportResponse learningCompetencyReport(int weakStudentCount) {

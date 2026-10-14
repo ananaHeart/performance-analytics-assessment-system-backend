@@ -1124,7 +1124,17 @@ public class V3AssessmentRepository {
                                ta.assignment_status,
                                ta.open_at,
                                ta.close_at,
-                               t.updated_at
+                               t.updated_at,
+                               (SELECT COUNT(*)
+                                  FROM class_lists roster
+                                 WHERE roster.class_id = ca.class_id
+                                   AND roster.enrollment_status = 'enrolled') AS learner_count,
+                               (SELECT COUNT(DISTINCT result.class_list_id)
+                                  FROM test_results result
+                                  JOIN class_lists roster ON roster.class_list_id = result.class_list_id
+                                 WHERE result.test_assignment_id = ta.test_assignment_id
+                                   AND result.result_status = 'finalized'
+                                   AND roster.enrollment_status = 'enrolled') AS uploaded_count
                         FROM tests t
                         JOIN term_periods tp ON tp.term_period_id = t.term_period_id
                         JOIN test_assignments ta ON ta.test_id = t.test_id
@@ -1149,7 +1159,9 @@ public class V3AssessmentRepository {
                         rs.getString("assignment_status"),
                         toInstant(rs.getTimestamp("open_at")),
                         toInstant(rs.getTimestamp("close_at")),
-                        toInstant(rs.getTimestamp("updated_at"))
+                        toInstant(rs.getTimestamp("updated_at")),
+                        rs.getInt("learner_count"),
+                        rs.getInt("uploaded_count")
                 ),
                 teacherUserId,
                 schoolId,

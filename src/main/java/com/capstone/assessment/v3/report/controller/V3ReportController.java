@@ -93,6 +93,47 @@ public class V3ReportController {
                 .body(bytes);
     }
 
+    /** Every assessment in the filters in one file ("Download all"). */
+    @GetMapping("/assessment-results/all/pdf")
+    public ResponseEntity<byte[]> allAssessmentResultsPdf(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @RequestParam(required = false) Integer academicYearId,
+            @RequestParam(required = false) Integer termPeriodId,
+            @RequestParam(required = false) Integer gradeLevelId,
+            @RequestParam(required = false) Long classId,
+            @RequestParam(required = false) Long teacherUserId,
+            @RequestParam(required = false) Integer subjectId
+    ) {
+        var reports = reportService.getAssessmentResultsInScope(
+                user, academicYearId, termPeriodId, gradeLevelId, classId, teacherUserId, subjectId);
+        var scope = reportService.describeConsolidatedScope(
+                user, academicYearId, termPeriodId, gradeLevelId, classId, teacherUserId, subjectId, null);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=all-assessment-results.pdf")
+                .body(exportService.exportAllAssessmentResultsPdf(reports, scope));
+    }
+
+    @GetMapping("/assessment-results/all/excel")
+    public ResponseEntity<byte[]> allAssessmentResultsExcel(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @RequestParam(required = false) Integer academicYearId,
+            @RequestParam(required = false) Integer termPeriodId,
+            @RequestParam(required = false) Integer gradeLevelId,
+            @RequestParam(required = false) Long classId,
+            @RequestParam(required = false) Long teacherUserId,
+            @RequestParam(required = false) Integer subjectId
+    ) {
+        var reports = reportService.getAssessmentResultsInScope(
+                user, academicYearId, termPeriodId, gradeLevelId, classId, teacherUserId, subjectId);
+        var scope = reportService.describeConsolidatedScope(
+                user, academicYearId, termPeriodId, gradeLevelId, classId, teacherUserId, subjectId, null);
+        return ResponseEntity.ok()
+                .contentType(EXCEL_MEDIA_TYPE)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=all-assessment-results.xlsx")
+                .body(exportService.exportAllAssessmentResultsExcel(reports, scope));
+    }
+
     @GetMapping("/item-analysis")
     public ResponseEntity<ApiResponse<V3ItemAnalysisReportResponse>> itemAnalysis(
             @AuthenticationPrincipal V3AuthenticatedUser user,

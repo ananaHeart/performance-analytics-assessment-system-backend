@@ -74,6 +74,8 @@ public class V3ReportService {
     private static final BigDecimal DIFFICULTY_EASY_THRESHOLD = new BigDecimal("75");
     private static final BigDecimal DIFFICULTY_MODERATE_THRESHOLD = new BigDecimal("40");
     private static final ZoneId REPORT_ZONE = ZoneId.of("Asia/Manila");
+    // One "Download all" file at most; keeps a broad filter from exhausting the 512 MB server.
+    private static final int MAX_ASSESSMENTS_PER_EXPORT = 40;
 
     private final V3ReportRepository reportRepository;
     private final ObjectMapper objectMapper;
@@ -547,18 +549,26 @@ public class V3ReportService {
         String schoolId = access.schoolId();
         Long ownTeacher = access.isTeacher() ? access.userId() : null;
         String preparedBy = reportRepository.findUserFullName(access.userId()).orElse(null);
-        String academicYear = academicYearId == null ? null : reportRepository.listAcademicYears(schoolId, ownTeacher)
-                .stream().filter(option -> option.academicYearId() == academicYearId)
-                .map(V3ReportReferenceDataResponse.AcademicYearOption::yearName).findFirst().orElse(null);
+        V3ReportReferenceDataResponse.ClassOption classOption = classId == null ? null
+                : reportRepository.listClasses(schoolId, ownTeacher).stream()
+                        .filter(option -> option.classId() == classId).findFirst().orElse(null);
+        // A chosen class fixes its grade level and school year, so the details never say
+        // "All grade levels" next to "Grade 7 - Mabini".
+        String academicYear = academicYearId == null
+                ? (classOption == null ? null : classOption.academicYearName())
+                : reportRepository.listAcademicYears(schoolId, ownTeacher)
+                        .stream().filter(option -> option.academicYearId() == academicYearId)
+                        .map(V3ReportReferenceDataResponse.AcademicYearOption::yearName).findFirst().orElse(null);
         String term = termPeriodId == null ? null : reportRepository.listTermPeriods(schoolId, ownTeacher)
                 .stream().filter(option -> option.termPeriodId() == termPeriodId)
                 .map(V3ReportReferenceDataResponse.TermPeriodOption::termName).findFirst().orElse(null);
-        String gradeLevel = gradeLevelId == null ? null : reportRepository.listGradeLevels(schoolId, ownTeacher)
-                .stream().filter(option -> option.gradeLevelId() == gradeLevelId)
-                .map(V3ReportReferenceDataResponse.GradeLevelOption::gradeLevelName).findFirst().orElse(null);
-        String classLabel = classId == null ? null : reportRepository.listClasses(schoolId, ownTeacher)
-                .stream().filter(option -> option.classId() == classId)
-                .map(option -> option.gradeLevelName() + " - " + option.sectionName()).findFirst().orElse(null);
+        String gradeLevel = gradeLevelId == null
+                ? (classOption == null ? null : classOption.gradeLevelName())
+                : reportRepository.listGradeLevels(schoolId, ownTeacher)
+                        .stream().filter(option -> option.gradeLevelId() == gradeLevelId)
+                        .map(V3ReportReferenceDataResponse.GradeLevelOption::gradeLevelName).findFirst().orElse(null);
+        String classLabel = classOption == null ? null
+                : classOption.gradeLevelName() + " - " + classOption.sectionName();
         String teacher = access.isTeacher() ? preparedBy
                 : teacherUserId == null ? null : reportRepository.listTeachers(schoolId, null)
                         .stream().filter(option -> option.teacherUserId() == teacherUserId)
@@ -575,6 +585,60 @@ public class V3ReportService {
                 preparedBy,
                 access.isTeacher() ? "Teacher" : "Principal",
                 academicYear, term, gradeLevel, classLabel, teacher, subject, assessment);
+    }
+
+    /**
+     * The class record of every assessment in the filters ("Download all"), oldest first. Drafts
+     * and archived assessments are left out, and each record goes through the same access checks
+     * as a single assessment-results report. A teacher only ever sees their own assessments.
+     */
+    @Transactional(readOnly = true)
+    public List<V3AssessmentResultsReportResponse> getAssessmentResultsInScope(
+            V3AuthenticatedUser user,
+            Integer academicYearId,
+            Integer termPeriodId,
+            Integer gradeLevelId,
+            Long classId,
+            Long teacherUserId,
+            Integer subjectId
+    ) {
+        AccessContext access = requireActiveUser(user);
+        Long ownTeacher = access.isTeacher() ? access.userId() : null;
+        Set<Long> assignmentIds = reportRepository.listClassAssignments(access.schoolId(), ownTeacher).stream()
+                .filter(option -> academicYearId == null || option.academicYearId() == academicYearId)
+                .filter(option -> gradeLevelId == null || option.gradeLevelId() == gradeLevelId)
+                .filter(option -> classId == null || option.classId() == classId)
+                .filter(option -> teacherUserId == null || option.teacherUserId() == teacherUserId)
+                .filter(option -> subjectId == null || option.subjectId() == subjectId)
+                .map(V3ReportReferenceDataResponse.ClassAssignmentOption::classAssignmentId)
+                .collect(java.util.stream.Collectors.toSet());
+        List<V3ReportReferenceDataResponse.AssessmentOption> assessments = reportRepository
+                .listAssessments(access.schoolId(), ownTeacher).stream()
+                .filter(option -> assignmentIds.contains(option.classAssignmentId()))
+                .filter(option -> termPeriodId == null || option.termPeriodId() == termPeriodId)
+                .filter(option -> !"draft".equals(option.status()) && !"archived".equals(option.status()))
+                .sorted(java.util.Comparator.comparing(V3ReportReferenceDataResponse.AssessmentOption::openAt,
+                                java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                        .thenComparing(V3ReportReferenceDataResponse.AssessmentOption::testId))
+                .toList();
+        if (assessments.isEmpty()) {
+            throw new V3AuthException(
+                    "REPORT_NO_ASSESSMENTS",
+                    "No active or closed assessment matched the selected filters.",
+                    HttpStatus.NOT_FOUND
+            );
+        }
+        if (assessments.size() > MAX_ASSESSMENTS_PER_EXPORT) {
+            throw new V3AuthException(
+                    "REPORT_TOO_MANY_ASSESSMENTS",
+                    "More than " + MAX_ASSESSMENTS_PER_EXPORT + " assessments matched. Choose a term, class or "
+                            + "subject to narrow the download.",
+                    HttpStatus.UNPROCESSABLE_ENTITY
+            );
+        }
+        return assessments.stream()
+                .map(option -> getAssessmentResults(user, option.testId(), option.classAssignmentId()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
