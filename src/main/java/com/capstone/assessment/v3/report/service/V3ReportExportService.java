@@ -10,6 +10,7 @@ import com.capstone.assessment.v3.report.dto.V3ItemAnalysisReportResponse.Compet
 import com.capstone.assessment.v3.report.dto.V3ItemAnalysisReportResponse.QuestionRow;
 import com.capstone.assessment.v3.report.dto.V3LearningCompetencyReportResponse;
 import com.capstone.assessment.v3.report.dto.V3StudentPerformanceProfileResponse;
+import com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse;
 import com.capstone.assessment.v3.report.dto.V3SyncActivityReportResponse;
 import com.capstone.assessment.v3.report.model.V3ReportModels.ConsolidatedExportScope;
 import org.apache.poi.ss.usermodel.Cell;
@@ -1899,6 +1900,162 @@ public class V3ReportExportService {
             name = (base.length() + suffix.length() > 31 ? base.substring(0, 31 - suffix.length()) : base) + suffix;
         }
         return name;
+    }
+
+    // ---------- Students Needing Support ----------
+
+    private static final String SUPPORT_TITLE = "STUDENTS NEEDING SUPPORT";
+    private static final float[] SUPPORT_WIDTHS = {150f, 70f, 160f, 55f, 80.28f};
+    private static final String SUPPORT_NOTE = "Lists each learner's competencies below 80% mastery, lowest first; "
+            + "learners with the lowest mastery come first.";
+
+    private static String learnerLabel(V3StudentsNeedingSupportResponse.Student student) {
+        return orNotAvailable(personName(student.fullName())) + " · "
+                + gradeSection(student.gradeLevelName(), student.sectionName());
+    }
+
+    /** "Grade 7 · English" when the report covers one grade and subject, otherwise a count. */
+    private static String classesCovered(V3StudentsNeedingSupportResponse report) {
+        List<String> covered = report.students().stream()
+                .flatMap(student -> student.competencies().stream()
+                        .map(competency -> student.gradeLevelName() + " · " + competency.subjectName()))
+                .distinct().toList();
+        if (covered.isEmpty()) return "All my classes";
+        return covered.size() == 1 ? covered.get(0) : covered.size() + " grade and subject combinations";
+    }
+
+    private List<String[]> supportDetailsLeft(V3StudentsNeedingSupportResponse report) {
+        return List.of(
+                new String[]{"Teacher", orNotAvailable(personName(report.teacherName()))},
+                new String[]{"School Year", orNotAvailable(report.academicYearName())},
+                new String[]{"Term", orNotAvailable(report.termName())});
+    }
+
+    private List<String[]> supportDetailsRight(V3StudentsNeedingSupportResponse report) {
+        return List.of(
+                new String[]{"Classes Covered", classesCovered(report)},
+                new String[]{"Generated On", REPORT_DATE_TIME.format(report.generatedAt())});
+    }
+
+    private List<ReportPdfDocument.Card> supportCards(V3StudentsNeedingSupportResponse report) {
+        int competencies = report.students().stream().mapToInt(student -> student.competencies().size()).sum();
+        long priority = report.students().stream()
+                .filter(student -> student.competencies().stream()
+                        .anyMatch(competency -> "priority_intervention".equals(competency.recommendationCode())))
+                .count();
+        BigDecimal lowest = report.students().isEmpty() ? null : report.students().get(0).lowestMasteryPercentage();
+        return List.of(
+                new ReportPdfDocument.Card("Learners Needing Support", Integer.toString(report.students().size()),
+                        "(below 80% in a competency)"),
+                new ReportPdfDocument.Card("Competencies Below 80%", Integer.toString(competencies),
+                        "(learner and competency pairs)"),
+                new ReportPdfDocument.Card("Priority Intervention", Long.toString(priority), "(learners below 40%)",
+                        priority == 0 ? ReportPdfDocument.GOOD : ReportPdfDocument.BAD),
+                new ReportPdfDocument.Card("Lowest Mastery", percent(lowest), "(any learner)"));
+    }
+
+    public byte[] exportStudentsNeedingSupportPdf(V3StudentsNeedingSupportResponse report) {
+        try {
+            ReportPdfDocument pdf = new ReportPdfDocument(report.schoolName(), SUPPORT_TITLE, SCHOOL_FOOTER);
+            pdf.section(null, "Report Details");
+            pdf.details(supportDetailsLeft(report), supportDetailsRight(report));
+            pdf.gap(10);
+            pdf.section(1, "Summary");
+            pdf.cards(supportCards(report));
+            for (var warning : report.warnings()) {
+                pdf.note("Note: " + warning.message());
+            }
+            pdf.gap(10);
+            pdf.section(2, "Learners Needing Support");
+            if (report.students().isEmpty()) {
+                pdf.note("No learner is below 80% mastery in any competency for this term.");
+            } else {
+                // One subject is already named under Classes Covered, so its column would only repeat it.
+                boolean oneSubject = report.students().stream().flatMap(student -> student.competencies().stream())
+                        .map(V3StudentsNeedingSupportResponse.Competency::subjectName).distinct().count() == 1;
+                List<ReportPdfDocument.Cell[]> rows = new java.util.ArrayList<>();
+                for (V3StudentsNeedingSupportResponse.Student student : report.students()) {
+                    boolean first = true;
+                    for (V3StudentsNeedingSupportResponse.Competency competency : student.competencies()) {
+                        List<ReportPdfDocument.Cell> row = new java.util.ArrayList<>();
+                        row.add(first ? new ReportPdfDocument.Cell(learnerLabel(student), null, true)
+                                : ReportPdfDocument.Cell.of(""));
+                        if (!oneSubject) row.add(ReportPdfDocument.Cell.of(orNotAvailable(competency.subjectName())));
+                        row.add(ReportPdfDocument.Cell.of(orNotAvailable(competency.competencyName())));
+                        row.add(ReportPdfDocument.Cell.colored(percent(competency.masteryPercentage()),
+                                statusColor(competency.masteryStatusCode())));
+                        row.add(ReportPdfDocument.Cell.colored(orNotAvailable(competency.recommendationLabel()),
+                                statusColor(competency.recommendationCode())));
+                        rows.add(row.toArray(ReportPdfDocument.Cell[]::new));
+                        first = false;
+                    }
+                }
+                List<ReportPdfDocument.Column> columns = new java.util.ArrayList<>();
+                columns.add(ReportPdfDocument.Column.left("Learner", SUPPORT_WIDTHS[0]));
+                if (!oneSubject) columns.add(ReportPdfDocument.Column.left("Subject", SUPPORT_WIDTHS[1]));
+                columns.add(ReportPdfDocument.Column.left("Learning Competency",
+                        oneSubject ? SUPPORT_WIDTHS[1] + SUPPORT_WIDTHS[2] : SUPPORT_WIDTHS[2]));
+                columns.add(ReportPdfDocument.Column.center("Mastery %", SUPPORT_WIDTHS[3]));
+                columns.add(ReportPdfDocument.Column.centerWrap("Recommendation", SUPPORT_WIDTHS[4]));
+                pdf.table(columns, rows, true);
+                pdf.note(SUPPORT_NOTE);
+                pdf.note(RECOMMENDATION_LEGEND);
+            }
+            pdf.signature(personName(report.teacherName()), "Teacher");
+            return pdf.finish();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to generate the students-needing-support PDF export.", e);
+        }
+    }
+
+    public byte[] exportStudentsNeedingSupportExcel(V3StudentsNeedingSupportResponse report) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            ReportExcelSheet sheet = new ReportExcelSheet(workbook, "Students Needing Support",
+                    new float[]{6f, 16f, 30f, 18f, 14f, 40f, 12f, 20f}, ReportExcelSheet.newStyleCache());
+            sheet.header(report.schoolName(), SUPPORT_TITLE);
+            sheet.section("Report Details");
+            sheet.details(supportDetailsLeft(report), supportDetailsRight(report), 1, 3, 4, 7);
+            sheet.section("1  Summary");
+            sheet.cards(supportCards(report), new int[][]{{1, 1}, {2, 3}, {4, 5}, {6, 7}});
+            for (var warning : report.warnings()) {
+                sheet.note("Note: " + warning.message());
+            }
+            sheet.skip(1);
+            sheet.section("2  Learners Needing Support");
+            sheet.tableHeader(new String[]{"No.", "LRN", "Learner", "Grade & Section", "Subject",
+                    "Learning Competency", "Mastery %", "Recommendation"});
+            boolean[] centered = {true, true, false, false, false, false, true, true};
+            int number = 1;
+            for (V3StudentsNeedingSupportResponse.Student student : report.students()) {
+                // Every row carries its learner, so the sheet can still be sorted and filtered.
+                for (V3StudentsNeedingSupportResponse.Competency competency : student.competencies()) {
+                    sheet.tableRow(new Object[]{
+                            number,
+                            student.studentLrn() == null ? NOT_AVAILABLE : student.studentLrn(),
+                            orNotAvailable(personName(student.fullName())),
+                            gradeSection(student.gradeLevelName(), student.sectionName()),
+                            orNotAvailable(competency.subjectName()),
+                            orNotAvailable(competency.competencyName()),
+                            competency.masteryPercentage() == null ? NOT_AVAILABLE : competency.masteryPercentage(),
+                            orNotAvailable(competency.recommendationLabel())
+                    }, new java.awt.Color[]{null, null, null, null, null, null,
+                            statusColor(competency.masteryStatusCode()), statusColor(competency.recommendationCode())},
+                            centered, "......%.");
+                }
+                number++;
+            }
+            sheet.skip(1);
+            sheet.note(report.students().isEmpty()
+                    ? "No learner is below 80% mastery in any competency for this term." : SUPPORT_NOTE);
+            sheet.note(RECOMMENDATION_LEGEND);
+            sheet.signature(personName(report.teacherName()), "Teacher", 2);
+            sheet.footer(SCHOOL_FOOTER);
+            workbook.write(output);
+            return output.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to generate the students-needing-support Excel export.", e);
+        }
     }
 
     // ---------- Shared helpers ----------

@@ -161,6 +161,56 @@ class V3ReportExportServiceTest {
         }
     }
 
+    private static com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse supportReport() {
+        return new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse(
+                "students_needing_support", Instant.parse("2026-10-18T02:00:00Z"), "San Roque National High School",
+                "HEART MILLAN AÑANA", "2026-2027", 2, "Term 2", "available", List.of(), List.of(
+                new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Student(901L,
+                        "111111111111", "CRUZ, ANA", "Grade 7", "Mabini", new BigDecimal("30.00"), List.of(
+                        new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Competency(
+                                "English", "Evaluate the veracity of information", new BigDecimal("30.00"),
+                                "needs_support", "priority_intervention", "Priority Intervention", "Prioritize."),
+                        new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Competency(
+                                "English", "Distinguish facts and opinions", new BigDecimal("72.40"),
+                                "developing", "review", "Review", "Review."))),
+                new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Student(902L,
+                        "222222222222", "REYES, BEN", "Grade 7", "Mabini", new BigDecimal("55.00"), List.of(
+                        new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Competency(
+                                "English", "Distinguish facts and opinions", new BigDecimal("55.00"),
+                                "needs_support", "reteach", "Reteach", "Reteach.")))));
+    }
+
+    @Test
+    void studentsNeedingSupportPdfListsEachLearnerOnceWithTheirWeakCompetencies() throws Exception {
+        byte[] bytes = exportService.exportStudentsNeedingSupportPdf(supportReport());
+
+        String text;
+        try (PDDocument document = Loader.loadPDF(bytes)) {
+            text = new PDFTextStripper().getText(document);
+        }
+        assertTrue(text.contains("STUDENTS NEEDING SUPPORT"));
+        assertTrue(text.contains("Cruz, Ana · Grade 7 - Mabini"), "learner and section printed once, as a group");
+        assertEquals(1, text.split("Cruz, Ana", -1).length - 1);
+        assertTrue(text.contains("Evaluate the veracity of information"));
+        assertTrue(text.contains("Priority Intervention"));
+        assertTrue(text.contains("Grade 7 · English"), "one grade and subject covered");
+        assertTrue(text.contains("HEART MILLAN AÑANA"), "signed by the teacher");
+    }
+
+    @Test
+    void studentsNeedingSupportExcelHasOneSortableRowPerLearnerCompetency() throws Exception {
+        byte[] bytes = exportService.exportStudentsNeedingSupportExcel(supportReport());
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = workbook.getSheet("Students Needing Support");
+            List<Row> rows = numberedRows(sheet);
+            assertEquals(3, rows.size(), "one row per learner and competency");
+            assertEquals("111111111111", rows.get(0).getCell(1).getStringCellValue());
+            assertEquals("Cruz, Ana", rows.get(1).getCell(2).getStringCellValue(), "every row names its learner");
+            assertEquals(2, (int) rows.get(2).getCell(0).getNumericCellValue(), "numbered per learner");
+        }
+    }
+
     private static V3LearningCompetencyReportResponse learningCompetencyReport(int weakStudentCount) {
         List<V3LearningCompetencyReportResponse.WeakStudent> weakStudents = new ArrayList<>();
         for (int i = 0; i < weakStudentCount; i++) {

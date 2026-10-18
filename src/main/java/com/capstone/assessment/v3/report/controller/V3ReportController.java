@@ -8,6 +8,7 @@ import com.capstone.assessment.v3.report.dto.V3ItemAnalysisReportResponse;
 import com.capstone.assessment.v3.report.dto.V3LearningCompetencyReportResponse;
 import com.capstone.assessment.v3.report.dto.V3ReportReferenceDataResponse;
 import com.capstone.assessment.v3.report.dto.V3StudentPerformanceProfileResponse;
+import com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse;
 import com.capstone.assessment.v3.report.dto.V3SyncActivityReportResponse;
 import com.capstone.assessment.v3.report.model.V3ReportModels.V3ReportGroupDimension;
 import com.capstone.assessment.v3.report.service.V3ReportExportService;
@@ -132,6 +133,47 @@ public class V3ReportController {
                 .contentType(EXCEL_MEDIA_TYPE)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=all-assessment-results.xlsx")
                 .body(exportService.exportAllAssessmentResultsExcel(reports, scope));
+    }
+
+    @GetMapping("/students-needing-support")
+    public ResponseEntity<ApiResponse<V3StudentsNeedingSupportResponse>> studentsNeedingSupport(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @RequestParam int termPeriodId,
+            @RequestParam(required = false) Integer gradeLevelId,
+            @RequestParam(required = false) Integer subjectId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "V3 students-needing-support report generated successfully.",
+                reportService.getStudentsNeedingSupport(user, termPeriodId, gradeLevelId, subjectId)
+        ));
+    }
+
+    @GetMapping("/students-needing-support/pdf")
+    public ResponseEntity<byte[]> studentsNeedingSupportPdf(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @RequestParam int termPeriodId,
+            @RequestParam(required = false) Integer gradeLevelId,
+            @RequestParam(required = false) Integer subjectId
+    ) {
+        var report = reportService.getStudentsNeedingSupport(user, termPeriodId, gradeLevelId, subjectId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=students-needing-support.pdf")
+                .body(exportService.exportStudentsNeedingSupportPdf(report));
+    }
+
+    @GetMapping("/students-needing-support/excel")
+    public ResponseEntity<byte[]> studentsNeedingSupportExcel(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @RequestParam int termPeriodId,
+            @RequestParam(required = false) Integer gradeLevelId,
+            @RequestParam(required = false) Integer subjectId
+    ) {
+        var report = reportService.getStudentsNeedingSupport(user, termPeriodId, gradeLevelId, subjectId);
+        return ResponseEntity.ok()
+                .contentType(EXCEL_MEDIA_TYPE)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=students-needing-support.xlsx")
+                .body(exportService.exportStudentsNeedingSupportExcel(report));
     }
 
     @GetMapping("/item-analysis")

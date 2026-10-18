@@ -15,6 +15,7 @@ import com.capstone.assessment.v3.report.dto.V3ItemAnalysisReportResponse;
 import com.capstone.assessment.v3.report.dto.V3LearningCompetencyReportResponse;
 import com.capstone.assessment.v3.report.dto.V3ReportReferenceDataResponse;
 import com.capstone.assessment.v3.report.dto.V3StudentPerformanceProfileResponse;
+import com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse;
 import com.capstone.assessment.v3.report.dto.V3SyncActivityReportResponse;
 import com.capstone.assessment.v3.report.model.V3ReportModels.AssessmentResultRow;
 import com.capstone.assessment.v3.report.model.V3ReportModels.AssessmentScopeRow;
@@ -639,6 +640,112 @@ public class V3ReportService {
         return assessments.stream()
                 .map(option -> getAssessmentResults(user, option.testId(), option.classAssignmentId()))
                 .toList();
+    }
+
+    /**
+     * Students Needing Support (teacher only): every learner of the teacher's own classes in the
+     * term's school year who is below 80% mastery in a competency, lowest mastery first. Built from
+     * the learning-competency report of each grade and subject the teacher handles, so the two
+     * reports never disagree.
+     */
+    @Transactional(readOnly = true)
+    public V3StudentsNeedingSupportResponse getStudentsNeedingSupport(
+            V3AuthenticatedUser user,
+            int termPeriodId,
+            Integer gradeLevelId,
+            Integer subjectId
+    ) {
+        AccessContext access = requireActiveUser(user);
+        if (!access.isTeacher()) {
+            throw new V3AuthException(
+                    "REPORT_TEACHER_ONLY",
+                    "Only teachers can generate the Students Needing Support report.",
+                    HttpStatus.FORBIDDEN
+            );
+        }
+        long teacherUserId = access.userId();
+        V3ReportReferenceDataResponse.TermPeriodOption term = reportRepository
+                .listTermPeriods(access.schoolId(), teacherUserId).stream()
+                .filter(option -> option.termPeriodId() == termPeriodId)
+                .findFirst()
+                .orElseThrow(() -> filterNotFound("termPeriodId", "The term does not exist in this school."));
+
+        // One learning-competency report per grade + subject the teacher handles that school year.
+        List<V3ReportReferenceDataResponse.ClassAssignmentOption> assignments = reportRepository
+                .listClassAssignments(access.schoolId(), teacherUserId).stream()
+                .filter(option -> option.academicYearId() == term.academicYearId())
+                .filter(option -> !"archived".equals(option.status()))
+                .filter(option -> gradeLevelId == null || option.gradeLevelId() == gradeLevelId)
+                .filter(option -> subjectId == null || option.subjectId() == subjectId)
+                .toList();
+        Map<String, V3ReportReferenceDataResponse.ClassAssignmentOption> gradeSubjects = new LinkedHashMap<>();
+        for (var assignment : assignments) {
+            gradeSubjects.putIfAbsent(assignment.gradeLevelId() + "/" + assignment.subjectId(), assignment);
+        }
+        Map<Long, String> lrns = new java.util.HashMap<>();
+        for (var student : reportRepository.listStudents(access.schoolId(), teacherUserId)) {
+            lrns.putIfAbsent(student.studentId(), student.studentLrn());
+        }
+
+        record Learner(long studentId, String fullName, String gradeLevelName, String sectionName,
+                       List<V3StudentsNeedingSupportResponse.Competency> competencies) {
+        }
+        Map<Long, Learner> learners = new LinkedHashMap<>();
+        List<ReportWarning> warnings = new ArrayList<>();
+        Set<String> warningCodes = new LinkedHashSet<>();
+        for (var gradeSubject : gradeSubjects.values()) {
+            V3LearningCompetencyReportResponse report = getLearningCompetencyReport(
+                    user, termPeriodId, gradeSubject.gradeLevelId(), gradeSubject.subjectId(), null, null);
+            for (ReportWarning warning : report.warnings()) {
+                if (warningCodes.add(warning.code())) {
+                    warnings.add(warning);
+                }
+            }
+            for (var root : report.rootCompetencies()) {
+                for (var skill : root.skills()) {
+                    for (var weak : skill.weakStudents()) {
+                        learners.computeIfAbsent(weak.studentId(), id -> new Learner(id, weak.fullName(),
+                                        report.scope().gradeLevelName(), weak.sectionName(), new ArrayList<>()))
+                                .competencies().add(new V3StudentsNeedingSupportResponse.Competency(
+                                        report.scope().subjectName(), skill.competencyName(),
+                                        weak.masteryPercentage(), weak.masteryStatusCode(),
+                                        weak.recommendationCode(), weak.recommendationLabel(), weak.suggestion()));
+                    }
+                }
+            }
+        }
+
+        java.util.Comparator<BigDecimal> lowestFirst =
+                java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder());
+        List<V3StudentsNeedingSupportResponse.Student> students = learners.values().stream()
+                .map(learner -> {
+                    List<V3StudentsNeedingSupportResponse.Competency> competencies = learner.competencies().stream()
+                            .sorted(java.util.Comparator.comparing(
+                                    V3StudentsNeedingSupportResponse.Competency::masteryPercentage, lowestFirst))
+                            .toList();
+                    return new V3StudentsNeedingSupportResponse.Student(learner.studentId(),
+                            lrns.get(learner.studentId()), learner.fullName(), learner.gradeLevelName(),
+                            learner.sectionName(), competencies.get(0).masteryPercentage(), competencies);
+                })
+                .sorted(java.util.Comparator.comparing(
+                                V3StudentsNeedingSupportResponse.Student::lowestMasteryPercentage, lowestFirst)
+                        .thenComparing(V3StudentsNeedingSupportResponse.Student::fullName,
+                                java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .toList();
+
+        return new V3StudentsNeedingSupportResponse(
+                "students_needing_support",
+                clock.instant(),
+                reportRepository.findSchool(access.schoolId())
+                        .map(V3ReportReferenceDataResponse.SchoolOption::schoolName).orElse(null),
+                reportRepository.findUserFullName(teacherUserId).orElse(null),
+                assignments.isEmpty() ? null : assignments.get(0).academicYearName(),
+                termPeriodId,
+                term.termName(),
+                students.isEmpty() ? "empty" : "available",
+                warnings,
+                students
+        );
     }
 
     @Transactional(readOnly = true)

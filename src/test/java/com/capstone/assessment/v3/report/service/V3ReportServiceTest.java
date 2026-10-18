@@ -675,6 +675,79 @@ class V3ReportServiceTest {
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
     }
 
+    @Test
+    void studentsNeedingSupportIsForTeachersOnly() {
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> reportService.getStudentsNeedingSupport(PRINCIPAL, 2, null, null));
+
+        assertEquals("REPORT_TEACHER_ONLY", exception.getCode());
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+    }
+
+    @Test
+    void studentsNeedingSupportGroupsEachLearnerLowestMasteryFirstAcrossTheTeachersSubjects() {
+        when(reportRepository.listTermPeriods(SCHOOL_ID, 20L)).thenReturn(List.of(
+                new V3ReportReferenceDataResponse.TermPeriodOption(2, 1, "Term 2", 2, null, null, "active")));
+        when(reportRepository.listClassAssignments(SCHOOL_ID, 20L)).thenReturn(List.of(
+                supportAssignment(3001L, 1, 4, "active"),
+                supportAssignment(3002L, 1, 5, "active"),
+                supportAssignment(3003L, 1, 4, "active"),     // a second section, same grade and subject
+                supportAssignment(3004L, 9, 6, "active"),     // another school year
+                supportAssignment(3005L, 1, 7, "archived")));
+        when(reportRepository.listStudents(SCHOOL_ID, 20L)).thenReturn(List.of(
+                new V3ReportReferenceDataResponse.StudentOption(901L, 1L, 77L, "111111111111", "CRUZ, ANA", "enrolled")));
+        when(reportRepository.findSchool(SCHOOL_ID)).thenReturn(Optional.of(
+                new V3ReportReferenceDataResponse.SchoolOption(SCHOOL_ID, "San Roque National High School")));
+        when(reportRepository.findUserFullName(20L)).thenReturn(Optional.of("HEART MILLAN AÑANA"));
+        V3ReportService service = org.mockito.Mockito.spy(reportService);
+        org.mockito.Mockito.doReturn(competencyReport(4, "English", List.of(
+                        weak(902L, "REYES, BEN", "50.00"), weak(901L, "CRUZ, ANA", "70.00"))))
+                .when(service).getLearningCompetencyReport(TEACHER, 2, 7, 4, null, null);
+        org.mockito.Mockito.doReturn(competencyReport(5, "Mathematics", List.of(weak(901L, "CRUZ, ANA", "30.00"))))
+                .when(service).getLearningCompetencyReport(TEACHER, 2, 7, 5, null, null);
+
+        var report = service.getStudentsNeedingSupport(TEACHER, 2, null, null);
+
+        assertEquals("available", report.dataStatus());
+        assertEquals(List.of("CRUZ, ANA", "REYES, BEN"),
+                report.students().stream().map(student -> student.fullName()).toList(), "lowest mastery first");
+        var ana = report.students().get(0);
+        assertEquals("111111111111", ana.studentLrn());
+        assertEquals(new BigDecimal("30.00"), ana.lowestMasteryPercentage());
+        assertEquals(List.of("Mathematics", "English"),
+                ana.competencies().stream().map(competency -> competency.subjectName()).toList());
+        verify(service, org.mockito.Mockito.times(2))
+                .getLearningCompetencyReport(org.mockito.ArgumentMatchers.eq(TEACHER), org.mockito.ArgumentMatchers.eq(2),
+                        org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt(),
+                        org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.isNull());
+    }
+
+    private static V3ReportReferenceDataResponse.ClassAssignmentOption supportAssignment(
+            long id, int academicYearId, int subjectId, String status) {
+        return new V3ReportReferenceDataResponse.ClassAssignmentOption(id, 77L, 20L, subjectId, academicYearId, 7, 3,
+                "HEART MILLAN AÑANA", "Subject " + subjectId, "2026-2027", "Grade 7", "Mabini", status);
+    }
+
+    private static V3LearningCompetencyReportResponse.WeakStudent weak(long studentId, String name, String mastery) {
+        BigDecimal percentage = new BigDecimal(mastery);
+        String recommendation = percentage.compareTo(new BigDecimal("60")) >= 0 ? "review" : "reteach";
+        return new V3LearningCompetencyReportResponse.WeakStudent(studentId, name, "Mabini", 1, percentage,
+                "needs_support", recommendation, recommendation, "Support the learner.");
+    }
+
+    private static V3LearningCompetencyReportResponse competencyReport(
+            int subjectId, String subjectName, List<V3LearningCompetencyReportResponse.WeakStudent> weakStudents) {
+        return new V3LearningCompetencyReportResponse("learning_competency", NOW,
+                new V3LearningCompetencyReportResponse.Scope(SCHOOL_ID, "San Roque", 1, "2026-2027", 2, "Term 2", 7,
+                        "Grade 7", subjectId, subjectName),
+                "available", List.of(), List.of(),
+                List.of(new V3LearningCompetencyReportResponse.RootCompetency(1L, "Reading", new BigDecimal("55.00"),
+                        "needs_support", List.of(new V3LearningCompetencyReportResponse.Skill(10L, 20L,
+                        subjectName + " competency", weakStudents.size(), new BigDecimal("55.00"), "needs_support",
+                        "reteach", "Reteach", "Reteach it.", weakStudents.size(), weakStudents)))),
+                "HEART MILLAN AÑANA", "Teacher");
+    }
+
     private static V3ReportReferenceDataResponse.ClassAssignmentOption classAssignment(long id, long classId) {
         return new V3ReportReferenceDataResponse.ClassAssignmentOption(id, classId, 20L, 4, 1, 7, 3,
                 "HEART MILLAN AÑANA", "English", "2026-2027", "Grade 7", "Mabini", "active");
