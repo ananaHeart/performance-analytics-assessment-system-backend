@@ -42,7 +42,12 @@ public record V3StudentsNeedingSupportResponse(
         }
     }
 
+    /** The IDs let the web app open the learning-competency report narrowed to this skill. */
     public record Competency(
+            int gradeLevelId,
+            int subjectId,
+            long rootTagId,
+            long skillId,
             String subjectName,
             String competencyName,
             BigDecimal masteryPercentage,

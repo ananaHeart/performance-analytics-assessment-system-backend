@@ -168,15 +168,15 @@ class V3ReportExportServiceTest {
                 new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Student(901L,
                         "111111111111", "CRUZ, ANA", "Grade 7", "Mabini", new BigDecimal("30.00"), List.of(
                         new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Competency(
-                                "English", "Evaluate the veracity of information", new BigDecimal("30.00"),
+                                7, 4, 1L, 10L, "English", "Evaluate the veracity of information", new BigDecimal("30.00"),
                                 "needs_support", "priority_intervention", "Priority Intervention", "Prioritize."),
                         new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Competency(
-                                "English", "Distinguish facts and opinions", new BigDecimal("72.40"),
+                                7, 4, 1L, 10L, "English", "Distinguish facts and opinions", new BigDecimal("72.40"),
                                 "developing", "review", "Review", "Review."))),
                 new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Student(902L,
                         "222222222222", "REYES, BEN", "Grade 7", "Mabini", new BigDecimal("55.00"), List.of(
                         new com.capstone.assessment.v3.report.dto.V3StudentsNeedingSupportResponse.Competency(
-                                "English", "Distinguish facts and opinions", new BigDecimal("55.00"),
+                                7, 4, 1L, 10L, "English", "Distinguish facts and opinions", new BigDecimal("55.00"),
                                 "needs_support", "reteach", "Reteach", "Reteach.")))));
     }
 

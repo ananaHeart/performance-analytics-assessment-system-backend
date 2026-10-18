@@ -716,6 +716,9 @@ class V3ReportServiceTest {
         assertEquals(new BigDecimal("30.00"), ana.lowestMasteryPercentage());
         assertEquals(List.of("Mathematics", "English"),
                 ana.competencies().stream().map(competency -> competency.subjectName()).toList());
+        var math = ana.competencies().get(0);
+        assertEquals(List.of(7L, 5L, 1L, 10L), List.of((long) math.gradeLevelId(), (long) math.subjectId(),
+                math.rootTagId(), math.skillId()), "IDs to open the learning-competency report on this skill");
         verify(service, org.mockito.Mockito.times(2))
                 .getLearningCompetencyReport(org.mockito.ArgumentMatchers.eq(TEACHER), org.mockito.ArgumentMatchers.eq(2),
                         org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt(),

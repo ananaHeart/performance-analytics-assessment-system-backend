@@ -707,6 +707,8 @@ public class V3ReportService {
                         learners.computeIfAbsent(weak.studentId(), id -> new Learner(id, weak.fullName(),
                                         report.scope().gradeLevelName(), weak.sectionName(), new ArrayList<>()))
                                 .competencies().add(new V3StudentsNeedingSupportResponse.Competency(
+                                        report.scope().gradeLevelId(), report.scope().subjectId(),
+                                        root.rootTagId(), skill.skillId(),
                                         report.scope().subjectName(), skill.competencyName(),
                                         weak.masteryPercentage(), weak.masteryStatusCode(),
                                         weak.recommendationCode(), weak.recommendationLabel(), weak.suggestion()));
