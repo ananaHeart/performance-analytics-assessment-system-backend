@@ -192,11 +192,11 @@ public class V3AuthService {
             }
         }
 
-        if (user.emailVerifiedAt() == null) {
+        if (user.verifiedAt() == null) {
             recordFailedAttempt(user.userId(), email, "email_not_verified", normalizedMetadata, now);
             throw new V3AuthException(
                     "EMAIL_NOT_VERIFIED",
-                    "The email address must be verified before login.",
+                    "Verify your email or contact number before logging in.",
                     HttpStatus.FORBIDDEN
             );
         }
@@ -227,7 +227,7 @@ public class V3AuthService {
         V3VerifiedMfaLogin verifiedLogin = mfaService.verifyLoginChallenge(request, normalizedMetadata);
         V3UserAccount user = authRepository.findUserById(verifiedLogin.userId())
                 .filter(value -> "active".equalsIgnoreCase(value.status()))
-                .filter(value -> value.emailVerifiedAt() != null)
+                .filter(value -> value.verifiedAt() != null)
                 .filter(V3UserAccount::mfaRequired)
                 .orElseThrow(() -> unauthorized(
                         "MFA_CHALLENGE_INVALID",
@@ -347,9 +347,14 @@ public class V3AuthService {
         recordFailedAttempt(user.userId(), email, "pending_email_verification", metadata, now);
         Optional<V3VerificationChallenge> optionalChallenge = registrationRepository.findLatestChallenge(user.userId());
         Map<String, Object> details = new LinkedHashMap<>();
+        boolean bySms = optionalChallenge.map(V3VerificationChallenge::bySms).orElse(false);
         details.put("accountStatus", V3RegistrationPersistenceService.PENDING_EMAIL_STATUS);
-        details.put("verificationMethod", "email");
-        details.put("emailMasked", V3VerificationEmailSender.maskEmail(user.email()));
+        details.put("verificationMethod", bySms ? "sms" : "email");
+        if (bySms) {
+            details.put("contactMasked", optionalChallenge.get().emailMasked());
+        } else {
+            details.put("emailMasked", V3VerificationEmailSender.maskEmail(user.email()));
+        }
         details.put("registrationExpiresAt", user.createdAt().plus(properties.getRegistrationRetention()));
         if (optionalChallenge.isPresent()) {
             V3VerificationChallenge challenge = optionalChallenge.get();
@@ -376,7 +381,9 @@ public class V3AuthService {
         }
         return new V3AuthException(
                 "EMAIL_VERIFICATION_REQUIRED",
-                "Verify the registered email address before login.",
+                bySms
+                        ? "Verify your contact number with the SMS code before login."
+                        : "Verify the registered email address before login.",
                 HttpStatus.FORBIDDEN,
                 details
         );
@@ -384,7 +391,7 @@ public class V3AuthService {
 
     private boolean isExpiredUnverifiedRegistration(V3UserAccount user, Instant now) {
         return V3RegistrationPersistenceService.PENDING_EMAIL_STATUS.equals(user.status())
-                && user.emailVerifiedAt() == null
+                && user.verifiedAt() == null
                 && !now.isBefore(user.createdAt().plus(properties.getRegistrationRetention()));
     }
 

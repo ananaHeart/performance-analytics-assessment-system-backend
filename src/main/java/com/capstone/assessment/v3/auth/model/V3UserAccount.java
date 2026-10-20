@@ -16,7 +16,8 @@ public record V3UserAccount(
         String status,
         int failedLoginCount,
         Instant lockedUntilAt,
-        Instant emailVerifiedAt,
+        // When the teacher verified their email or contact number (whichever they chose); null if neither.
+        Instant verifiedAt,
         boolean mfaRequired,
         Instant createdAt
 ) {

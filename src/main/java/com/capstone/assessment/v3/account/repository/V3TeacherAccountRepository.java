@@ -77,7 +77,7 @@ public class V3TeacherAccountRepository {
                 TEACHER_SELECT + """
                          AND u.school_id = ?
                          AND status.status_name = ?
-                         AND u.email_verified_at IS NOT NULL
+                         AND (u.email_verified_at IS NOT NULL OR u.contact_verified_at IS NOT NULL)
                          ORDER BY u.last_name, u.first_name, u.middle_name, u.user_id
                         """,
                 this::mapTeacher,
@@ -91,7 +91,7 @@ public class V3TeacherAccountRepository {
                 TEACHER_SELECT + """
                          AND u.school_id = ?
                          AND u.user_id = ?
-                         AND u.email_verified_at IS NOT NULL
+                         AND (u.email_verified_at IS NOT NULL OR u.contact_verified_at IS NOT NULL)
                         """,
                 this::mapTeacher,
                 schoolId,
@@ -142,7 +142,7 @@ public class V3TeacherAccountRepository {
                             WHERE status_name = ?
                               AND is_active = TRUE
                        )
-                   AND email_verified_at IS NOT NULL
+                   AND (email_verified_at IS NOT NULL OR contact_verified_at IS NOT NULL)
                 """,
                 targetStatus,
                 Timestamp.from(updatedAt),

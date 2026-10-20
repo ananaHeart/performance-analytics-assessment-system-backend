@@ -11,6 +11,9 @@ public record V3VerificationChallenge(
         String email,
         String contactNumber,
         String verificationPurpose,
+        // "email" or "sms": where this code was sent.
+        String deliveryChannel,
+        // The masked email or phone number the code went to.
         String emailMasked,
         String codeHash,
         String challengeStatus,
@@ -25,10 +28,7 @@ public record V3VerificationChallenge(
         boolean emailVerified,
         boolean contactVerified
 ) {
-    public V3VerificationChallenge withContactVerified(boolean verified) {
-        return new V3VerificationChallenge(challengeId, challengeUuid, userId, addressId, schoolId, email,
-                contactNumber, verificationPurpose, emailMasked, codeHash, challengeStatus, deliveryStatus,
-                attemptCount, maximumAttemptCount, resendCount, nextResendAt, expiresAt, userCreatedAt,
-                accountStatus, emailVerified, verified);
+    public boolean bySms() {
+        return "sms".equals(deliveryChannel);
     }
 }

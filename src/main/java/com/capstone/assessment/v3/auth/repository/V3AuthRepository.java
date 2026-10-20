@@ -30,7 +30,7 @@ public class V3AuthRepository {
                    status.status_name,
                    u.failed_login_count,
                    u.locked_until_at,
-                   u.email_verified_at,
+                   COALESCE(u.email_verified_at, u.contact_verified_at) AS verified_at,
                    u.mfa_required,
                    u.created_at
               FROM users u
@@ -382,7 +382,7 @@ public class V3AuthRepository {
                 resultSet.getString("status_name"),
                 resultSet.getInt("failed_login_count"),
                 toInstant(resultSet.getTimestamp("locked_until_at")),
-                toInstant(resultSet.getTimestamp("email_verified_at")),
+                toInstant(resultSet.getTimestamp("verified_at")),
                 resultSet.getBoolean("mfa_required"),
                 resultSet.getTimestamp("created_at").toInstant()
         );

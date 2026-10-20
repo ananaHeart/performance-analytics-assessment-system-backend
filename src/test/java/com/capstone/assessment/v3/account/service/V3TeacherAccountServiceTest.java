@@ -163,6 +163,19 @@ class V3TeacherAccountServiceTest {
     }
 
     @Test
+    void aTeacherVerifiedBySmsOnlyCanBeApproved() {
+        V3TeacherAccount pending = teacher("pending_approval", null, NOW.minusSeconds(60));
+        when(repository.lockTeacher("SCHOOL-001", 42L)).thenReturn(Optional.of(pending));
+        when(repository.transitionStatus(
+                "SCHOOL-001", 42L, "pending_approval", "active", NOW
+        )).thenReturn(1);
+        when(repository.findVerifiedTeacher("SCHOOL-001", 42L))
+                .thenReturn(Optional.of(teacher("active", null, NOW.minusSeconds(60))));
+
+        assertEquals("active", service.approveTeacher(PRINCIPAL, 42L, METADATA).status());
+    }
+
+    @Test
     void rejectsVerifiedPendingTeacherWithTrimmedReasonAndAudit() {
         V3TeacherAccount pending = teacher("pending_approval", NOW.minusSeconds(60));
         V3TeacherAccount rejected = teacher("rejected", NOW.minusSeconds(60));
@@ -266,6 +279,10 @@ class V3TeacherAccountServiceTest {
     }
 
     private V3TeacherAccount teacher(String status, Instant emailVerifiedAt) {
+        return teacher(status, emailVerifiedAt, null);
+    }
+
+    private V3TeacherAccount teacher(String status, Instant emailVerifiedAt, Instant contactVerifiedAt) {
         return new V3TeacherAccount(
                 42L,
                 "SCHOOL-001",
@@ -289,7 +306,7 @@ class V3TeacherAccountServiceTest {
                 "teacher",
                 status,
                 emailVerifiedAt,
-                null,
+                contactVerifiedAt,
                 NOW.minusSeconds(3600),
                 NOW,
                 new V3TeacherAccount.Address(

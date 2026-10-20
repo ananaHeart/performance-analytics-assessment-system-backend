@@ -87,18 +87,6 @@ public class V3AuthController {
         ));
     }
 
-    /** A new SMS code for the registration's contact number (body: the email challengeUuid). */
-    @PostMapping("/resend-teacher-contact-verification")
-    public ResponseEntity<ApiResponse<V3RegistrationResponse.ContactVerification>> resendTeacherContactVerification(
-            @Valid @RequestBody V3ResendVerificationRequest request,
-            HttpServletRequest httpRequest
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                "A new SMS code was requested.",
-                registrationService.resendContact(request, requestMetadata(httpRequest, null))
-        ));
-    }
-
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<V3LoginResponse>> login(
             @Valid @RequestBody V3LoginRequest request,

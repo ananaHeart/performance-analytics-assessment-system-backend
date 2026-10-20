@@ -140,10 +140,10 @@ public class V3TeacherAccountService {
         V3TeacherAccount teacher = repository.lockTeacher(principal.schoolId(), teacherUserId)
                 .orElseThrow(this::teacherNotFound);
 
-        if (teacher.emailVerifiedAt() == null) {
+        if (teacher.emailVerifiedAt() == null && teacher.contactVerifiedAt() == null) {
             throw conflict(
                     "EMAIL_VERIFICATION_REQUIRED",
-                    "The teacher must verify the registered email before principal review."
+                    "The teacher must verify their email or contact number before principal review."
             );
         }
         if (!PENDING_APPROVAL_STATUS.equals(teacher.status())) {

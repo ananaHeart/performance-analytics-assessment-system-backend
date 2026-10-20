@@ -29,8 +29,7 @@ public record V3RegistrationReferenceDataResponse(
             long otpTtlSeconds,
             long resendCooldownSeconds,
             int maximumAttempts,
-            long registrationRetentionDays,
-            boolean contactSmsRequired
+            long registrationRetentionDays
     ) {
     }
 }

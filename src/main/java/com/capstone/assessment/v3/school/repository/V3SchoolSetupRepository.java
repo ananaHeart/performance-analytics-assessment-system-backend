@@ -257,7 +257,7 @@ public class V3SchoolSetupRepository {
                     ON status.status_id = teacher.status_id AND status.status_name = 'active'
                   LEFT JOIN suffixes suffix ON suffix.suffix_id = teacher.suffix_id
                  WHERE teacher.school_id = ?
-                   AND teacher.email_verified_at IS NOT NULL
+                   AND (teacher.email_verified_at IS NOT NULL OR teacher.contact_verified_at IS NOT NULL)
                  ORDER BY teacher.last_name, teacher.first_name, teacher.user_id
                 """, (rs, rowNum) -> new V3SchoolSetupReferenceDataResponse.TeacherOption(
                 rs.getLong("user_id"), rs.getString("full_name"), rs.getString("email")
@@ -319,7 +319,7 @@ public class V3SchoolSetupRepository {
                    AND teacher.school_id = ?
                    AND role.role_name = 'teacher'
                    AND status.status_name = 'active'
-                   AND teacher.email_verified_at IS NOT NULL
+                   AND (teacher.email_verified_at IS NOT NULL OR teacher.contact_verified_at IS NOT NULL)
                 """, teacherUserId, schoolId);
     }
 

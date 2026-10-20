@@ -57,7 +57,6 @@ public class V3SystemSecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v3/auth/register-teacher").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v3/auth/verify-teacher-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v3/auth/resend-teacher-verification").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v3/auth/resend-teacher-contact-verification").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v3/auth/mfa/login/verify").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v3/auth/logout").authenticated()

@@ -299,6 +299,7 @@ class V3AuthServiceTest {
                 user.email(),
                 "+639171234567",
                 "teacher_registration",
+                "email",
                 "t***r@example.com",
                 "otp-hash",
                 "pending",

@@ -6,8 +6,7 @@ import com.capstone.assessment.v3.auth.dto.V3ResendVerificationRequest;
 import com.capstone.assessment.v3.auth.dto.V3TeacherRegistrationRequest;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
 import com.capstone.assessment.v3.auth.exception.V3FieldValidationException;
-import com.capstone.assessment.v3.auth.model.V3PendingContactChallenge;
-import com.capstone.assessment.v3.auth.model.V3PendingEmailChallenge;
+import com.capstone.assessment.v3.auth.model.V3PendingRegistrationChallenge;
 import com.capstone.assessment.v3.auth.repository.V3RegistrationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,9 +20,9 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -62,12 +61,13 @@ class V3TeacherRegistrationServiceTest {
     @Test
     void registrationPurgesExpiredIdentityBeforeCreatingNewProvisionalAccount() {
         V3TeacherRegistrationRequest request = validRequest(LocalDate.of(1990, 1, 1));
-        V3PendingEmailChallenge challenge = pendingChallenge();
+        V3PendingRegistrationChallenge challenge = pendingChallenge();
         when(persistenceService.createRegistration(
                 eq("SCHOOL-001"),
                 eq(request),
                 eq("teacher@example.com"),
                 eq(NORMALIZED_CONTACT),
+                eq("email"),
                 any(V3RequestMetadata.class),
                 eq(NOW)
         )).thenReturn(challenge);
@@ -102,19 +102,20 @@ class V3TeacherRegistrationServiceTest {
                 exception.getErrors().get("birthDate")
         );
         verify(persistenceService, never()).createRegistration(
-                any(), any(), any(), any(), any(), any()
+                any(), any(), any(), any(), any(), any(), any()
         );
     }
 
     @Test
     void deliveryFailureKeepsAccountResumableAndReturnsChallengeDetails() {
         V3TeacherRegistrationRequest request = validRequest(LocalDate.of(1990, 1, 1));
-        V3PendingEmailChallenge challenge = pendingChallenge();
+        V3PendingRegistrationChallenge challenge = pendingChallenge();
         when(persistenceService.createRegistration(
                 eq("SCHOOL-001"),
                 eq(request),
                 eq("teacher@example.com"),
                 eq(NORMALIZED_CONTACT),
+                eq("email"),
                 any(V3RequestMetadata.class),
                 eq(NOW)
         )).thenReturn(challenge);
@@ -138,43 +139,61 @@ class V3TeacherRegistrationServiceTest {
     }
 
     @Test
-    void registrationFinishesWithEmailAloneWhenTheSmsCannotBeSent() {
-        V3TeacherRegistrationService smsService = serviceWithSmsGate(401, "{\"message\":\"Unauthorized\"}");
-        V3TeacherRegistrationRequest request = validRequest(LocalDate.of(1990, 1, 1));
-        V3PendingEmailChallenge challenge = pendingChallenge();
-        V3PendingContactChallenge contact = pendingContactChallenge();
-        when(persistenceService.createRegistration(
-                eq("SCHOOL-001"), eq(request), eq("teacher@example.com"), eq(NORMALIZED_CONTACT),
-                any(V3RequestMetadata.class), eq(NOW)
-        )).thenReturn(challenge);
-        when(persistenceService.createContactChallenge(42L, NORMALIZED_CONTACT, 0, NOW)).thenReturn(contact);
-        when(emailSender.sendVerificationCode(challenge.recipientEmail(), challenge.rawOtp()))
-                .thenReturn("local_log");
+    void choosingSmsSendsTheOnlyCodeByTextMessage() {
+        V3TeacherRegistrationService smsService = serviceWithSmsGate(202, "{\"id\":\"msg-1\"}");
+        V3TeacherRegistrationRequest request = validRequest(LocalDate.of(1990, 1, 1), "sms");
+        V3PendingRegistrationChallenge challenge = pendingSmsChallenge();
+        when(persistenceService.createRegistration(eq("SCHOOL-001"), eq(request), eq("teacher@example.com"),
+                eq(NORMALIZED_CONTACT), eq("sms"), any(V3RequestMetadata.class), eq(NOW))).thenReturn(challenge);
 
         V3RegistrationResponse response = smsService.register(request, metadata());
 
-        assertEquals("sent", response.deliveryStatus());
-        assertEquals(false, response.contactVerification().required());
-        assertEquals("failed", response.contactVerification().deliveryStatus());
-        verify(persistenceService).markContactDelivery(contact, false, V3SmsVerificationSender.SMSGATE_PROVIDER, NOW);
-        verify(persistenceService).markDeliverySent(challenge, "local_log", NOW);
+        assertEquals("sms", response.verificationMethod());
+        assertEquals("+63 9** *** 6789", response.contactMasked());
+        assertNull(response.emailMasked());
+        verify(persistenceService).markDeliverySent(challenge, V3SmsVerificationSender.SMSGATE_PROVIDER, NOW);
+        verify(emailSender, never()).sendVerificationCode(any(), any());
     }
 
     @Test
-    void aRateLimitedSmsResendIsRefusedInsteadOfSkippingTheSms() {
-        V3TeacherRegistrationService smsService = serviceWithSmsGate(429, "{\"message\":\"Too Many Requests\"}");
-        V3PendingContactChallenge contact = pendingContactChallenge();
-        when(persistenceService.prepareContactResend(eq("challenge-uuid"), any(V3RequestMetadata.class), eq(NOW)))
-                .thenReturn(contact);
+    void aFailedSmsKeepsTheAccountSoTheTeacherCanResendOrUseEmail() {
+        V3TeacherRegistrationService smsService = serviceWithSmsGate(401, "{\"message\":\"Unauthorized\"}");
+        V3TeacherRegistrationRequest request = validRequest(LocalDate.of(1990, 1, 1), "sms");
+        V3PendingRegistrationChallenge challenge = pendingSmsChallenge();
+        when(persistenceService.createRegistration(eq("SCHOOL-001"), eq(request), eq("teacher@example.com"),
+                eq(NORMALIZED_CONTACT), eq("sms"), any(V3RequestMetadata.class), eq(NOW))).thenReturn(challenge);
 
-        V3AuthException exception = assertThrows(
-                V3AuthException.class,
-                () -> smsService.resendContact(new V3ResendVerificationRequest("challenge-uuid"), metadata())
-        );
+        V3AuthException exception = assertThrows(V3AuthException.class, () -> smsService.register(request, metadata()));
 
-        assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatus());
-        assertEquals("SMS_RATE_LIMITED", exception.getCode());
-        verify(persistenceService, never()).markContactDelivery(any(), anyBoolean(), any(), any());
+        assertEquals("SMS_DELIVERY_FAILED", exception.getCode());
+        assertEquals(true, exception.getDetails().get("accountCreated"));
+        assertEquals("sms", exception.getDetails().get("verificationMethod"));
+        assertEquals(challenge.challengeUuid(), exception.getDetails().get("challengeUuid"));
+        verify(persistenceService).markDeliveryFailed(challenge, V3SmsVerificationSender.SMSGATE_PROVIDER, NOW);
+    }
+
+    @Test
+    void smsCannotBeChosenWhileItIsOff() {
+        V3FieldValidationException exception = assertThrows(V3FieldValidationException.class,
+                () -> service.register(validRequest(LocalDate.of(1990, 1, 1), "sms"), metadata()));
+
+        assertEquals("SMS verification is not available. Choose email.",
+                exception.getErrors().get("verificationMethod"));
+        verify(persistenceService, never()).createRegistration(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void aResendCanSwitchTheCodeToEmail() {
+        V3PendingRegistrationChallenge challenge = pendingChallenge();
+        when(persistenceService.prepareResend(eq("challenge-uuid"), eq("email"), any(V3RequestMetadata.class), eq(NOW)))
+                .thenReturn(challenge);
+        when(emailSender.sendVerificationCode(challenge.recipientEmail(), challenge.rawOtp())).thenReturn("local_log");
+
+        var response = service.resend(new V3ResendVerificationRequest("challenge-uuid", "email"), metadata());
+
+        assertEquals("email", response.verificationMethod());
+        assertEquals("t***r@example.com", response.emailMasked());
+        verify(persistenceService).markDeliverySent(challenge, "local_log", NOW);
     }
 
     private V3TeacherRegistrationService serviceWithSmsGate(int status, String body) {
@@ -187,15 +206,20 @@ class V3TeacherRegistrationServiceTest {
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
-    private V3PendingContactChallenge pendingContactChallenge() {
-        return new V3PendingContactChallenge(202L, "sms-uuid", 42L, NORMALIZED_CONTACT, "+63 9** *** 6789",
-                "654321", 0, NOW.plus(Duration.ofMinutes(10)), NOW.plus(Duration.ofMinutes(1)));
+    private V3PendingRegistrationChallenge pendingSmsChallenge() {
+        return new V3PendingRegistrationChallenge(102L, "challenge-uuid", 42L, 77L, "sms", "teacher@example.com",
+                NORMALIZED_CONTACT, "+63 9** *** 6789", "654321", 0, NOW.plus(Duration.ofMinutes(10)),
+                NOW.plus(Duration.ofMinutes(1)), NOW.plus(Duration.ofDays(30)));
     }
 
     private V3TeacherRegistrationRequest validRequest(LocalDate birthDate) {
+        return validRequest(birthDate, "email");
+    }
+
+    private V3TeacherRegistrationRequest validRequest(LocalDate birthDate, String verificationMethod) {
         return new V3TeacherRegistrationRequest(
                 "SCHOOL-001",
-                "email",
+                verificationMethod,
                 "Test",
                 null,
                 "Teacher",
@@ -225,13 +249,15 @@ class V3TeacherRegistrationServiceTest {
         );
     }
 
-    private V3PendingEmailChallenge pendingChallenge() {
-        return new V3PendingEmailChallenge(
+    private V3PendingRegistrationChallenge pendingChallenge() {
+        return new V3PendingRegistrationChallenge(
                 101L,
                 "challenge-uuid",
                 42L,
                 77L,
+                "email",
                 "teacher@example.com",
+                NORMALIZED_CONTACT,
                 "t***r@example.com",
                 "123456",
                 0,

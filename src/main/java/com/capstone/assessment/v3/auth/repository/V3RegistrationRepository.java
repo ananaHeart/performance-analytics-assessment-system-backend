@@ -32,6 +32,7 @@ public class V3RegistrationRepository {
                    u.email,
                    u.contact_number,
                    challenge.verification_purpose,
+                   challenge.delivery_channel,
                    challenge.destination_masked,
                    challenge.code_hash,
                    challenge.challenge_status,
@@ -235,26 +236,10 @@ public class V3RegistrationRepository {
         return requiredGeneratedKey(keyHolder, "teacher registration");
     }
 
+    /** A teacher-registration code sent by {@code channel}: "email" or "sms". */
     public long insertChallenge(
             String challengeUuid,
             long userId,
-            String destinationMasked,
-            String codeHash,
-            int maximumAttempts,
-            int resendCount,
-            Instant nextResendAt,
-            Instant expiresAt,
-            Instant createdAt
-    ) {
-        return insertChallenge(challengeUuid, userId, "teacher_registration", "email", destinationMasked,
-                codeHash, maximumAttempts, resendCount, nextResendAt, expiresAt, createdAt);
-    }
-
-    /** purpose/channel: teacher_registration/email, or contact_verification/sms. */
-    public long insertChallenge(
-            String challengeUuid,
-            long userId,
-            String purpose,
             String channel,
             String destinationMasked,
             String codeHash,
@@ -273,23 +258,22 @@ public class V3RegistrationRepository {
                         destination_masked, code_hash, challenge_status, delivery_status,
                         attempt_count, maximum_attempt_count, resend_count, next_resend_at,
                         expires_at, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 'queued',
+                    ) VALUES (?, ?, 'teacher_registration', ?, ?, ?, 'pending', 'queued',
                               0, ?, ?, ?, ?, ?, ?)
                     """,
                     Statement.RETURN_GENERATED_KEYS
             );
             statement.setString(1, challengeUuid);
             statement.setLong(2, userId);
-            statement.setString(3, purpose);
-            statement.setString(4, channel);
-            statement.setString(5, destinationMasked);
-            statement.setString(6, codeHash);
-            statement.setInt(7, maximumAttempts);
-            statement.setInt(8, resendCount);
-            statement.setTimestamp(9, Timestamp.from(nextResendAt));
-            statement.setTimestamp(10, Timestamp.from(expiresAt));
+            statement.setString(3, channel);
+            statement.setString(4, destinationMasked);
+            statement.setString(5, codeHash);
+            statement.setInt(6, maximumAttempts);
+            statement.setInt(7, resendCount);
+            statement.setTimestamp(8, Timestamp.from(nextResendAt));
+            statement.setTimestamp(9, Timestamp.from(expiresAt));
+            statement.setTimestamp(10, Timestamp.from(createdAt));
             statement.setTimestamp(11, Timestamp.from(createdAt));
-            statement.setTimestamp(12, Timestamp.from(createdAt));
             return statement;
         }, keyHolder);
         return requiredGeneratedKey(keyHolder, "verification challenge");
@@ -303,60 +287,11 @@ public class V3RegistrationRepository {
         ).stream().findFirst();
     }
 
-    /** The newest SMS contact challenge of a registration (any status), locked. */
-    public Optional<V3VerificationChallenge> findLatestContactChallengeForUpdate(long userId) {
-        return jdbcTemplate.query(
-                CHALLENGE_SELECT + """
-                         WHERE challenge.user_id = ?
-                           AND challenge.verification_purpose = 'contact_verification'
-                           AND challenge.delivery_channel = 'sms'
-                         ORDER BY challenge.created_at DESC, challenge.verification_challenge_id DESC
-                         LIMIT 1
-                         FOR UPDATE
-                        """,
-                this::mapChallenge,
-                userId
-        ).stream().findFirst();
-    }
-
-    public int countContactMessagesSince(long userId, Instant since) {
-        Integer count = jdbcTemplate.queryForObject(
-                """
-                SELECT COUNT(*)
-                  FROM verification_challenges
-                 WHERE user_id = ?
-                   AND verification_purpose = 'contact_verification'
-                   AND delivery_channel = 'sms'
-                   AND created_at >= ?
-                """,
-                Integer.class,
-                userId,
-                Timestamp.from(since)
-        );
-        return count == null ? 0 : count;
-    }
-
-    public int markContactVerified(long userId, Instant verifiedAt) {
-        return jdbcTemplate.update(
-                """
-                UPDATE users
-                   SET contact_verified_at = ?,
-                       updated_at = ?
-                 WHERE user_id = ?
-                   AND contact_verified_at IS NULL
-                """,
-                Timestamp.from(verifiedAt),
-                Timestamp.from(verifiedAt),
-                userId
-        );
-    }
-
     public Optional<V3VerificationChallenge> findLatestChallenge(long userId) {
         return jdbcTemplate.query(
                 CHALLENGE_SELECT + """
                          WHERE challenge.user_id = ?
                            AND challenge.verification_purpose = 'teacher_registration'
-                           AND challenge.delivery_channel = 'email'
                          ORDER BY challenge.created_at DESC, challenge.verification_challenge_id DESC
                          LIMIT 1
                         """,
@@ -372,7 +307,6 @@ public class V3RegistrationRepository {
                   FROM verification_challenges
                  WHERE user_id = ?
                    AND verification_purpose = 'teacher_registration'
-                   AND delivery_channel = 'email'
                    AND created_at >= ?
                 """,
                 Integer.class,
@@ -509,6 +443,26 @@ public class V3RegistrationRepository {
         );
     }
 
+    /** The SMS counterpart of markUserEmailVerified: the teacher verified their contact number. */
+    public int markUserContactVerified(long userId, int pendingStatusId, int verifiedStatusId, Instant verifiedAt) {
+        return jdbcTemplate.update(
+                """
+                UPDATE users
+                   SET status_id = ?,
+                       contact_verified_at = ?,
+                       updated_at = ?
+                 WHERE user_id = ?
+                   AND status_id = ?
+                   AND contact_verified_at IS NULL
+                """,
+                verifiedStatusId,
+                Timestamp.from(verifiedAt),
+                Timestamp.from(verifiedAt),
+                userId,
+                pendingStatusId
+        );
+    }
+
     public List<Long> findExpiredProvisionalUserIds(Instant cutoff, int limit) {
         return jdbcTemplate.query(
                 """
@@ -517,6 +471,7 @@ public class V3RegistrationRepository {
                   JOIN statuses status ON status.status_id = u.status_id
                  WHERE status.status_name = 'pending_email_verification'
                    AND u.email_verified_at IS NULL
+                   AND u.contact_verified_at IS NULL
                    AND u.created_at <= ?
                  ORDER BY u.created_at, u.user_id
                  LIMIT ?
@@ -539,6 +494,7 @@ public class V3RegistrationRepository {
                   JOIN statuses status ON status.status_id = u.status_id
                  WHERE status.status_name = 'pending_email_verification'
                    AND u.email_verified_at IS NULL
+                   AND u.contact_verified_at IS NULL
                    AND u.created_at <= ?
                    AND ((? IS NOT NULL AND LOWER(u.email) = LOWER(?))
                         OR (? IS NOT NULL AND u.contact_number = ?))
@@ -562,6 +518,7 @@ public class V3RegistrationRepository {
                  WHERE u.user_id = ?
                    AND status.status_name = 'pending_email_verification'
                    AND u.email_verified_at IS NULL
+                   AND u.contact_verified_at IS NULL
                  FOR UPDATE
                 """,
                 (resultSet, rowNumber) -> new V3ProvisionalUser(
@@ -597,6 +554,7 @@ public class V3RegistrationRepository {
                  WHERE u.user_id = ?
                    AND status.status_name = 'pending_email_verification'
                    AND u.email_verified_at IS NULL
+                   AND u.contact_verified_at IS NULL
                    AND u.created_at <= ?
                 """,
                 userId,
@@ -648,6 +606,7 @@ public class V3RegistrationRepository {
                 resultSet.getString("email"),
                 resultSet.getString("contact_number"),
                 resultSet.getString("verification_purpose"),
+                resultSet.getString("delivery_channel"),
                 resultSet.getString("destination_masked"),
                 resultSet.getString("code_hash"),
                 resultSet.getString("challenge_status"),

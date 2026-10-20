@@ -2,7 +2,7 @@ package com.capstone.assessment.v3.auth.service;
 
 import com.capstone.assessment.v3.auth.config.V3AuthProperties;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
-import com.capstone.assessment.v3.auth.model.V3PendingEmailChallenge;
+import com.capstone.assessment.v3.auth.model.V3PendingRegistrationChallenge;
 import com.capstone.assessment.v3.auth.model.V3ProvisionalUser;
 import com.capstone.assessment.v3.auth.model.V3VerificationChallenge;
 import com.capstone.assessment.v3.auth.repository.V3RegistrationRepository;
@@ -19,10 +19,14 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -103,6 +107,7 @@ class V3RegistrationPersistenceServiceTest {
         when(repository.insertChallenge(
                 anyString(),
                 eq(challenge.userId()),
+                eq("email"),
                 eq(challenge.emailMasked()),
                 eq("replacement-otp-hash"),
                 eq(5),
@@ -112,11 +117,58 @@ class V3RegistrationPersistenceServiceTest {
                 eq(NOW)
         )).thenReturn(202L);
 
-        V3PendingEmailChallenge replacement = service.prepareResend("challenge-uuid", metadata(), NOW);
+        V3PendingRegistrationChallenge replacement = service.prepareResend("challenge-uuid", null, metadata(), NOW);
 
         assertEquals(USER_CREATED_AT.plus(Duration.ofDays(30)), replacement.registrationExpiresAt());
         assertEquals(challenge.resendCount() + 1, replacement.resendCount());
         verify(repository).cancelChallenge(challenge.challengeId(), NOW);
+    }
+
+    @Test
+    void anSmsCodeVerifiesTheContactNumberNotTheEmail() {
+        V3VerificationChallenge challenge = challenge("sms", "sent", 0, "pending", NOW.plusSeconds(300), null);
+        when(repository.findChallengeForUpdate("challenge-uuid")).thenReturn(Optional.of(challenge));
+        when(passwordEncoder.matches("123456", "otp-hash")).thenReturn(true);
+        when(repository.findStatusId("pending_email_verification")).thenReturn(1);
+        when(repository.findStatusId("pending_approval")).thenReturn(2);
+        when(repository.markUserContactVerified(challenge.userId(), 1, 2, NOW)).thenReturn(1);
+
+        service.verify("challenge-uuid", "123456", metadata(), NOW);
+
+        verify(repository, never()).markUserEmailVerified(anyLong(), anyInt(), anyInt(), any());
+        verify(auditService).record(eq(challenge.userId()), eq("VERIFY_TEACHER_CONTACT"),
+                eq("verification_challenges"), eq(challenge.challengeUuid()), eq("success"), eq(metadata()),
+                anyMap(), eq(NOW));
+        verify(notificationService).notifyTeacherPendingApproval(challenge.userId(), NOW);
+    }
+
+    @Test
+    void aFailedSmsCanSwitchToEmailRightAwayWithoutTheCooldown() {
+        V3VerificationChallenge challenge = challenge("sms", "failed", 0, "pending",
+                NOW.plusSeconds(300), NOW.plusSeconds(60));
+        when(repository.findChallengeForUpdate("challenge-uuid")).thenReturn(Optional.of(challenge));
+        when(passwordEncoder.encode(anyString())).thenReturn("replacement-otp-hash");
+        when(repository.insertChallenge(anyString(), eq(challenge.userId()), eq("email"), eq("t***r@example.com"),
+                eq("replacement-otp-hash"), eq(5), eq(challenge.resendCount() + 1), any(), any(), eq(NOW)))
+                .thenReturn(202L);
+
+        V3PendingRegistrationChallenge replacement = service.prepareResend("challenge-uuid", "email", metadata(), NOW);
+
+        assertEquals("email", replacement.deliveryChannel());
+        assertEquals("teacher@example.com", replacement.recipientEmail());
+        verify(repository).cancelChallenge(challenge.challengeId(), NOW);
+    }
+
+    @Test
+    void switchingToSmsIsRefusedWhileSmsIsOff() {
+        V3VerificationChallenge challenge = challenge(0, "pending", NOW.plusSeconds(300), null);
+        when(repository.findChallengeForUpdate("challenge-uuid")).thenReturn(Optional.of(challenge));
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> service.prepareResend("challenge-uuid", "sms", metadata(), NOW));
+
+        assertEquals("SMS_NOT_AVAILABLE", exception.getCode());
+        verify(repository, never()).cancelChallenge(anyLong(), any());
     }
 
     @Test
@@ -168,6 +220,17 @@ class V3RegistrationPersistenceServiceTest {
             Instant expiresAt,
             Instant nextResendAt
     ) {
+        return challenge("email", "sent", attemptCount, status, expiresAt, nextResendAt);
+    }
+
+    private V3VerificationChallenge challenge(
+            String channel,
+            String deliveryStatus,
+            int attemptCount,
+            String status,
+            Instant expiresAt,
+            Instant nextResendAt
+    ) {
         return new V3VerificationChallenge(
                 101L,
                 "challenge-uuid",
@@ -177,10 +240,11 @@ class V3RegistrationPersistenceServiceTest {
                 "teacher@example.com",
                 "+639171234567",
                 "teacher_registration",
-                "t***r@example.com",
+                channel,
+                "sms".equals(channel) ? "+63 9** *** 4567" : "t***r@example.com",
                 "otp-hash",
                 status,
-                "sent",
+                deliveryStatus,
                 attemptCount,
                 5,
                 1,

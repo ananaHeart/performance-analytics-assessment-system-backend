@@ -4,26 +4,16 @@ import java.time.Instant;
 
 public record V3RegistrationResponse(
         String accountStatus,
+        // "email" or "sms": where the code went; only that one code is needed.
         String verificationMethod,
+        // Set for email; null for sms.
         String emailMasked,
+        // Set for sms; null for email.
+        String contactMasked,
         String challengeUuid,
         String deliveryStatus,
         Instant otpExpiresAt,
         Instant resendAvailableAt,
-        Instant registrationExpiresAt,
-        // Null while SMS verification is off.
-        ContactVerification contactVerification
+        Instant registrationExpiresAt
 ) {
-    /**
-     * The SMS code for the contact number. While {@code required}, the teacher enters it together
-     * with the email code; when the SMS could not be sent it is not required.
-     */
-    public record ContactVerification(
-            boolean required,
-            String contactMasked,
-            String deliveryStatus,
-            Instant codeExpiresAt,
-            Instant resendAvailableAt
-    ) {
-    }
 }

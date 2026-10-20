@@ -653,7 +653,7 @@ public class V3MfaService {
     private V3UserAccount requireActiveUser(long userId) {
         return authRepository.findUserById(userId)
                 .filter(user -> "active".equalsIgnoreCase(user.status()))
-                .filter(user -> user.emailVerifiedAt() != null)
+                .filter(user -> user.verifiedAt() != null)
                 .orElseThrow(() -> new V3AuthException(
                         "ACCOUNT_NOT_ACTIVE",
                         "An active, verified account is required.",
