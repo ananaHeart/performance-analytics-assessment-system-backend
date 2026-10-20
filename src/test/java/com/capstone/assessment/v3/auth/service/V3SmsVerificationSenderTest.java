@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,11 +22,11 @@ class V3SmsVerificationSenderTest {
 
     private final List<Call> calls = new ArrayList<>();
 
-    private V3AuthProperties philsms() {
+    private V3AuthProperties smsgate() {
         V3AuthProperties properties = new V3AuthProperties();
-        properties.setSmsMode("philsms");
-        properties.setPhilsmsApiToken("token-123");
-        properties.setPhilsmsSenderId("MARKA");
+        properties.setSmsMode("smsgate");
+        properties.setSmsgateUsername("GATEUSER");
+        properties.setSmsgatePassword("gate-pass");
         return properties;
     }
 
@@ -36,12 +38,12 @@ class V3SmsVerificationSenderTest {
     }
 
     @Test
-    void offByDefaultAndPhilSmsNeedsItsToken() {
+    void offByDefaultAndTheGatewayNeedsItsLogin() {
         assertThat(new V3SmsVerificationSender(new V3AuthProperties()).isEnabled()).isFalse();
-        V3AuthProperties noToken = philsms();
-        noToken.setPhilsmsApiToken(" ");
-        assertThat(new V3SmsVerificationSender(noToken).isEnabled()).isFalse();
-        assertThat(new V3SmsVerificationSender(philsms()).isEnabled()).isTrue();
+        V3AuthProperties noPassword = smsgate();
+        noPassword.setSmsgatePassword(" ");
+        assertThat(new V3SmsVerificationSender(noPassword).isEnabled()).isFalse();
+        assertThat(new V3SmsVerificationSender(smsgate()).isEnabled()).isTrue();
     }
 
     @Test
@@ -56,32 +58,26 @@ class V3SmsVerificationSenderTest {
     }
 
     @Test
-    void philSmsGetsTheBackendsOwnCodeWithBearerAuth() throws Exception {
-        V3SmsVerificationSender sender = sender(philsms(), 200, "{\"status\":\"success\",\"data\":{}}");
+    void theGatewayGetsTheBackendsOwnCodeWithBasicAuth() throws Exception {
+        V3SmsVerificationSender sender = sender(smsgate(), 202, "{\"id\":\"msg-1\",\"state\":\"Pending\"}");
 
-        assertThat(sender.send("+639171234567", "482913")).isEqualTo(V3SmsVerificationSender.PHILSMS_PROVIDER);
+        assertThat(sender.send("+639171234567", "482913")).isEqualTo(V3SmsVerificationSender.SMSGATE_PROVIDER);
 
         Call call = calls.get(0);
-        assertThat(call.url().toString()).isEqualTo("https://app.philsms.com/api/v3/sms/send");
-        assertThat(call.auth()).isEqualTo("Bearer token-123");
+        assertThat(call.url().toString()).isEqualTo("https://api.sms-gate.app/3rdparty/v1/messages");
+        assertThat(call.auth()).isEqualTo("Basic "
+                + Base64.getEncoder().encodeToString("GATEUSER:gate-pass".getBytes(StandardCharsets.UTF_8)));
         JsonNode body = new ObjectMapper().readTree(call.body());
-        assertThat(body.path("recipient").asText()).isEqualTo("639171234567");
-        assertThat(body.path("sender_id").asText()).isEqualTo("MARKA");
-        assertThat(body.path("type").asText()).isEqualTo("plain");
-        assertThat(body.path("message").asText())
+        assertThat(body.path("phoneNumbers").get(0).asText()).isEqualTo("+639171234567");
+        assertThat(body.path("textMessage").path("text").asText())
                 .isEqualTo("Your Marka verification code is 482913. It expires in 10 minutes. Do not share this code.");
     }
 
     @Test
-    void anErrorStatusAnHttpFailureOrAnOutageMeansSmsIsUnavailable() {
-        // PhilSMS can answer HTTP 200 with an error body, e.g. when the account has no credit.
-        assertThatThrownBy(() -> sender(philsms(), 200, "{\"status\":\"error\",\"message\":\"Insufficient balance\"}")
-                .send("+639171234567", "1"))
+    void aRejectedLoginOrAnOutageMeansSmsIsUnavailable() {
+        assertThatThrownBy(() -> sender(smsgate(), 401, "{\"message\":\"Unauthorized\"}").send("+639171234567", "1"))
                 .isInstanceOf(V3SmsVerificationSender.SmsUnavailableException.class);
-        assertThatThrownBy(() -> sender(philsms(), 401, "{\"status\":\"error\",\"message\":\"Unauthenticated.\"}")
-                .send("+639171234567", "1"))
-                .isInstanceOf(V3SmsVerificationSender.SmsUnavailableException.class);
-        V3SmsVerificationSender unreachable = new V3SmsVerificationSender(philsms(), (url, auth, json) -> {
+        V3SmsVerificationSender unreachable = new V3SmsVerificationSender(smsgate(), (url, auth, json) -> {
             throw new IOException("no route");
         });
         assertThatThrownBy(() -> unreachable.send("+639171234567", "1"))
@@ -90,7 +86,7 @@ class V3SmsVerificationSenderTest {
 
     @Test
     void aRateLimitIsNotTreatedAsAnOutage() {
-        assertThatThrownBy(() -> sender(philsms(), 429, "{\"status\":\"error\",\"message\":\"Too Many Attempts.\"}")
+        assertThatThrownBy(() -> sender(smsgate(), 429, "{\"message\":\"Too Many Requests\"}")
                 .send("+639171234567", "1"))
                 .isInstanceOf(V3SmsVerificationSender.SmsRateLimitedException.class);
     }

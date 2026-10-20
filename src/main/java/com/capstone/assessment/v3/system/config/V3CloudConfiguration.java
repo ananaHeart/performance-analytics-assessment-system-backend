@@ -117,8 +117,8 @@ public class V3CloudConfiguration {
         required(environment, "app.v3.auth.email-from-address");
         // Log mode never sends the SMS, so a required code would never reach the teacher.
         String smsMode = environment.getProperty("app.v3.auth.sms-mode", "off").trim().toLowerCase(Locale.ROOT);
-        require("off".equals(smsMode) || "philsms".equals(smsMode),
-                "Cloud SMS verification must be off or philsms, never log-only codes.");
+        require("off".equals(smsMode) || "smsgate".equals(smsMode),
+                "Cloud SMS verification must be off or smsgate, never log-only codes.");
         try {
             require(Base64.getDecoder().decode(required(environment, "app.v3.auth.mfa.encryption-key")).length == 32,
                     "Cloud MFA requires a stable base64-encoded 32-byte encryption key.");

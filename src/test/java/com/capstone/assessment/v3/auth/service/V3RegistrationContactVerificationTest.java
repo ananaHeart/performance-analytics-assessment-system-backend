@@ -41,7 +41,8 @@ class V3RegistrationContactVerificationTest {
     private V3RegistrationPersistenceService service(String smsMode, V3SmsVerificationSender.SmsTransport transport) {
         V3AuthProperties properties = new V3AuthProperties();
         properties.setSmsMode(smsMode);
-        properties.setPhilsmsApiToken("token-123");
+        properties.setSmsgateUsername("GATEUSER");
+        properties.setSmsgatePassword("gate-pass");
         V3SmsVerificationSender sender = transport == null
                 ? new V3SmsVerificationSender(properties)
                 : new V3SmsVerificationSender(properties, transport);
@@ -94,14 +95,14 @@ class V3RegistrationContactVerificationTest {
     }
 
     @Test
-    void philSmsModeChecksTheCodeHereWithoutCallingPhilSms() {
+    void gatewayModeChecksTheCodeHereWithoutCallingTheGateway() {
         stubEmailCodeAccepted();
         when(passwordEncoder.matches("654321", "sms-hash")).thenReturn(true);
         V3SmsVerificationSender.SmsTransport mustNotBeCalled = (url, auth, json) -> {
             throw new AssertionError("verification must not call the SMS provider");
         };
 
-        V3VerificationChallenge result = service("philsms", mustNotBeCalled)
+        V3VerificationChallenge result = service("smsgate", mustNotBeCalled)
                 .verify("email-uuid", "123456", "654321", null, NOW);
 
         assertThat(result.contactVerified()).isTrue();

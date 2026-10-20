@@ -16,14 +16,17 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.LinkedHashMap;
+import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 /**
  * Delivers the registration SMS code. The backend always makes and checks the code itself; this
  * class only delivers it. In "log" mode the code is written to the server log (local testing,
- * nothing sent). In "philsms" mode PhilSMS sends it over HTTPS, which also works on Render Free.
+ * nothing sent). In "smsgate" mode the SMS Gateway for Android cloud server hands it to the
+ * school's Android phone, which texts it from its own SIM. That needs no sender-name registration
+ * and works over HTTPS from Render Free.
  */
 @Profile("v3")
 @Component
@@ -32,9 +35,9 @@ public class V3SmsVerificationSender {
     private static final Logger LOGGER = LoggerFactory.getLogger(V3SmsVerificationSender.class);
     private static final ObjectMapper JSON = new ObjectMapper();
     public static final String LOG_PROVIDER = "local_log";
-    public static final String PHILSMS_PROVIDER = "philsms";
+    public static final String SMSGATE_PROVIDER = "smsgate";
 
-    /** The provider could not send the code (not configured, no credit, outage...). */
+    /** The code could not be handed over (not configured, wrong login, outage...). */
     public static class SmsUnavailableException extends RuntimeException {
         public SmsUnavailableException(String message) {
             super(message);
@@ -42,7 +45,7 @@ public class V3SmsVerificationSender {
     }
 
     /**
-     * The provider refused for now (HTTP 429). Unlike {@link SmsUnavailableException} this must
+     * The gateway refused for now (HTTP 429). Unlike {@link SmsUnavailableException} this must
      * never fall back to email alone, or anyone could skip the SMS code by resending until refused.
      */
     public static class SmsRateLimitedException extends RuntimeException {
@@ -51,7 +54,7 @@ public class V3SmsVerificationSender {
         }
     }
 
-    /** One JSON POST to the SMS provider; returns the HTTP status and body. */
+    /** One JSON POST to the SMS gateway; returns the HTTP status and body. */
     @FunctionalInterface
     interface SmsTransport {
         Response post(URI url, String authorization, String jsonBody) throws IOException, InterruptedException;
@@ -76,14 +79,14 @@ public class V3SmsVerificationSender {
     public boolean isEnabled() {
         return switch (mode()) {
             case "log" -> true;
-            case "philsms" -> hasText(properties.getPhilsmsApiToken()) && hasText(properties.getPhilsmsSenderId());
+            case "smsgate" -> hasText(properties.getSmsgateUsername()) && hasText(properties.getSmsgatePassword());
             default -> false;
         };
     }
 
     /** The provider name stored on a challenge, also when sending failed. */
     public String provider() {
-        return "log".equals(mode()) ? LOG_PROVIDER : PHILSMS_PROVIDER;
+        return "log".equals(mode()) ? LOG_PROVIDER : SMSGATE_PROVIDER;
     }
 
     /** Sends {@code code} to {@code phoneE164}; returns the provider name stored on the challenge. */
@@ -95,21 +98,18 @@ public class V3SmsVerificationSender {
             LOGGER.warn("LOCAL-ONLY V3 contact verification code for {}: {}", maskPhone(phoneE164), code);
             return provider();
         }
-        Map<String, String> body = new LinkedHashMap<>();
-        // PhilSMS takes 63XXXXXXXXXX: the country code without "+".
-        body.put("recipient", phoneE164.startsWith("+") ? phoneE164.substring(1) : phoneE164);
-        body.put("sender_id", properties.getPhilsmsSenderId().trim());
-        body.put("type", "plain");
-        body.put("message", message(code));
-        Response response = post("/sms/send", body);
+        Map<String, Object> body = Map.of(
+                "textMessage", Map.of("text", message(code)),
+                "phoneNumbers", List.of(phoneE164));
+        Response response = post("/messages", body);
         if (response.status() == 429) {
-            LOGGER.warn("PhilSMS rate-limited {}: {}", maskPhone(phoneE164), providerError(response.body()));
+            LOGGER.warn("SMS gateway rate-limited {}: {}", maskPhone(phoneE164), gatewayError(response.body()));
             throw new SmsRateLimitedException("Too many SMS codes were requested. Wait a minute and try again.");
         }
-        // PhilSMS can answer 200 with {"status":"error"} (e.g. no credit), so both are checked.
-        if (response.status() < 200 || response.status() >= 300 || !"success".equals(status(response.body()))) {
-            LOGGER.error("PhilSMS could not send to {}: HTTP {} {}", maskPhone(phoneE164),
-                    response.status(), providerError(response.body()));
+        // 202 Accepted: queued for the phone, which texts it as soon as it is online.
+        if (response.status() < 200 || response.status() >= 300) {
+            LOGGER.error("SMS gateway could not send to {}: HTTP {} {}", maskPhone(phoneE164),
+                    response.status(), gatewayError(response.body()));
             throw new SmsUnavailableException("The SMS code could not be sent.");
         }
         return provider();
@@ -131,13 +131,14 @@ public class V3SmsVerificationSender {
         return phoneE164.startsWith("+63") ? "+63 9** *** " + last4 : "*** *** " + last4;
     }
 
-    private Response post(String path, Map<String, String> body) {
-        URI url = URI.create(properties.getPhilsmsApiUrl().replaceAll("/+$", "") + path);
+    private Response post(String path, Map<String, Object> body) {
+        URI url = URI.create(properties.getSmsgateApiUrl().replaceAll("/+$", "") + path);
+        String credentials = properties.getSmsgateUsername().trim() + ":" + properties.getSmsgatePassword().trim();
+        String basicAuth = "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
         try {
-            return transport.post(url, "Bearer " + properties.getPhilsmsApiToken().trim(),
-                    JSON.writeValueAsString(body));
+            return transport.post(url, basicAuth, JSON.writeValueAsString(body));
         } catch (IOException exception) {
-            LOGGER.error("PhilSMS request failed: {}", exception.toString());
+            LOGGER.error("SMS gateway request failed: {}", exception.toString());
             throw new SmsUnavailableException("The SMS service could not be reached.");
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
@@ -145,15 +146,7 @@ public class V3SmsVerificationSender {
         }
     }
 
-    private static String status(String body) {
-        try {
-            return JSON.readTree(body == null ? "" : body).path("status").asText("");
-        } catch (IOException exception) {
-            return "";
-        }
-    }
-
-    private static String providerError(String body) {
+    private static String gatewayError(String body) {
         try {
             JsonNode node = JSON.readTree(body == null ? "" : body);
             return node.path("message").asText("(no message)");

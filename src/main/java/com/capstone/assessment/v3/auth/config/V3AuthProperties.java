@@ -28,15 +28,15 @@ public class V3AuthProperties {
     private String brevoApiUrl = "https://api.brevo.com/v3/smtp/email";
     /**
      * Contact-number (SMS) verification at registration: off, log (local only: the code is written
-     * to the server log, no SMS is sent) or philsms. While on, a teacher confirms both the
+     * to the server log, no SMS is sent) or smsgate. While on, a teacher confirms both the
      * email code and the SMS code; when off or when an SMS can't be sent, registration falls back
      * to the email code alone and the contact number stays unverified.
      */
     private String smsMode = "off";
-    private String philsmsApiToken;
-    // Up to 11 letters; "PhilSMS" works before the school's own sender name is approved.
-    private String philsmsSenderId = "PhilSMS";
-    private String philsmsApiUrl = "https://app.philsms.com/api/v3";
+    // Login shown in the SMS Gateway for Android app (Home tab, Cloud server).
+    private String smsgateUsername;
+    private String smsgatePassword;
+    private String smsgateApiUrl = "https://api.sms-gate.app/3rdparty/v1";
 
     public Duration getSessionTtl() {
         return sessionTtl;
@@ -166,27 +166,27 @@ public class V3AuthProperties {
         this.smsMode = smsMode;
     }
 
-    public String getPhilsmsApiToken() {
-        return philsmsApiToken;
+    public String getSmsgateUsername() {
+        return smsgateUsername;
     }
 
-    public void setPhilsmsApiToken(String philsmsApiToken) {
-        this.philsmsApiToken = philsmsApiToken;
+    public void setSmsgateUsername(String smsgateUsername) {
+        this.smsgateUsername = smsgateUsername;
     }
 
-    public String getPhilsmsSenderId() {
-        return philsmsSenderId;
+    public String getSmsgatePassword() {
+        return smsgatePassword;
     }
 
-    public void setPhilsmsSenderId(String philsmsSenderId) {
-        this.philsmsSenderId = philsmsSenderId;
+    public void setSmsgatePassword(String smsgatePassword) {
+        this.smsgatePassword = smsgatePassword;
     }
 
-    public String getPhilsmsApiUrl() {
-        return philsmsApiUrl;
+    public String getSmsgateApiUrl() {
+        return smsgateApiUrl;
     }
 
-    public void setPhilsmsApiUrl(String philsmsApiUrl) {
-        this.philsmsApiUrl = philsmsApiUrl;
+    public void setSmsgateApiUrl(String smsgateApiUrl) {
+        this.smsgateApiUrl = smsgateApiUrl;
     }
 }
