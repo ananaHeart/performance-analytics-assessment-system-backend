@@ -153,8 +153,7 @@ public class V3TeacherRegistrationService {
         if (RATE_LIMITED.equals(contact.deliveryStatus())) {
             throw new V3AuthException(
                     "SMS_RATE_LIMITED",
-                    "Too many SMS codes were requested for this number. Use the last code you received "
-                            + "or try again in 10 minutes.",
+                    "Too many SMS codes were requested. Wait a minute, then tap Resend SMS code.",
                     HttpStatus.TOO_MANY_REQUESTS
             );
         }
@@ -180,13 +179,12 @@ public class V3TeacherRegistrationService {
             provider = smsSender.send(challenge.contactNumber(), challenge.rawCode());
             sent = true;
         } catch (V3SmsVerificationSender.SmsRateLimitedException rateLimited) {
-            // Twilio keeps the code it already sent to this number valid, so the SMS stays required.
+            // The code didn't go out, but the SMS stays required (never email alone): resend later.
             return new V3RegistrationResponse.ContactVerification(
                     true, challenge.contactMasked(), RATE_LIMITED,
                     challenge.codeExpiresAt(), challenge.resendAvailableAt());
         } catch (V3SmsVerificationSender.SmsUnavailableException exception) {
-            provider = smsSender.checksOwnCode() ? V3SmsVerificationSender.LOG_PROVIDER
-                    : V3SmsVerificationSender.TWILIO_PROVIDER;
+            provider = smsSender.provider();
             sent = false;
         }
         persistenceService.markContactDelivery(challenge, sent, provider, now);

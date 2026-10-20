@@ -8,7 +8,6 @@ import com.capstone.assessment.v3.notification.service.V3NotificationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -39,12 +38,10 @@ class V3RegistrationContactVerificationTest {
     private final V3VerificationChallenge smsChallenge = challenge(202L, "sms-uuid", "contact_verification",
             "+63 9** *** 4567", "sms-hash");
 
-    private V3RegistrationPersistenceService service(String smsMode, V3SmsVerificationSender.TwilioTransport transport) {
+    private V3RegistrationPersistenceService service(String smsMode, V3SmsVerificationSender.SmsTransport transport) {
         V3AuthProperties properties = new V3AuthProperties();
         properties.setSmsMode(smsMode);
-        properties.setTwilioAccountSid("ACtest");
-        properties.setTwilioAuthToken("secret");
-        properties.setTwilioVerifyServiceSid("VAtest");
+        properties.setPhilsmsApiToken("token-123");
         V3SmsVerificationSender sender = transport == null
                 ? new V3SmsVerificationSender(properties)
                 : new V3SmsVerificationSender(properties, transport);
@@ -97,19 +94,18 @@ class V3RegistrationContactVerificationTest {
     }
 
     @Test
-    void whenTheSmsProviderIsGoneTheEmailCodeAloneFinishes() {
+    void philSmsModeChecksTheCodeHereWithoutCallingPhilSms() {
         stubEmailCodeAccepted();
-        V3SmsVerificationSender.TwilioTransport outage = (url, auth, form) -> {
-            throw new IOException("trial ended / unreachable");
+        when(passwordEncoder.matches("654321", "sms-hash")).thenReturn(true);
+        V3SmsVerificationSender.SmsTransport mustNotBeCalled = (url, auth, json) -> {
+            throw new AssertionError("verification must not call the SMS provider");
         };
 
-        V3VerificationChallenge result = service("twilio-verify", outage)
+        V3VerificationChallenge result = service("philsms", mustNotBeCalled)
                 .verify("email-uuid", "123456", "654321", null, NOW);
 
-        assertThat(result.contactVerified()).isFalse();
-        verify(repository).cancelChallenge(202L, NOW);
-        verify(repository, never()).markContactVerified(anyLong(), any());
-        verify(repository).markUserEmailVerified(42L, 1, 2, NOW);
+        assertThat(result.contactVerified()).isTrue();
+        verify(repository).markContactVerified(42L, NOW);
     }
 
     @Test
@@ -145,21 +141,6 @@ class V3RegistrationContactVerificationTest {
                 .isInstanceOfSatisfying(V3AuthException.class,
                         exception -> assertThat(exception.getCode()).isEqualTo("CONTACT_CODE_EXPIRED"));
         verify(repository).markChallengeExpired(202L, NOW);
-        verify(repository, never()).markUserEmailVerified(anyLong(), anyInt(), anyInt(), any());
-    }
-
-    @Test
-    void twilioRefusingMoreGuessesLocksInsteadOfFallingBack() {
-        stubEmailCodeAccepted();
-        V3SmsVerificationSender.TwilioTransport tooManyChecks = (url, auth, form) ->
-                new V3SmsVerificationSender.Response(429, "{\"code\":60202,\"message\":\"Max check attempts reached\"}");
-
-        assertThatThrownBy(() -> service("twilio-verify", tooManyChecks)
-                .verify("email-uuid", "123456", "000000", null, NOW))
-                .isInstanceOfSatisfying(V3AuthException.class,
-                        exception -> assertThat(exception.getCode()).isEqualTo("CONTACT_CHALLENGE_LOCKED"));
-        verify(repository).recordInvalidAttempt(202L, 5, true, NOW);
-        verify(repository, never()).cancelChallenge(anyLong(), any());
         verify(repository, never()).markUserEmailVerified(anyLong(), anyInt(), anyInt(), any());
     }
 

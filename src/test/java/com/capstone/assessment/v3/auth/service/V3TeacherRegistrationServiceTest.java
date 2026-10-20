@@ -139,7 +139,7 @@ class V3TeacherRegistrationServiceTest {
 
     @Test
     void registrationFinishesWithEmailAloneWhenTheSmsCannotBeSent() {
-        V3TeacherRegistrationService smsService = serviceWithTwilio(403, "{\"code\":20003,\"message\":\"Trial ended\"}");
+        V3TeacherRegistrationService smsService = serviceWithPhilSms(200, "{\"status\":\"error\",\"message\":\"Insufficient balance\"}");
         V3TeacherRegistrationRequest request = validRequest(LocalDate.of(1990, 1, 1));
         V3PendingEmailChallenge challenge = pendingChallenge();
         V3PendingContactChallenge contact = pendingContactChallenge();
@@ -156,13 +156,13 @@ class V3TeacherRegistrationServiceTest {
         assertEquals("sent", response.deliveryStatus());
         assertEquals(false, response.contactVerification().required());
         assertEquals("failed", response.contactVerification().deliveryStatus());
-        verify(persistenceService).markContactDelivery(contact, false, V3SmsVerificationSender.TWILIO_PROVIDER, NOW);
+        verify(persistenceService).markContactDelivery(contact, false, V3SmsVerificationSender.PHILSMS_PROVIDER, NOW);
         verify(persistenceService).markDeliverySent(challenge, "local_log", NOW);
     }
 
     @Test
     void aRateLimitedSmsResendIsRefusedInsteadOfSkippingTheSms() {
-        V3TeacherRegistrationService smsService = serviceWithTwilio(429, "{\"code\":60203,\"message\":\"Max send attempts reached\"}");
+        V3TeacherRegistrationService smsService = serviceWithPhilSms(429, "{\"status\":\"error\",\"message\":\"Too Many Attempts.\"}");
         V3PendingContactChallenge contact = pendingContactChallenge();
         when(persistenceService.prepareContactResend(eq("challenge-uuid"), any(V3RequestMetadata.class), eq(NOW)))
                 .thenReturn(contact);
@@ -177,11 +177,9 @@ class V3TeacherRegistrationServiceTest {
         verify(persistenceService, never()).markContactDelivery(any(), anyBoolean(), any(), any());
     }
 
-    private V3TeacherRegistrationService serviceWithTwilio(int status, String body) {
-        properties.setSmsMode("twilio-verify");
-        properties.setTwilioAccountSid("ACtest");
-        properties.setTwilioAuthToken("secret");
-        properties.setTwilioVerifyServiceSid("VAtest");
+    private V3TeacherRegistrationService serviceWithPhilSms(int status, String body) {
+        properties.setSmsMode("philsms");
+        properties.setPhilsmsApiToken("token-123");
         V3SmsVerificationSender sender = new V3SmsVerificationSender(properties,
                 (url, auth, form) -> new V3SmsVerificationSender.Response(status, body));
         return new V3TeacherRegistrationService(repository, persistenceService, emailSender, sender, properties,

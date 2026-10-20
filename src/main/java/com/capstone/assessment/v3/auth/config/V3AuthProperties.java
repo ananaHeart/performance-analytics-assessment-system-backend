@@ -28,15 +28,15 @@ public class V3AuthProperties {
     private String brevoApiUrl = "https://api.brevo.com/v3/smtp/email";
     /**
      * Contact-number (SMS) verification at registration: off, log (local only: the code is written
-     * to the server log, no SMS is sent) or twilio-verify. While on, a teacher confirms both the
+     * to the server log, no SMS is sent) or philsms. While on, a teacher confirms both the
      * email code and the SMS code; when off or when an SMS can't be sent, registration falls back
      * to the email code alone and the contact number stays unverified.
      */
     private String smsMode = "off";
-    private String twilioAccountSid;
-    private String twilioAuthToken;
-    private String twilioVerifyServiceSid;
-    private String twilioVerifyUrl = "https://verify.twilio.com/v2";
+    private String philsmsApiToken;
+    // Up to 11 letters; "PhilSMS" works before the school's own sender name is approved.
+    private String philsmsSenderId = "PhilSMS";
+    private String philsmsApiUrl = "https://app.philsms.com/api/v3";
 
     public Duration getSessionTtl() {
         return sessionTtl;
@@ -166,35 +166,27 @@ public class V3AuthProperties {
         this.smsMode = smsMode;
     }
 
-    public String getTwilioAccountSid() {
-        return twilioAccountSid;
+    public String getPhilsmsApiToken() {
+        return philsmsApiToken;
     }
 
-    public void setTwilioAccountSid(String twilioAccountSid) {
-        this.twilioAccountSid = twilioAccountSid;
+    public void setPhilsmsApiToken(String philsmsApiToken) {
+        this.philsmsApiToken = philsmsApiToken;
     }
 
-    public String getTwilioAuthToken() {
-        return twilioAuthToken;
+    public String getPhilsmsSenderId() {
+        return philsmsSenderId;
     }
 
-    public void setTwilioAuthToken(String twilioAuthToken) {
-        this.twilioAuthToken = twilioAuthToken;
+    public void setPhilsmsSenderId(String philsmsSenderId) {
+        this.philsmsSenderId = philsmsSenderId;
     }
 
-    public String getTwilioVerifyServiceSid() {
-        return twilioVerifyServiceSid;
+    public String getPhilsmsApiUrl() {
+        return philsmsApiUrl;
     }
 
-    public void setTwilioVerifyServiceSid(String twilioVerifyServiceSid) {
-        this.twilioVerifyServiceSid = twilioVerifyServiceSid;
-    }
-
-    public String getTwilioVerifyUrl() {
-        return twilioVerifyUrl;
-    }
-
-    public void setTwilioVerifyUrl(String twilioVerifyUrl) {
-        this.twilioVerifyUrl = twilioVerifyUrl;
+    public void setPhilsmsApiUrl(String philsmsApiUrl) {
+        this.philsmsApiUrl = philsmsApiUrl;
     }
 }

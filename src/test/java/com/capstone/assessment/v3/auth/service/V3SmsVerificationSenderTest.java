@@ -1,13 +1,13 @@
 package com.capstone.assessment.v3.auth.service;
 
 import com.capstone.assessment.v3.auth.config.V3AuthProperties;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,90 +20,79 @@ class V3SmsVerificationSenderTest {
 
     private final List<Call> calls = new ArrayList<>();
 
-    private V3AuthProperties twilio() {
+    private V3AuthProperties philsms() {
         V3AuthProperties properties = new V3AuthProperties();
-        properties.setSmsMode("twilio-verify");
-        properties.setTwilioAccountSid("ACtest");
-        properties.setTwilioAuthToken("secret");
-        properties.setTwilioVerifyServiceSid("VAtest");
+        properties.setSmsMode("philsms");
+        properties.setPhilsmsApiToken("token-123");
+        properties.setPhilsmsSenderId("MARKA");
         return properties;
     }
 
     private V3SmsVerificationSender sender(V3AuthProperties properties, int status, String body) {
-        return new V3SmsVerificationSender(properties, (url, auth, form) -> {
-            calls.add(new Call(url, auth, form));
+        return new V3SmsVerificationSender(properties, (url, auth, json) -> {
+            calls.add(new Call(url, auth, json));
             return new V3SmsVerificationSender.Response(status, body);
         });
     }
 
     @Test
-    void offByDefaultAndTwilioNeedsAllThreeValues() {
+    void offByDefaultAndPhilSmsNeedsItsToken() {
         assertThat(new V3SmsVerificationSender(new V3AuthProperties()).isEnabled()).isFalse();
-        V3AuthProperties incomplete = twilio();
-        incomplete.setTwilioVerifyServiceSid(" ");
-        assertThat(new V3SmsVerificationSender(incomplete).isEnabled()).isFalse();
-        assertThat(new V3SmsVerificationSender(twilio()).isEnabled()).isTrue();
+        V3AuthProperties noToken = philsms();
+        noToken.setPhilsmsApiToken(" ");
+        assertThat(new V3SmsVerificationSender(noToken).isEnabled()).isFalse();
+        assertThat(new V3SmsVerificationSender(philsms()).isEnabled()).isTrue();
     }
 
     @Test
-    void logModeSendsNothingAndChecksItsOwnCode() {
+    void logModeSendsNothing() {
         V3AuthProperties properties = new V3AuthProperties();
         properties.setSmsMode("log");
         V3SmsVerificationSender sender = sender(properties, 500, "");
 
         assertThat(sender.isEnabled()).isTrue();
-        assertThat(sender.checksOwnCode()).isTrue();
         assertThat(sender.send("+639171234567", "123456")).isEqualTo(V3SmsVerificationSender.LOG_PROVIDER);
         assertThat(calls).isEmpty();
     }
 
     @Test
-    void twilioSendStartsAnSmsVerificationWithBasicAuth() {
-        V3SmsVerificationSender sender = sender(twilio(), 201, "{\"sid\":\"VE1\",\"status\":\"pending\"}");
+    void philSmsGetsTheBackendsOwnCodeWithBearerAuth() throws Exception {
+        V3SmsVerificationSender sender = sender(philsms(), 200, "{\"status\":\"success\",\"data\":{}}");
 
-        assertThat(sender.send("+639171234567", "ignored")).isEqualTo(V3SmsVerificationSender.TWILIO_PROVIDER);
+        assertThat(sender.send("+639171234567", "482913")).isEqualTo(V3SmsVerificationSender.PHILSMS_PROVIDER);
 
         Call call = calls.get(0);
-        assertThat(call.url().toString()).isEqualTo("https://verify.twilio.com/v2/Services/VAtest/Verifications");
-        assertThat(call.auth()).isEqualTo("Basic "
-                + Base64.getEncoder().encodeToString("ACtest:secret".getBytes(StandardCharsets.UTF_8)));
-        assertThat(call.body()).isEqualTo("To=%2B639171234567&Channel=sms");
+        assertThat(call.url().toString()).isEqualTo("https://app.philsms.com/api/v3/sms/send");
+        assertThat(call.auth()).isEqualTo("Bearer token-123");
+        JsonNode body = new ObjectMapper().readTree(call.body());
+        assertThat(body.path("recipient").asText()).isEqualTo("639171234567");
+        assertThat(body.path("sender_id").asText()).isEqualTo("MARKA");
+        assertThat(body.path("type").asText()).isEqualTo("plain");
+        assertThat(body.path("message").asText())
+                .isEqualTo("Your Marka verification code is 482913. It expires in 10 minutes. Do not share this code.");
     }
 
     @Test
-    void aTwilioRejectionOrOutageMeansSmsIsUnavailable() {
-        assertThatThrownBy(() -> sender(twilio(), 403, "{\"code\":20003,\"message\":\"Trial ended\"}")
-                .send("+639171234567", "x"))
+    void anErrorStatusAnHttpFailureOrAnOutageMeansSmsIsUnavailable() {
+        // PhilSMS can answer HTTP 200 with an error body, e.g. when the account has no credit.
+        assertThatThrownBy(() -> sender(philsms(), 200, "{\"status\":\"error\",\"message\":\"Insufficient balance\"}")
+                .send("+639171234567", "1"))
                 .isInstanceOf(V3SmsVerificationSender.SmsUnavailableException.class);
-        V3SmsVerificationSender unreachable = new V3SmsVerificationSender(twilio(), (url, auth, form) -> {
+        assertThatThrownBy(() -> sender(philsms(), 401, "{\"status\":\"error\",\"message\":\"Unauthenticated.\"}")
+                .send("+639171234567", "1"))
+                .isInstanceOf(V3SmsVerificationSender.SmsUnavailableException.class);
+        V3SmsVerificationSender unreachable = new V3SmsVerificationSender(philsms(), (url, auth, json) -> {
             throw new IOException("no route");
         });
-        assertThatThrownBy(() -> unreachable.send("+639171234567", "x"))
+        assertThatThrownBy(() -> unreachable.send("+639171234567", "1"))
                 .isInstanceOf(V3SmsVerificationSender.SmsUnavailableException.class);
     }
 
     @Test
-    void twilioRateLimitIsNotTreatedAsAnOutage() {
-        assertThatThrownBy(() -> sender(twilio(), 429, "{\"code\":60203}").send("+639171234567", "x"))
+    void aRateLimitIsNotTreatedAsAnOutage() {
+        assertThatThrownBy(() -> sender(philsms(), 429, "{\"status\":\"error\",\"message\":\"Too Many Attempts.\"}")
+                .send("+639171234567", "1"))
                 .isInstanceOf(V3SmsVerificationSender.SmsRateLimitedException.class);
-        assertThatThrownBy(() -> sender(twilio(), 429, "{\"code\":60202}").checkWithProvider("+639171234567", "1"))
-                .isInstanceOf(V3SmsVerificationSender.SmsRateLimitedException.class);
-    }
-
-    @Test
-    void twilioCheckIsTrueOnlyWhenApproved() {
-        assertThat(sender(twilio(), 200, "{\"status\":\"approved\",\"valid\":true}")
-                .checkWithProvider("+639171234567", "123456")).isTrue();
-        assertThat(sender(twilio(), 200, "{\"status\":\"pending\",\"valid\":false}")
-                .checkWithProvider("+639171234567", "000000")).isFalse();
-        // Twilio returns 404 once a verification is approved, expired or out of attempts.
-        assertThat(sender(twilio(), 404, "{\"code\":20404}")
-                .checkWithProvider("+639171234567", "123456")).isFalse();
-        assertThat(calls.get(0).url().toString())
-                .isEqualTo("https://verify.twilio.com/v2/Services/VAtest/VerificationCheck");
-        assertThat(calls.get(0).body()).isEqualTo("To=%2B639171234567&Code=123456");
-        assertThatThrownBy(() -> sender(twilio(), 500, "").checkWithProvider("+639171234567", "123456"))
-                .isInstanceOf(V3SmsVerificationSender.SmsUnavailableException.class);
     }
 
     @Test

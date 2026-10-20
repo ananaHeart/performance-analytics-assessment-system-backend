@@ -279,7 +279,7 @@ public class V3RegistrationPersistenceService {
     /**
      * Returns true when the contact number was verified by SMS just now. Throws when an SMS code
      * is required and missing or wrong; returns false (email alone completes) when no SMS code is
-     * pending or the provider is unavailable.
+     * pending or it could not be sent.
      */
     private boolean confirmContactCode(
             V3VerificationChallenge emailChallenge,
@@ -292,7 +292,7 @@ public class V3RegistrationPersistenceService {
         }
         Optional<V3VerificationChallenge> latest =
                 repository.findLatestContactChallengeForUpdate(emailChallenge.userId());
-        // No SMS for this registration, or the provider could not send or check it: email alone.
+        // No SMS for this registration, or it could not be sent: email alone.
         if (latest.isEmpty() || "cancelled".equals(latest.get().challengeStatus())
                 || "failed".equals(latest.get().deliveryStatus())) {
             return false;
@@ -322,25 +322,7 @@ public class V3RegistrationPersistenceService {
                     Map.of("contactMasked", contact.emailMasked())
             );
         }
-        boolean valid;
-        try {
-            valid = smsSender.checksOwnCode()
-                    ? passwordEncoder.matches(smsCode.trim(), contact.codeHash())
-                    : smsSender.checkWithProvider(contact.contactNumber(), smsCode.trim());
-        } catch (V3SmsVerificationSender.SmsRateLimitedException rateLimited) {
-            // Twilio stopped accepting guesses for this number: lock, don't fall back.
-            repository.recordInvalidAttempt(contact.challengeId(), contact.maximumAttemptCount(), true, now);
-            auditService.record(contact.userId(), "VERIFY_TEACHER_CONTACT", "verification_challenges",
-                    contact.challengeUuid(), "failed", metadata, Map.of("reason", "maximum_attempts"), now);
-            throw contactChallengeLocked();
-        } catch (V3SmsVerificationSender.SmsUnavailableException unavailable) {
-            // The provider is gone (e.g. the free trial ended): finish with the email code alone.
-            repository.cancelChallenge(contact.challengeId(), now);
-            auditService.record(contact.userId(), "VERIFY_TEACHER_CONTACT", "verification_challenges",
-                    contact.challengeUuid(), "failed", metadata, Map.of("reason", "sms_unavailable"), now);
-            return false;
-        }
-        if (!valid) {
+        if (!passwordEncoder.matches(smsCode.trim(), contact.codeHash())) {
             int nextAttempt = contact.attemptCount() + 1;
             boolean locked = nextAttempt >= contact.maximumAttemptCount();
             repository.recordInvalidAttempt(contact.challengeId(), nextAttempt, locked, now);
@@ -364,7 +346,7 @@ public class V3RegistrationPersistenceService {
         return true;
     }
 
-    /** Creates the SMS challenge for a registration (the code itself is only used in log mode). */
+    /** Creates the SMS challenge for a registration; only the code's hash is stored. */
     @Transactional
     public V3PendingContactChallenge createContactChallenge(
             long userId,
@@ -373,15 +355,13 @@ public class V3RegistrationPersistenceService {
             Instant now
     ) {
         String code = "%06d".formatted(secureRandom.nextInt(1_000_000));
-        // Twilio Verify makes and checks its own code; store an unguessable placeholder instead.
-        String stored = smsSender.checksOwnCode() ? code : UUID.randomUUID().toString();
         String challengeUuid = UUID.randomUUID().toString();
         Instant expiresAt = now.plus(properties.getOtpTtl());
         Instant resendAt = now.plus(properties.getResendCooldown());
         String masked = V3SmsVerificationSender.maskPhone(contactNumber);
         long challengeId = repository.insertChallenge(
                 challengeUuid, userId, "contact_verification", "sms", masked,
-                passwordEncoder.encode(stored), properties.getMaxOtpAttempts(), resendCount,
+                passwordEncoder.encode(code), properties.getMaxOtpAttempts(), resendCount,
                 resendAt, expiresAt, now);
         return new V3PendingContactChallenge(challengeId, challengeUuid, userId, contactNumber, masked,
                 code, resendCount, expiresAt, resendAt);
