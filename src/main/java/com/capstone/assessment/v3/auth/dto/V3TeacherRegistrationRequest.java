@@ -15,7 +15,7 @@ import java.time.LocalDate;
 
 public record V3TeacherRegistrationRequest(
         @NotBlank @Size(max = 20) String schoolCode,
-        @NotBlank @Pattern(regexp = "(?i)^email$", message = "Email is the only available verification method.")
+        @NotBlank @Pattern(regexp = "(?i)^(email|sms)$", message = "Choose email or SMS verification.")
         String verificationMethod,
         @NotBlank @Size(max = 50) String firstName,
         @Size(max = 50) String middleName,
