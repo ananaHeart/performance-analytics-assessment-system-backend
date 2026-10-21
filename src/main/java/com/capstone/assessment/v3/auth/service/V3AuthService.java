@@ -151,7 +151,7 @@ public class V3AuthService {
                 recordFailedAttempt(user.userId(), email, "pending_approval", normalizedMetadata, now);
                 throw new V3AuthException(
                         "ACCOUNT_PENDING_APPROVAL",
-                        "Email is verified, but the school principal has not approved the account yet.",
+                        "Your account is verified, but the school principal has not approved it yet.",
                         HttpStatus.FORBIDDEN
                 );
             }
