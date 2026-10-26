@@ -170,6 +170,18 @@ class V3MobileServiceTest {
     }
 
     @Test
+    void anAssessmentActivatedBeforeItOpensIsOpenOnceItsOpeningTimeHasPassed() {
+        // BUG-1: activation stored 'planned' and nothing moves it to 'open' later.
+        when(repository.findTestAssignments(TEACHER.userId(), TEACHER.schoolId())).thenReturn(List.of(
+                assignment("opened", NOW.minusSeconds(60), null, "planned", false)));
+
+        V3MobileDownloadResponse response = service.download(TEACHER);
+
+        assertAvailability(response, "opened", true, "open");
+        assertEquals("open", response.testAssignments().get(0).assignmentStatus());
+    }
+
+    @Test
     void incompleteManifestIsRejectedBeforeReturningCoordinates() {
         when(repository.findManifestHeader(
                 "assignment-uuid",

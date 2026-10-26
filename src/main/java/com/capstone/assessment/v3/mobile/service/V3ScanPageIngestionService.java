@@ -307,10 +307,11 @@ public class V3ScanPageIngestionService {
 
     private void validateContext(V3ScanPageUploadMetadata request, CaptureContext context) {
         Instant now = Instant.now();
+        String status = V3AssignmentStatus.effective(context.assignmentStatus(), context.openAt(), request.capturedAt());
         if (request.capturedAt().isAfter(now.plusSeconds(300))
                 || context.openAt() != null && request.capturedAt().isBefore(context.openAt())
-                || "archived".equals(context.assignmentStatus()) || "planned".equals(context.assignmentStatus())
-                || !context.allowLateCapture() && ("closed".equals(context.assignmentStatus())
+                || "archived".equals(status) || "planned".equals(status)
+                || !context.allowLateCapture() && ("closed".equals(status)
                     || context.closeAt() != null && request.capturedAt().isAfter(context.closeAt()))) {
             throw conflict("CAPTURE_NOT_ALLOWED", "The capture falls outside the assignment's permitted capture policy.");
         }

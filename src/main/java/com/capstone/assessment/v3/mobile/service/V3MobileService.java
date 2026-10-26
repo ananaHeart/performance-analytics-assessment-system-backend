@@ -243,7 +243,7 @@ public class V3MobileService {
                 row.classAssignmentId(),
                 row.openAt(),
                 row.closeAt(),
-                row.assignmentStatus(),
+                V3AssignmentStatus.effective(row.assignmentStatus(), row.openAt(), now),
                 row.allowLateCapture(),
                 availability.allowed(),
                 availability.code()
@@ -254,7 +254,7 @@ public class V3MobileService {
             V3MobileRepository.TestAssignmentRow row,
             Instant now
     ) {
-        String status = row.assignmentStatus().toLowerCase(Locale.ROOT);
+        String status = V3AssignmentStatus.effective(row.assignmentStatus(), row.openAt(), now);
         if ("archived".equals(status)) {
             return new CaptureAvailability(false, "archived");
         }

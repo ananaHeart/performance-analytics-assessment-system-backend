@@ -184,6 +184,14 @@ class V3ScanPageIngestionPersistenceTest {
         assertNoRows();
     }
 
+    @Test void acceptsAPlannedDeliveryOnceItsOpeningTimeHasPassed() {
+        // BUG-1: activated before its opening time, the delivery stays 'planned' in the database.
+        jdbc.update("UPDATE test_assignments SET assignment_status = 'planned', open_at = ?",
+                java.sql.Timestamp.from(request.capturedAt().minusSeconds(60)));
+        service.ingest(TEACHER, request, upload());
+        assertEquals(1, count("scan_pages"));
+    }
+
     @Test void rejectsHashMismatchAndRollsBackAllEarlierRecords() throws Exception {
         assertCode("IMAGE_HASH_MISMATCH", change("imageHash", "0".repeat(64)));
         assertNoRows();
