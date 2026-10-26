@@ -41,6 +41,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -296,6 +297,63 @@ class V3AssessmentServiceTest {
                 anyString(), nullable(String.class), anyInt());
     }
 
+    @Test
+    void asm1FewerThanFiveItemsStaysADraft() {
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("draft", 4)));
+        when(repository.findAssignmentContext(77L)).thenReturn(Optional.of(ASSIGNMENT));
+        when(repository.findParts(1000L)).thenReturn(List.of(new PartRow(
+                3000L, 1000L, 1, "Multiple Choice", 1,
+                "multiple_choice", "Multiple Choice", 4, BigDecimal.ONE, null
+        )));
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> service.activateAssessment(TEACHER, 1000L, null));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+        assertEquals("ASSESSMENT_MIN_ITEMS", exception.getCode());
+        assertEquals(Map.of("itemCount", 4, "minimumItems", 5), exception.getDetails());
+        verify(repository, never()).activateTest(anyLong(), any(Instant.class));
+    }
+
+    @Test
+    void asm2NewAssessmentsAreQuizOrExam() {
+        stubValidCreationContext();
+        V3AssessmentRequest valid = validFiveTypeRequest();
+        V3AssessmentRequest longTest = new V3AssessmentRequest(valid.classAssignmentId(), valid.termPeriodId(),
+                valid.testName(), "long_test", valid.instructions(), valid.openAt(), valid.closeAt(),
+                false, false, null, valid.parts());
+
+        assertInvalidField("testType", () -> service.createAssessment(TEACHER, longTest, null));
+    }
+
+    @Test
+    void asm6OpeningTimeMustBeWithinOfficeHoursPhilippineTime() {
+        stubValidCreationContext();
+        Instant end = NOW.plusSeconds(86_400);
+        when(repository.findTermWindow(9, 2026, "SCHOOL-001")).thenReturn(Optional.of(
+                new TermWindow(9, 2026, NOW.minusSeconds(86_400), end, "active", true)));
+
+        // NOW is 08:00 in Manila; 07:59 and 17:01 are outside office hours.
+        assertInvalidField("openAt", () -> service.createAssessment(TEACHER, withSchedule(NOW.minusSeconds(60), null), null));
+        assertInvalidField("openAt", () -> service.createAssessment(TEACHER,
+                withSchedule(NOW.plusSeconds(9 * 3600 + 60), null), null));
+        stubCreatedDraft();
+        assertEquals(1000L, service.createAssessment(TEACHER, withSchedule(NOW.plusSeconds(9 * 3600), null), null).testId());
+    }
+
+    @Test
+    void asm11OutsideTheTermSaysWhichDatesAreAllowed() {
+        stubValidCreationContext();
+        when(repository.findTermWindow(9, 2026, "SCHOOL-001")).thenReturn(Optional.of(
+                new TermWindow(9, 2026, NOW, NOW.plusSeconds(30 * 86_400), "active", true)));
+
+        V3FieldValidationException exception = assertThrows(V3FieldValidationException.class,
+                () -> service.createAssessment(TEACHER, withSchedule(NOW.minusSeconds(86_400), null), null));
+
+        assertEquals("The date must be inside the selected term (Sep 1, 2026 – Oct 1, 2026).",
+                exception.getErrors().get("openAt"));
+    }
+
     private V3AssessmentRequest withSchedule(Instant open, Instant close) {
         V3AssessmentRequest valid = validFiveTypeRequest();
         return new V3AssessmentRequest(valid.classAssignmentId(), valid.termPeriodId(), valid.testName(),
@@ -471,22 +529,23 @@ class V3AssessmentServiceTest {
 
     @Test
     void incompleteStoredQuestionBlocksActivation() {
-        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("draft", 1)));
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("draft", 5)));
         when(repository.findAssignmentContext(77L)).thenReturn(Optional.of(ASSIGNMENT));
         when(repository.findParts(1000L)).thenReturn(List.of(new PartRow(
                 3000L, 1000L, 1, "Multiple Choice", 1,
-                "multiple_choice", "Multiple Choice", 1, BigDecimal.ONE, null
+                "multiple_choice", "Multiple Choice", 5, BigDecimal.ONE, null
         )));
-        when(repository.findQuestions(1000L)).thenReturn(List.of(new QuestionRow(
-                4000L, "question-uuid", 3000L, 1, "Question", BigDecimal.ONE,
-                null, null, false, null, null, "none", false
-        )));
+        when(repository.findQuestions(1000L)).thenReturn(java.util.stream.IntStream.rangeClosed(1, 5)
+                .mapToObj(item -> new QuestionRow(
+                        3999L + item, "question-uuid-" + item, 3000L, item, "Question", BigDecimal.ONE,
+                        null, null, false, null, null, "none", false))
+                .toList());
         when(repository.findOptions(1000L)).thenReturn(List.of(
                 option(1L, "A", 1), option(2L, "B", 2),
                 option(3L, "C", 3), option(4L, "D", 4)
         ));
         when(repository.findSkillMappings(1000L)).thenReturn(List.of(new SkillMappingRow(
-                5000L, 3000L, 501L, "Matter", "States of Matter", 1, 1, 1
+                5000L, 3000L, 501L, "Matter", "States of Matter", 1, 5, 5
         )));
 
         V3AuthException exception = assertThrows(

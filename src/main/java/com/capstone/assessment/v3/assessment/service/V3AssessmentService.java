@@ -72,6 +72,15 @@ public class V3AssessmentService {
     private static final Set<String> TEST_TYPES = Set.of(
             "quiz", "exam", "diagnostic", "long_test", "other"
     );
+    // ASM-2: the types a teacher can choose; older ones are kept only on the assessments that have them.
+    private static final List<String> SELECTABLE_TEST_TYPES = List.of("exam", "quiz");
+    // ASM-1 (D3): fewer items can be saved as a draft, but not activated or printed.
+    static final int MINIMUM_ACTIVATION_ITEMS = 5;
+    // ASM-6: the opening time must fall within office hours, Philippine time.
+    private static final LocalTime OFFICE_OPEN = LocalTime.of(8, 0);
+    private static final LocalTime OFFICE_CLOSE = LocalTime.of(17, 0);
+    private static final java.time.format.DateTimeFormatter TERM_DAY =
+            java.time.format.DateTimeFormatter.ofPattern("MMM d, uuuu", java.util.Locale.ENGLISH);
     private static final Set<String> QUESTION_TYPES = Set.of(
             "multiple_choice", "true_false", "identification", "enumeration", "essay"
     );
@@ -153,7 +162,7 @@ public class V3AssessmentService {
                 questionTypes,
                 skills,
                 repository.listRubrics(user.schoolId(), user.userId()),
-                TEST_TYPES.stream().sorted().toList(),
+                SELECTABLE_TEST_TYPES,
                 List.of("none", "short", "medium", "long", "full_page")
         );
     }
@@ -454,6 +463,10 @@ public class V3AssessmentService {
 
         String testName = requiredTrimmed(request.testName(), "testName", 120);
         String testType = normalizeAllowed(request.testType(), TEST_TYPES, "testType");
+        if (!SELECTABLE_TEST_TYPES.contains(testType)
+                && (existing == null || !testType.equals(existing.testType()))) {
+            throw invalid("testType", "Choose Quiz or Exam.");
+        }
         String instructions = optionalTrimmed(request.instructions(), 10_000, "instructions");
         List<V3AssessmentPartRequest> requestedParts = safeList(request.parts());
         if (requestedParts.isEmpty()) {
@@ -1473,6 +1486,13 @@ public class V3AssessmentService {
         if (assessment.parts().isEmpty() || assessment.totalItems() < 1) {
             throw conflict("ASSESSMENT_INCOMPLETE", "The assessment has no questions.");
         }
+        if (assessment.totalItems() < MINIMUM_ACTIVATION_ITEMS) {
+            throw new V3AuthException("ASSESSMENT_MIN_ITEMS",
+                    "An assessment needs at least " + MINIMUM_ACTIVATION_ITEMS
+                            + " items before it can be activated or printed. Save it as a draft and add more items.",
+                    HttpStatus.CONFLICT,
+                    Map.of("itemCount", assessment.totalItems(), "minimumItems", MINIMUM_ACTIVATION_ITEMS));
+        }
         int actualTotal = 0;
         for (V3AssessmentResponse.Part part : assessment.parts()) {
             if (part.questions().size() != part.numberOfItems()) {
@@ -1662,6 +1682,10 @@ public class V3AssessmentService {
         if (closeAt != null && !closeAt.isAfter(openAt)) {
             throw invalid("closeAt", "closeAt must be later than openAt.");
         }
+        LocalTime openTime = openAt.atZone(SCHOOL_TIMEZONE).toLocalTime();
+        if (openTime.isBefore(OFFICE_OPEN) || openTime.isAfter(OFFICE_CLOSE)) {
+            throw invalid("openAt", "The opening time must be between 8:00 AM and 5:00 PM (Philippine time).");
+        }
         validateInsideTerm("openAt", openAt, termWindow);
         validateInsideTerm("closeAt", closeAt, termWindow);
 
@@ -1697,7 +1721,9 @@ public class V3AssessmentService {
         // Historical quarter windows retain their original inclusive-end behavior.
         if (value != null && (value.isBefore(termWindow.startAt()) || value.isAfter(termWindow.endAt())
                 || (termWindow.endExclusive() && "openAt".equals(field) && value.equals(termWindow.endAt())))) {
-            throw invalid(field, "The assessment schedule must stay inside the selected term period.");
+            throw invalid(field, "The date must be inside the selected term ("
+                    + TERM_DAY.format(termWindow.startAt().atZone(SCHOOL_TIMEZONE)) + " – "
+                    + TERM_DAY.format(termWindow.endAt().atZone(SCHOOL_TIMEZONE)) + ").");
         }
     }
 
