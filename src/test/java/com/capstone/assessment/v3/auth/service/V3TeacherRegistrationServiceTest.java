@@ -107,6 +107,17 @@ class V3TeacherRegistrationServiceTest {
     }
 
     @Test
+    void reg1TheMinimumAgeIsASetting() {
+        properties.setMinimumTeacherAge(21);
+
+        V3FieldValidationException exception = assertThrows(V3FieldValidationException.class,
+                () -> service.register(validRequest(LocalDate.of(2006, 1, 1)), metadata()));
+
+        assertEquals("Teacher must be at least 21 years old and birth date must be in the past.",
+                exception.getErrors().get("birthDate"));
+    }
+
+    @Test
     void deliveryFailureKeepsAccountResumableAndReturnsChallengeDetails() {
         V3TeacherRegistrationRequest request = validRequest(LocalDate.of(1990, 1, 1));
         V3PendingRegistrationChallenge challenge = pendingChallenge();

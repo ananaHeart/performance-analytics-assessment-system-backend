@@ -21,6 +21,8 @@ public class V3AuthProperties {
     private Duration registrationRetention = Duration.ofDays(30);
     private int cleanupBatchSize = 100;
     private boolean cleanupEnabled = true;
+    // REG-1 (D1): youngest age allowed to register as a teacher.
+    private int minimumTeacherAge = 18;
     /** log (local only), smtp, or brevo-api (HTTPS - works where outbound SMTP ports are blocked). */
     private String emailDeliveryMode = "log";
     private String emailFromAddress = "no-reply@smart-assessment.local";
@@ -124,6 +126,14 @@ public class V3AuthProperties {
 
     public void setCleanupEnabled(boolean cleanupEnabled) {
         this.cleanupEnabled = cleanupEnabled;
+    }
+
+    public int getMinimumTeacherAge() {
+        return minimumTeacherAge;
+    }
+
+    public void setMinimumTeacherAge(int minimumTeacherAge) {
+        this.minimumTeacherAge = minimumTeacherAge;
     }
 
     public String getEmailDeliveryMode() {

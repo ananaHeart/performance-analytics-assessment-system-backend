@@ -44,7 +44,9 @@ public record V3TeacherRegistrationRequest(
             @Size(max = 20) String barangayCode,
             @NotBlank @Size(max = 120) String barangayName,
             @NotBlank @Size(max = 255) String addressLine,
-            @Size(max = 10) String postalCode
+            @NotBlank(message = "Postal code is required.")
+            @Pattern(regexp = "\\d{4}", message = "Postal code must be 4 digits.")
+            String postalCode
     ) {
     }
 }

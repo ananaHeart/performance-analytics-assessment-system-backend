@@ -23,6 +23,25 @@ class V3TeacherRegistrationRequestValidationTest {
         assertEquals(Set.of("verificationMethod"), invalidFields(request("fax")));
     }
 
+    @Test
+    void reg4TeachersMustGiveAFourDigitPostalCode() {
+        assertEquals(Set.of("address.postalCode"), invalidFields(withPostalCode("")));
+        assertEquals(Set.of("address.postalCode"), invalidFields(withPostalCode("95A3")));
+        assertTrue(invalidFields(withPostalCode("9503")).isEmpty());
+    }
+
+    private static V3TeacherRegistrationRequest withPostalCode(String postalCode) {
+        V3TeacherRegistrationRequest base = request("email");
+        var a = base.address();
+        return new V3TeacherRegistrationRequest(base.schoolCode(), base.verificationMethod(), base.firstName(),
+                base.middleName(), base.lastName(), base.suffixId(), base.birthDate(), base.teachingStartMonth(),
+                base.teachingStartYear(), base.email(), base.contactNumber(), base.password(), base.genderId(),
+                base.majorId(), base.educationalAttainmentId(),
+                new V3TeacherRegistrationRequest.Address(a.countryCode(), a.regionCode(), a.regionName(),
+                        a.provinceCode(), a.provinceName(), a.cityMunicipalityCode(), a.cityMunicipalityName(),
+                        a.barangayCode(), a.barangayName(), a.addressLine(), postalCode));
+    }
+
     private Set<String> invalidFields(V3TeacherRegistrationRequest request) {
         return validator.validate(request).stream()
                 .map(violation -> violation.getPropertyPath().toString())

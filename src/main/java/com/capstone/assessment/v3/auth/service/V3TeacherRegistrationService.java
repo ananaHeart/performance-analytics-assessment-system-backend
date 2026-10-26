@@ -32,7 +32,6 @@ import java.util.regex.Pattern;
 @Service
 public class V3TeacherRegistrationService {
 
-    private static final int MINIMUM_TEACHER_AGE = 18;
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\\.[A-Za-z]{2,}$"
     );
@@ -247,10 +246,12 @@ public class V3TeacherRegistrationService {
             Map<String, Object> errors
     ) {
         LocalDate today = LocalDate.now(clock);
+        int minimumAge = properties.getMinimumTeacherAge();
         if (request.birthDate() == null
                 || !request.birthDate().isBefore(today)
-                || request.birthDate().plusYears(MINIMUM_TEACHER_AGE).isAfter(today)) {
-            errors.put("birthDate", "Teacher must be at least 18 years old and birth date must be in the past.");
+                || request.birthDate().plusYears(minimumAge).isAfter(today)) {
+            errors.put("birthDate", "Teacher must be at least " + minimumAge
+                    + " years old and birth date must be in the past.");
         }
 
         if (request.teachingStartMonth() == null || request.teachingStartYear() == null) {
@@ -265,9 +266,9 @@ public class V3TeacherRegistrationService {
             errors.put("teachingStartYear", "Teaching start month and year cannot be in the future.");
         }
         if (request.birthDate() != null) {
-            YearMonth minimumStart = YearMonth.from(request.birthDate().plusYears(MINIMUM_TEACHER_AGE));
+            YearMonth minimumStart = YearMonth.from(request.birthDate().plusYears(minimumAge));
             if (teachingStart.isBefore(minimumStart)) {
-                errors.put("teachingStartYear", "Teaching start must be on or after the teacher turned 18.");
+                errors.put("teachingStartYear", "Teaching start must be on or after the teacher turned " + minimumAge + ".");
             }
         }
     }
