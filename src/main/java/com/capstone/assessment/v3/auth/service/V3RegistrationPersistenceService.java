@@ -139,7 +139,7 @@ public class V3RegistrationPersistenceService {
             throw alreadyVerified();
         }
         if ("cancelled".equals(current.challengeStatus())) {
-            throw invalidChallenge();
+            throw codeReplaced();
         }
         if (!"failed".equals(current.deliveryStatus())
                 && current.nextResendAt() != null && now.isBefore(current.nextResendAt())) {
@@ -213,6 +213,9 @@ public class V3RegistrationPersistenceService {
         if (challenge.emailVerified() || challenge.contactVerified()
                 || "verified".equals(challenge.challengeStatus())) {
             throw alreadyVerified();
+        }
+        if ("cancelled".equals(challenge.challengeStatus())) {
+            throw codeReplaced();
         }
         if (!"pending".equals(challenge.challengeStatus())) {
             throw invalidChallenge();
@@ -435,6 +438,15 @@ public class V3RegistrationPersistenceService {
         return new V3AuthException(
                 "EMAIL_ALREADY_VERIFIED",
                 "This registration is already verified.",
+                HttpStatus.CONFLICT
+        );
+    }
+
+    /** VER-2: only the newest code works; an older one was cancelled when a new code was sent. */
+    private V3AuthException codeReplaced() {
+        return new V3AuthException(
+                "VERIFICATION_CODE_REPLACED",
+                "A newer verification code was sent. Enter the latest code.",
                 HttpStatus.CONFLICT
         );
     }

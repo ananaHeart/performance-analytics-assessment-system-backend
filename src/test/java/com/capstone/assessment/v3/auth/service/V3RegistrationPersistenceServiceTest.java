@@ -125,6 +125,20 @@ class V3RegistrationPersistenceServiceTest {
     }
 
     @Test
+    void ver2AnOlderCodeStopsWorkingOnceANewOneIsSent() {
+        V3VerificationChallenge replaced = challenge(0, "cancelled", NOW.plusSeconds(300), null);
+        when(repository.findChallengeForUpdate("challenge-uuid")).thenReturn(Optional.of(replaced));
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> service.verify("challenge-uuid", "123456", metadata(), NOW));
+
+        assertEquals("VERIFICATION_CODE_REPLACED", exception.getCode());
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(repository, never()).markUserEmailVerified(anyLong(), anyInt(), anyInt(), any());
+    }
+
+    @Test
     void anSmsCodeVerifiesTheContactNumberNotTheEmail() {
         V3VerificationChallenge challenge = challenge("sms", "sent", 0, "pending", NOW.plusSeconds(300), null);
         when(repository.findChallengeForUpdate("challenge-uuid")).thenReturn(Optional.of(challenge));
