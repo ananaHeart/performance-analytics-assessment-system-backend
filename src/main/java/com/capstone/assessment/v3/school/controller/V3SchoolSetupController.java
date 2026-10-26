@@ -4,6 +4,7 @@ import com.capstone.assessment.common.response.ApiResponse;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentRequest;
+import com.capstone.assessment.v3.school.dto.V3ClassAssignmentUpdateRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassRequest;
@@ -184,6 +185,19 @@ public class V3SchoolSetupController {
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 teacher class assignment is ready.",
                 service.assignTeacher(principal, request, metadata(httpRequest))
+        ));
+    }
+
+    @PutMapping("/class-assignments/{classAssignmentId}")
+    public ResponseEntity<ApiResponse<V3ClassAssignmentResponse>> updateAssignment(
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @PathVariable long classAssignmentId,
+            @Valid @RequestBody V3ClassAssignmentUpdateRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Class assignment updated successfully.",
+                service.updateAssignment(principal, classAssignmentId, request, metadata(httpRequest))
         ));
     }
 

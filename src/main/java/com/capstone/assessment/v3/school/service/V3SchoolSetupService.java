@@ -7,6 +7,7 @@ import com.capstone.assessment.v3.auth.service.V3AuditService;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
 import com.capstone.assessment.v3.notification.service.V3NotificationService;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentRequest;
+import com.capstone.assessment.v3.school.dto.V3ClassAssignmentUpdateRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassRequest;
@@ -246,6 +247,70 @@ public class V3SchoolSetupService {
             notifyAssignmentReactivated(saved, now);
         }
         return repository.toAssignmentResponse(saved, created);
+    }
+
+    /**
+     * CLS-3: change an assignment's teacher, subject or role. The teacher and subject can only
+     * change before any assessment is given through it, so existing results never move to
+     * another teacher; after that, archive it and create a new assignment.
+     */
+    @Transactional
+    public V3ClassAssignmentResponse updateAssignment(
+            V3AuthenticatedUser principal,
+            long classAssignmentId,
+            V3ClassAssignmentUpdateRequest request,
+            V3RequestMetadata metadata
+    ) {
+        requirePrincipal(principal);
+        String role = normalizeAllowed(request.assignmentRole(), ASSIGNMENT_ROLES, "assignmentRole");
+        AssignmentContext assignment = repository.lockAssignment(principal.schoolId(), classAssignmentId)
+                .orElseThrow(this::assignmentNotFound);
+        if ("archived".equals(assignment.status())) {
+            throw conflict("CLASS_ASSIGNMENT_ARCHIVED", "An archived assignment cannot be edited.");
+        }
+        boolean teacherOrSubjectChanged = assignment.teacherUserId() != request.teacherUserId()
+                || assignment.subjectId() != request.subjectId();
+        if (teacherOrSubjectChanged) {
+            if (!repository.activeTeacherExists(principal.schoolId(), request.teacherUserId())) {
+                throw invalid("teacherUserId", "Select an active, approved teacher from the principal's school.");
+            }
+            if (!repository.subjectExists(request.subjectId())) {
+                throw invalid("subjectId", "The selected subject does not exist.");
+            }
+            if (repository.assignmentHasAssessments(classAssignmentId)) {
+                throw conflict("CLASS_ASSIGNMENT_IN_USE",
+                        "This assignment already has assessments. Archive it and create a new one.");
+            }
+            if (repository.findExactAssignment(principal.schoolId(), assignment.classId(),
+                    request.teacherUserId(), request.subjectId()).isPresent()) {
+                throw conflict("CLASS_ASSIGNMENT_DUPLICATE",
+                        "This teacher already has this subject in this class.");
+            }
+        }
+        Instant now = clock.instant();
+        try {
+            if (repository.updateAssignment(classAssignmentId, request.teacherUserId(), request.subjectId(),
+                    role, now) != 1) {
+                throw conflict("CLASS_ASSIGNMENT_STATE_CHANGED",
+                        "The class assignment changed. Refresh before trying again.");
+            }
+        } catch (DataIntegrityViolationException exception) {
+            throw conflict("CLASS_ASSIGNMENT_DUPLICATE", "This teacher already has this subject in this class.");
+        }
+        Map<String, Object> details = new java.util.LinkedHashMap<>();
+        details.put("previousTeacherUserId", assignment.teacherUserId());
+        details.put("teacherUserId", request.teacherUserId());
+        details.put("previousSubjectId", assignment.subjectId());
+        details.put("subjectId", request.subjectId());
+        details.put("assignmentRole", role);
+        if (request.reason() != null && !request.reason().isBlank()) {
+            details.put("reason", request.reason().trim());
+        }
+        auditService.record(principal.userId(), "class_assignment.update", "class_assignments",
+                Long.toString(classAssignmentId), "success", metadata, details, now);
+        AssignmentContext saved = repository.findAssignment(principal.schoolId(), classAssignmentId)
+                .orElseThrow(this::assignmentNotFound);
+        return repository.toAssignmentResponse(saved, false);
     }
 
     @Transactional

@@ -6,6 +6,7 @@ import com.capstone.assessment.v3.auth.service.V3AuditService;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
 import com.capstone.assessment.v3.notification.service.V3NotificationService;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentRequest;
+import com.capstone.assessment.v3.school.dto.V3ClassAssignmentUpdateRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassRequest;
 import com.capstone.assessment.v3.school.dto.V3ManualStudentEnrollmentRequest;
@@ -37,6 +38,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -507,6 +510,53 @@ class V3SchoolSetupServiceTest {
                 700L, "SCHOOL-001", 2026, "2025-2026", 80, 8,
                 "Grade 8", "Narra", status, 0
         );
+    }
+
+    @Test
+    void cls3EditsTheTeacherOfAnAssignmentWithoutAssessments() {
+        when(repository.lockAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
+        when(repository.activeTeacherExists("SCHOOL-001", 23L)).thenReturn(true);
+        when(repository.subjectExists(1)).thenReturn(true);
+        when(repository.assignmentHasAssessments(900L)).thenReturn(false);
+        when(repository.findExactAssignment("SCHOOL-001", 700L, 23L, 1)).thenReturn(Optional.empty());
+        when(repository.updateAssignment(900L, 23L, 1, "primary", NOW)).thenReturn(1);
+        when(repository.findAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
+
+        service.updateAssignment(PRINCIPAL, 900L,
+                new V3ClassAssignmentUpdateRequest(23L, 1, "primary", "Wrong teacher picked"), METADATA);
+
+        verify(repository).updateAssignment(900L, 23L, 1, "primary", NOW);
+        verify(auditService).record(eq(11L), eq("class_assignment.update"), eq("class_assignments"), eq("900"),
+                eq("success"), eq(METADATA), anyMap(), eq(NOW));
+    }
+
+    @Test
+    void cls3KeepsTheTeacherOfAnAssignmentThatAlreadyHasAssessments() {
+        when(repository.lockAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
+        when(repository.activeTeacherExists("SCHOOL-001", 23L)).thenReturn(true);
+        when(repository.subjectExists(1)).thenReturn(true);
+        when(repository.assignmentHasAssessments(900L)).thenReturn(true);
+
+        V3AuthException exception = assertThrows(V3AuthException.class, () -> service.updateAssignment(PRINCIPAL,
+                900L, new V3ClassAssignmentUpdateRequest(23L, 1, "primary", null), METADATA));
+
+        assertEquals("CLASS_ASSIGNMENT_IN_USE", exception.getCode());
+        verify(repository, never()).updateAssignment(anyLong(), anyLong(), anyInt(), anyString(), any());
+    }
+
+    @Test
+    void cls3OnlyTheRoleCanChangeOnceInUseAndArchivedCannotBeEdited() {
+        when(repository.lockAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
+        when(repository.updateAssignment(900L, 22L, 1, "co_teacher", NOW)).thenReturn(1);
+        when(repository.findAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
+
+        service.updateAssignment(PRINCIPAL, 900L, new V3ClassAssignmentUpdateRequest(22L, 1, "co_teacher", null),
+                METADATA);
+
+        verify(repository, never()).assignmentHasAssessments(anyLong());
+        when(repository.lockAssignment("SCHOOL-001", 901L)).thenReturn(Optional.of(assignment("archived")));
+        assertEquals("CLASS_ASSIGNMENT_ARCHIVED", assertThrows(V3AuthException.class, () -> service.updateAssignment(
+                PRINCIPAL, 901L, new V3ClassAssignmentUpdateRequest(22L, 1, "primary", null), METADATA)).getCode());
     }
 
     private AssignmentContext assignment(String status) {

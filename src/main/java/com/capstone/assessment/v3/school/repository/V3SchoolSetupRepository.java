@@ -483,6 +483,29 @@ public class V3SchoolSetupRepository {
                 """, assignmentRole, Timestamp.from(now), principalUserId, reason, classAssignmentId);
     }
 
+    /** CLS-3: whether any assessment was ever given through this assignment. */
+    public boolean assignmentHasAssessments(long classAssignmentId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM test_assignments WHERE class_assignment_id = ?",
+                Integer.class, classAssignmentId);
+        return count != null && count > 0;
+    }
+
+    /** CLS-3: a new teacher, subject or role; archived assignments are left alone. */
+    public int updateAssignment(
+            long classAssignmentId,
+            long teacherUserId,
+            int subjectId,
+            String assignmentRole,
+            Instant now
+    ) {
+        return jdbcTemplate.update("""
+                UPDATE class_assignments
+                   SET user_id = ?, subject_id = ?, assignment_role = ?, updated_at = ?
+                 WHERE class_assignment_id = ? AND status <> 'archived'
+                """, teacherUserId, subjectId, assignmentRole, Timestamp.from(now), classAssignmentId);
+    }
+
     public int archiveAssignment(
             long classAssignmentId,
             long principalUserId,
