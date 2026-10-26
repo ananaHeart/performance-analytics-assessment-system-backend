@@ -7,6 +7,8 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
+import org.apache.pdfbox.util.Matrix;
 
 import java.awt.Color;
 import java.awt.geom.AffineTransform;
@@ -149,6 +151,11 @@ final class ReportPdfDocument {
     }
 
     byte[] finish() throws IOException {
+        return finish(null);
+    }
+
+    /** Finishes the document; a non-blank watermark is printed faintly across every page. */
+    byte[] finish(String watermark) throws IOException {
         content.close();
         int total = document.getNumberOfPages();
         for (int i = 0; i < total; i++) {
@@ -156,6 +163,9 @@ final class ReportPdfDocument {
                     document, document.getPage(i), PDPageContentStream.AppendMode.APPEND, true)) {
                 PDPageContentStream saved = content;
                 content = footer;
+                if (watermark != null && !watermark.isBlank()) {
+                    drawWatermark(watermark);
+                }
                 hline(40f, MARGIN, MARGIN + CONTENT_WIDTH, GRID, 0.6f);
                 text(ITALIC, 7.5f, MUTED, MARGIN, 29f, footerLeft);
                 rightText(REGULAR, 7.5f, MUTED, MARGIN + CONTENT_WIDTH, 29f,
@@ -168,6 +178,28 @@ final class ReportPdfDocument {
             document.close();
             return output.toByteArray();
         }
+    }
+
+    private void drawWatermark(String watermark) throws IOException {
+        PDExtendedGraphicsState faint = new PDExtendedGraphicsState();
+        faint.setNonStrokingAlphaConstant(0.12f);
+        float size = 110f;
+        String value = safe(BOLD, watermark);
+        float width = BOLD.getStringWidth(value) / 1000f * size;
+        float centerX = PDRectangle.A4.getWidth() / 2f;
+        float centerY = PDRectangle.A4.getHeight() / 2f;
+        double angle = Math.toRadians(45);
+        content.saveGraphicsState();
+        content.setGraphicsStateParameters(faint);
+        content.beginText();
+        content.setFont(BOLD, size);
+        content.setNonStrokingColor(Color.GRAY);
+        content.setTextMatrix(Matrix.getRotateInstance(angle,
+                centerX - (float) (Math.cos(angle) * width / 2 - Math.sin(angle) * size / 3),
+                centerY - (float) (Math.sin(angle) * width / 2 + Math.cos(angle) * size / 3)));
+        content.showText(value);
+        content.endText();
+        content.restoreGraphicsState();
     }
 
     // ---------------------------------------------------------------- body blocks

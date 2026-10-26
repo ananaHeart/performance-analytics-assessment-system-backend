@@ -64,6 +64,32 @@ class V3QuestionnairePdfRendererTest {
     }
 
     @Test
+    void asm5ADraftQuestionnaireIsMarkedDraft() throws Exception {
+        V3AssessmentResponse active = sampleAssessment();
+        assertThat(pdfText(renderer.render(TEACHER, active))).doesNotContain("DRAFT");
+
+        byte[] draft = renderer.render(TEACHER, withStatus(active, "draft"));
+        Files.createDirectories(Path.of("target"));
+        Files.write(Path.of("target", "questionnaire-draft-sample.pdf"), draft);
+        assertThat(pdfText(draft)).contains("DRAFT", "TEST QUESTIONNAIRE");
+    }
+
+    private static String pdfText(byte[] pdf) throws Exception {
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            return new PDFTextStripper().getText(document);
+        }
+    }
+
+    private static V3AssessmentResponse withStatus(V3AssessmentResponse a, String status) {
+        return new V3AssessmentResponse(a.testId(), a.testUuid(), a.testAssignmentId(), a.assignmentUuid(),
+                a.classAssignmentId(), a.termPeriodId(), a.termName(), a.testName(), a.testType(), a.instructions(),
+                a.totalItems(), a.maximumScore(), status, a.versionNumber(), a.openAt(), a.closeAt(),
+                a.assignmentStatus(), a.allowLateCapture(), a.outsideScheduleConfirmed(), a.outsideScheduleReason(),
+                a.outsideScheduleConfirmedByUserId(), a.outsideScheduleConfirmedAt(), a.assignment(),
+                a.parts(), a.createdAt(), a.updatedAt());
+    }
+
+    @Test
     void anAssessmentWithoutQuestionsCannotBePrinted() {
         V3AssessmentResponse empty = assessment(List.of());
 

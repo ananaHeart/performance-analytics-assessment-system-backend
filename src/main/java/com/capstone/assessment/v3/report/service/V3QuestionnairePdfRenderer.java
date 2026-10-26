@@ -68,7 +68,8 @@ public class V3QuestionnairePdfRenderer {
                             question.responseInstructions(), choices(question));
                 }
             }
-            return pdf.finish();
+            // ASM-5: a draft can be printed for checking, but it is marked so it is not given to learners.
+            return pdf.finish("draft".equals(assessment.status()) ? "DRAFT" : null);
         } catch (IOException exception) {
             throw new V3AuthException(
                     "QUESTIONNAIRE_PDF_GENERATION_FAILED",
