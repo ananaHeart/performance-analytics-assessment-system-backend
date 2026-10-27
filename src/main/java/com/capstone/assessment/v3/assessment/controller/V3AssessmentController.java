@@ -1,6 +1,8 @@
 package com.capstone.assessment.v3.assessment.controller;
 
 import com.capstone.assessment.common.response.ApiResponse;
+import com.capstone.assessment.v3.assessment.dto.V3AssessmentDetailsRequest;
+import com.capstone.assessment.v3.assessment.dto.V3AssessmentEditEligibilityResponse;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentReferenceDataResponse;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentRequest;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentResponse;
@@ -17,7 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -150,6 +154,45 @@ public class V3AssessmentController {
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 assessment restored successfully.",
                 assessmentService.restoreAssessment(user, testId, requestMetadata(httpRequest))
+        ));
+    }
+
+    /** ASM-7: what the teacher may do with this assessment now. */
+    @GetMapping("/{testId}/edit-eligibility")
+    public ResponseEntity<ApiResponse<V3AssessmentEditEligibilityResponse>> editEligibility(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @PathVariable long testId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Assessment edit eligibility retrieved successfully.",
+                assessmentService.getEditEligibility(user, testId)
+        ));
+    }
+
+    /** ASM-7: change only the title and instructions (allowed after activation). */
+    @PatchMapping("/{testId}/details")
+    public ResponseEntity<ApiResponse<V3AssessmentResponse>> updateDetails(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @PathVariable long testId,
+            @Valid @RequestBody V3AssessmentDetailsRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Assessment details updated successfully.",
+                assessmentService.updateAssessmentDetails(user, testId, request, requestMetadata(httpRequest))
+        ));
+    }
+
+    /** ASM-7: delete an assessment made by mistake (only when nothing was captured yet). */
+    @DeleteMapping("/{testId}")
+    public ResponseEntity<ApiResponse<V3AssessmentEditEligibilityResponse>> delete(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @PathVariable long testId,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Assessment deleted successfully.",
+                assessmentService.deleteAssessment(user, testId, requestMetadata(httpRequest))
         ));
     }
 

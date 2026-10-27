@@ -27,6 +27,10 @@ import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3AuditService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import com.capstone.assessment.v3.assessment.dto.V3AssessmentDetailsRequest;
+import com.capstone.assessment.v3.assessment.dto.V3AssessmentEditEligibilityResponse;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.isNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -352,6 +356,111 @@ class V3AssessmentServiceTest {
 
         assertEquals("The date must be inside the selected term (Sep 1, 2026 – Oct 1, 2026).",
                 exception.getErrors().get("openAt"));
+    }
+
+    @Test
+    void asm7AnAssessmentWithResultsKeepsItsContentButTheTitleCanChange() {
+        stubOwned("active");
+        when(repository.countResults(2000L)).thenReturn(15);
+        when(repository.hasCaptureOrCopies(1000L, 2000L)).thenReturn(true);
+
+        V3AssessmentEditEligibilityResponse eligibility = service.getEditEligibility(TEACHER, 1000L);
+
+        assertEquals(true, eligibility.hasResults());
+        assertEquals(false, eligibility.canEditContent());
+        assertEquals(true, eligibility.canEditDetails());
+        assertEquals(false, eligibility.canCorrectAnswerKey());
+        assertEquals(false, eligibility.canHardDelete());
+        assertEquals(true, eligibility.canArchive());
+        assertEquals(false, eligibility.canRestore());
+        assertEquals("This assessment already has results. Only the title and instructions can change; "
+                + "archive it instead of deleting.", eligibility.reason());
+    }
+
+    @Test
+    void asm7ADraftWithoutResultsIsFullyEditableAndDeletable() {
+        stubOwned("draft");
+
+        V3AssessmentEditEligibilityResponse eligibility = service.getEditEligibility(TEACHER, 1000L);
+
+        assertEquals(true, eligibility.canEditContent());
+        assertEquals(true, eligibility.canHardDelete());
+        assertEquals(null, eligibility.reason());
+    }
+
+    @Test
+    void asm7DeleteIsRefusedOnceAnythingWasCaptured() {
+        stubOwned("active");
+        when(repository.countResults(2000L)).thenReturn(5);
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> service.deleteAssessment(TEACHER, 1000L, null));
+
+        assertEquals("ASSESSMENT_NOT_DELETABLE", exception.getCode());
+        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+        assertEquals(true, exception.getDetails().get("canArchive"));
+        verify(repository, never()).deleteUnusedTest(anyLong(), anyLong());
+    }
+
+    @Test
+    void asm7AnUnusedActiveAssessmentIsReallyDeletedWithItsDraftRubrics() {
+        stubOwned("active");
+        when(repository.findDraftRubricIdsForTest(1000L, 42L)).thenReturn(List.of(31L));
+        when(repository.deleteUnusedTest(1000L, 2000L)).thenReturn(1);
+
+        service.deleteAssessment(TEACHER, 1000L, null);
+
+        verify(repository).deleteUnusedTest(1000L, 2000L);
+        verify(repository).deleteDraftRubricIfUnused(31L, 42L);
+        verify(auditService).record(eq(42L), eq("assessment.delete"), eq("tests"), eq("1000"), eq("success"),
+                isNull(), anyMap(), eq(NOW));
+    }
+
+    @Test
+    void asm7OnlyTheTitleAndInstructionsChangeAfterActivation() {
+        stubOwned("active");
+        when(repository.updateTestDetails(1000L, "Science Quiz 1", null)).thenReturn(1);
+
+        service.updateAssessmentDetails(TEACHER, 1000L, new V3AssessmentDetailsRequest(" Science Quiz 1 ", " "), null);
+
+        verify(repository).updateTestDetails(1000L, "Science Quiz 1", null);
+        verify(repository, never()).deleteParts(anyLong());
+        stubOwned("archived");
+        assertEquals("ASSESSMENT_ARCHIVED", assertThrows(V3AuthException.class, () -> service.updateAssessmentDetails(
+                TEACHER, 1000L, new V3AssessmentDetailsRequest("Science Quiz 1", null), null)).getCode());
+    }
+
+    @Test
+    void asm7RestoringAnActivatedAssessmentKeepsItLocked() {
+        stubOwned("archived");
+        when(repository.wasActivated(1000L)).thenReturn(true);
+        when(repository.restoreTest(1000L, "active")).thenReturn(1);
+
+        service.restoreAssessment(TEACHER, 1000L, null);
+
+        verify(repository).restoreTest(1000L, "active");
+        when(repository.wasActivated(1000L)).thenReturn(false);
+        when(repository.restoreTest(1000L, "draft")).thenReturn(1);
+        service.restoreAssessment(TEACHER, 1000L, null);
+        verify(repository).restoreTest(1000L, "draft");
+    }
+
+    @Test
+    void asm7ADraftThatAlreadyHasResultsCannotBeEdited() {
+        stubValidCreationContext();
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("draft", 5)));
+        when(repository.countResults(2000L)).thenReturn(8);
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> service.updateAssessment(TEACHER, 1000L, validFiveTypeRequest(), null));
+
+        assertEquals("ASSESSMENT_HAS_RESULTS", exception.getCode());
+        verify(repository, never()).deleteParts(anyLong());
+    }
+
+    private void stubOwned(String status) {
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header(status, 5)));
+        when(repository.findAssignmentContext(77L)).thenReturn(Optional.of(ASSIGNMENT));
     }
 
     private V3AssessmentRequest withSchedule(Instant open, Instant close) {

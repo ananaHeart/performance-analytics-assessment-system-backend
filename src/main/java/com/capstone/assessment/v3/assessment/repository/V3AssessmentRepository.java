@@ -876,6 +876,75 @@ public class V3AssessmentRepository {
                 """, rubricId, teacherUserId);
     }
 
+    /** ASM-7: learners' results saved for this assessment. */
+    public int countResults(long testAssignmentId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM test_results WHERE test_assignment_id = ?", Integer.class, testAssignmentId);
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * ASM-7: scanning or syncing already happened, or another assessment was copied from this one.
+     * Any of these blocks a real delete.
+     */
+    public boolean hasCaptureOrCopies(long testId, long testAssignmentId) {
+        Boolean used = jdbcTemplate.queryForObject("""
+                SELECT EXISTS (SELECT 1 FROM scan_sessions WHERE test_assignment_id = ?)
+                    OR EXISTS (SELECT 1 FROM syncs WHERE test_assignment_id = ?)
+                    OR EXISTS (SELECT 1
+                                 FROM scan_pages scan_page
+                                 JOIN answer_sheet_pages page
+                                   ON page.answer_sheet_page_id = scan_page.answer_sheet_page_id
+                                 JOIN answer_sheet_versions version
+                                   ON version.answer_sheet_version_id = page.answer_sheet_version_id
+                                WHERE version.test_assignment_id = ?)
+                    OR EXISTS (SELECT 1 FROM tests WHERE source_test_id = ?)
+                """, Boolean.class, testAssignmentId, testAssignmentId, testAssignmentId, testId);
+        return Boolean.TRUE.equals(used);
+    }
+
+    /** ASM-7: whether the assessment was ever activated (its content was locked). */
+    public boolean wasActivated(long testId) {
+        Boolean activated = jdbcTemplate.queryForObject(
+                "SELECT content_locked_at IS NOT NULL OR published_at IS NOT NULL FROM tests WHERE test_id = ?",
+                Boolean.class, testId);
+        return Boolean.TRUE.equals(activated);
+    }
+
+    /** ASM-7: title and instructions may change in any status except archived. */
+    public int updateTestDetails(long testId, String testName, String instructions) {
+        return jdbcTemplate.update("""
+                UPDATE tests
+                   SET test_name = ?, instructions = ?
+                 WHERE test_id = ? AND status <> 'archived'
+                """, testName, instructions, testId);
+    }
+
+    /**
+     * ASM-7: a real delete. The caller has checked there are no results, scans, syncs or copies,
+     * so only printed-but-unused answer sheets and the assessment itself remain. Newer sheet
+     * versions go first because a version may point to an older one.
+     */
+    public int deleteUnusedTest(long testId, long testAssignmentId) {
+        jdbcTemplate.update("""
+                DELETE FROM answer_sheet_regions
+                 WHERE answer_sheet_version_id IN (
+                       SELECT answer_sheet_version_id FROM answer_sheet_versions WHERE test_assignment_id = ?)
+                """, testAssignmentId);
+        jdbcTemplate.update("""
+                DELETE FROM answer_sheet_pages
+                 WHERE answer_sheet_version_id IN (
+                       SELECT answer_sheet_version_id FROM answer_sheet_versions WHERE test_assignment_id = ?)
+                """, testAssignmentId);
+        jdbcTemplate.update("""
+                DELETE FROM answer_sheet_versions
+                 WHERE test_assignment_id = ?
+                 ORDER BY answer_sheet_version_id DESC
+                """, testAssignmentId);
+        jdbcTemplate.update("DELETE FROM test_assignments WHERE test_assignment_id = ?", testAssignmentId);
+        return jdbcTemplate.update("DELETE FROM tests WHERE test_id = ?", testId);
+    }
+
     public void lockTest(long testId) {
         jdbcTemplate.queryForObject(
                 "SELECT test_id FROM tests WHERE test_id = ? FOR UPDATE",
@@ -1231,12 +1300,13 @@ public class V3AssessmentRepository {
     /** Restores an archived test back to 'draft' so the teacher reviews it before
      *  reactivating properly, mirroring the archive/restore pair already used by
      *  class assignments (archiveAssignment/reactivateAssignment). */
-    public int restoreTest(long testId) {
+    public int restoreTest(long testId, String targetStatus) {
         return jdbcTemplate.update("""
                         UPDATE tests
-                        SET status = 'draft', archived_at = NULL
+                        SET status = ?, archived_at = NULL
                         WHERE test_id = ? AND status = 'archived'
                         """,
+                targetStatus,
                 testId
         );
     }

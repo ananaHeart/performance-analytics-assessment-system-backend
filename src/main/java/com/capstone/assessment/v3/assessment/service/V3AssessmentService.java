@@ -1,6 +1,8 @@
 package com.capstone.assessment.v3.assessment.service;
 
 import com.capstone.assessment.v3.assessment.dto.V3AcceptedAnswerRequest;
+import com.capstone.assessment.v3.assessment.dto.V3AssessmentDetailsRequest;
+import com.capstone.assessment.v3.assessment.dto.V3AssessmentEditEligibilityResponse;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentPartRequest;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentQuestionRequest;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentReferenceDataResponse;
@@ -257,6 +259,10 @@ public class V3AssessmentService {
             throw conflict("ASSESSMENT_CONTENT_LOCKED",
                     "Only draft assessments may be edited. Create a new version for active content.");
         }
+        if (repository.countResults(header.testAssignmentId()) > 0) {
+            throw conflict("ASSESSMENT_HAS_RESULTS",
+                    "This assessment already has results, so its questions and answers cannot change.");
+        }
         if (header.classAssignmentId() != request.classAssignmentId()) {
             throw invalid("classAssignmentId",
                     "An existing assessment cannot be moved to a different class assignment.");
@@ -402,10 +408,9 @@ public class V3AssessmentService {
         return requireAssessment(user, testId);
     }
 
-    /** Reverses archiveAssessment. Lands on 'draft' (not whatever status it had before
-     *  archiving) so the teacher reviews the assessment - answer keys, skill mappings,
-     *  schedule - before reactivating it, rather than silently resuming as 'active' or
-     *  'completed'. There is no stored "status before archive" to restore to anyway. */
+    /** Reverses archiveAssessment. A never-activated assessment goes back to 'draft' for review;
+     *  one that was activated goes back to 'active' (ASM-7): its content stays locked, so results
+     *  and printed answer sheets keep matching it. */
     @Transactional
     public V3AssessmentResponse restoreAssessment(
             V3AuthenticatedUser user,
@@ -419,7 +424,8 @@ public class V3AssessmentService {
             throw conflict("ASSESSMENT_NOT_RESTORABLE", "Only archived assessments may be restored.");
         }
         Instant now = clock.instant();
-        if (repository.restoreTest(testId) != 1) {
+        String restoredStatus = repository.wasActivated(testId) ? "active" : "draft";
+        if (repository.restoreTest(testId, restoredStatus) != 1) {
             throw conflict("ASSESSMENT_RESTORE_CONFLICT", "The assessment was changed before it could be restored.");
         }
         repository.restoreTestAssignment(header.testAssignmentId());
@@ -430,10 +436,118 @@ public class V3AssessmentService {
                 Long.toString(testId),
                 "success",
                 metadata,
-                Map.of("testAssignmentId", header.testAssignmentId()),
+                Map.of("testAssignmentId", header.testAssignmentId(), "newStatus", restoredStatus),
                 now
         );
         return requireAssessment(user, testId);
+    }
+
+    /** ASM-7: what the teacher may do now; the web shows the buttons from these flags. */
+    @Transactional(readOnly = true)
+    public V3AssessmentEditEligibilityResponse getEditEligibility(V3AuthenticatedUser user, long testId) {
+        requireTeacher(user);
+        AssessmentHeader header = requireOwnedHeader(user, testId);
+        int resultCount = repository.countResults(header.testAssignmentId());
+        boolean hasScans = repository.hasCaptureOrCopies(testId, header.testAssignmentId());
+        String status = header.status();
+        boolean archived = "archived".equals(status);
+        boolean canHardDelete = resultCount == 0 && !hasScans;
+        String reason;
+        if (resultCount > 0) {
+            reason = "This assessment already has results. Only the title and instructions can change; "
+                    + "archive it instead of deleting.";
+        } else if (hasScans) {
+            reason = "Answer sheets for this assessment were already scanned. Only the title and instructions "
+                    + "can change; archive it instead of deleting.";
+        } else if (archived) {
+            reason = "Restore the assessment before changing it.";
+        } else if (!"draft".equals(status)) {
+            reason = "This assessment is active. Only the title and instructions can change; delete it if it "
+                    + "was a mistake.";
+        } else {
+            reason = null;
+        }
+        return new V3AssessmentEditEligibilityResponse(
+                testId,
+                status,
+                resultCount > 0,
+                resultCount,
+                hasScans,
+                "draft".equals(status) && resultCount == 0,
+                !archived,
+                // Answer-key correction with rescoring is postponed (Heart, October 2026).
+                false,
+                canHardDelete,
+                !archived,
+                archived,
+                reason
+        );
+    }
+
+    /** ASM-7: change only the title and instructions; questions, answers and schedule stay. */
+    @Transactional
+    public V3AssessmentResponse updateAssessmentDetails(
+            V3AuthenticatedUser user,
+            long testId,
+            V3AssessmentDetailsRequest request,
+            V3RequestMetadata metadata
+    ) {
+        requireTeacher(user);
+        repository.lockTest(testId);
+        AssessmentHeader header = requireOwnedHeader(user, testId);
+        if ("archived".equals(header.status())) {
+            throw conflict("ASSESSMENT_ARCHIVED", "Restore the assessment before changing it.");
+        }
+        String testName = requiredTrimmed(request.testName(), "testName", 120);
+        String instructions = optionalTrimmed(request.instructions(), 10_000, "instructions");
+        Instant now = clock.instant();
+        if (repository.updateTestDetails(testId, testName, instructions) != 1) {
+            throw conflict("ASSESSMENT_UPDATE_CONFLICT", "The assessment changed. Refresh before trying again.");
+        }
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("previousTestName", header.testName());
+        details.put("testName", testName);
+        details.put("instructionsChanged", !Objects.equals(header.instructions(), instructions));
+        auditService.record(user.userId(), "assessment.details_update", "tests", Long.toString(testId),
+                "success", metadata, details, now);
+        return requireAssessment(user, testId);
+    }
+
+    /**
+     * ASM-7 (D6): a real delete for a mistake, only when nothing was captured: no results, no
+     * scans or syncs, and no copies. Otherwise the assessment must be archived.
+     */
+    @Transactional
+    public V3AssessmentEditEligibilityResponse deleteAssessment(
+            V3AuthenticatedUser user,
+            long testId,
+            V3RequestMetadata metadata
+    ) {
+        requireTeacher(user);
+        repository.lockTest(testId);
+        AssessmentHeader header = requireOwnedHeader(user, testId);
+        V3AssessmentEditEligibilityResponse eligibility = getEditEligibility(user, testId);
+        if (!eligibility.canHardDelete()) {
+            throw new V3AuthException("ASSESSMENT_NOT_DELETABLE", eligibility.reason(), HttpStatus.CONFLICT,
+                    Map.of("canArchive", eligibility.canArchive(), "resultCount", eligibility.resultCount()));
+        }
+        List<Long> draftRubrics = repository.findDraftRubricIdsForTest(testId, user.userId());
+        Instant now = clock.instant();
+        if (repository.deleteUnusedTest(testId, header.testAssignmentId()) != 1) {
+            throw conflict("ASSESSMENT_DELETE_CONFLICT", "The assessment changed. Refresh before trying again.");
+        }
+        for (Long rubricId : draftRubrics) {
+            repository.deleteDraftRubricIfUnused(rubricId, user.userId());
+        }
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("testName", header.testName());
+        details.put("previousStatus", header.status());
+        details.put("testAssignmentId", header.testAssignmentId());
+        details.put("classAssignmentId", header.classAssignmentId());
+        details.put("totalItems", header.totalItems());
+        auditService.record(user.userId(), "assessment.delete", "tests", Long.toString(testId),
+                "success", metadata, details, now);
+        return eligibility;
     }
 
     private PreparedAssessment prepareAssessment(
