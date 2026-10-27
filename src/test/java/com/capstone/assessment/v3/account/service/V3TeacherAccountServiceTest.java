@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
@@ -471,6 +472,20 @@ class V3TeacherAccountServiceTest {
         when(repository.lockTeacher("SCHOOL-001", 42L)).thenReturn(Optional.of(teacher("archived", NOW)));
         assertEquals("TEACHER_ARCHIVED", assertThrows(V3AuthException.class,
                 () -> service.updateTeacher(PRINCIPAL, 42L, updateRequest(4), METADATA)).getCode());
+    }
+
+    @Test
+    void tch8TeachersArchivedTenYearsAgoLoseTheirPersonalDetailsOnly() {
+        Instant cutoff = NOW.atZone(java.time.ZoneId.of("Asia/Manila")).minusYears(10).toInstant();
+        when(repository.findTeachersArchivedBefore(cutoff)).thenReturn(List.of(Map.entry(42L, "ana.cruz@example.com")));
+        when(repository.anonymizeTeacher(42L, NOW)).thenReturn(1);
+
+        assertEquals(1, service.anonymizeLongArchivedTeachers());
+
+        verify(registrationRepository).anonymizeLoginAttempts(42L, "ana.cruz@example.com",
+                "anonymized-42@invalid.local");
+        verify(repository).revokeSessions(42L, NOW);
+        verify(repository, never()).endOpenClassAssignments(anyLong(), anyLong(), anyString(), any());
     }
 
     private static V3TeacherUpdateRequest updateRequest(int majorId) {

@@ -275,6 +275,33 @@ public class V3SchoolSetupService {
         return last + ", " + match.firstName().trim() + middle;
     }
 
+    /**
+     * CLS-6: runs nightly. Class assignments given more than 3 years ago are archived; the
+     * teacher and the principal are told. Past results stay in reports.
+     */
+    @Transactional
+    public int autoArchiveOldAssignments() {
+        Instant now = clock.instant();
+        Instant cutoff = now.atZone(java.time.ZoneId.of("Asia/Manila")).minusYears(3).toInstant();
+        int archived = 0;
+        for (AssignmentContext assignment : repository.findAssignmentsAssignedBefore(cutoff)) {
+            if (repository.autoArchiveAssignment(assignment.classAssignmentId(),
+                    "Archived automatically after 3 years.", now) != 1) {
+                continue;
+            }
+            auditService.record(null, "class_assignment.auto_archive", "class_assignments",
+                    Long.toString(assignment.classAssignmentId()), "success", null,
+                    Map.of("previousStatus", assignment.status(), "assignedAt", String.valueOf(assignment.assignedAt())),
+                    now);
+            notifyAssignmentArchived(assignment, now);
+            notificationService.notifyPrincipalsAssignmentAutoArchived(assignment.teacherUserId(),
+                    assignment.classAssignmentId(), assignment.gradeLevelName(), assignment.sectionName(),
+                    assignment.subjectName(), assignment.academicYearName(), now);
+            archived++;
+        }
+        return archived;
+    }
+
     /** CLS-4: tells the web whether Delete or only Archive is allowed, with the reason. */
     @Transactional(readOnly = true)
     public V3ClassAssignmentDeleteEligibilityResponse getDeleteEligibility(

@@ -169,6 +169,29 @@ public class V3NotificationService {
         );
     }
 
+    /** CLS-6: tells the principals of the teacher's school that an old assignment was archived. */
+    public void notifyPrincipalsAssignmentAutoArchived(
+            long teacherUserId,
+            long classAssignmentId,
+            String gradeLevelName,
+            String sectionName,
+            String subjectName,
+            String academicYearName,
+            Instant createdAt
+    ) {
+        notificationRepository.insertForSchoolPrincipalsOfUser(
+                teacherUserId,
+                "class_assignment_auto_archived",
+                "Class assignment archived automatically",
+                "The assignment for " + classLabel(gradeLevelName, sectionName) + " " + subjectName
+                        + " (" + academicYearName + ") was archived after 3 years.",
+                "class_assignments",
+                Long.toString(classAssignmentId),
+                "class-assignment:" + classAssignmentId + ":auto-archived",
+                createdAt
+        );
+    }
+
     public void notifyClassAssignmentReactivated(
             long teacherUserId,
             long classAssignmentId,

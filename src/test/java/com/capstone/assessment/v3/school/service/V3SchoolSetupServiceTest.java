@@ -656,6 +656,20 @@ class V3SchoolSetupServiceTest {
         assertThrows(V3FieldValidationException.class, () -> service.getTeacherOptions(PRINCIPAL, 99, null));
     }
 
+    @Test
+    void cls6AssignmentsOlderThanThreeYearsAreArchivedAndBothSidesAreTold() {
+        Instant cutoff = NOW.atZone(java.time.ZoneId.of("Asia/Manila")).minusYears(3).toInstant();
+        when(repository.findAssignmentsAssignedBefore(cutoff)).thenReturn(List.of(assignment("active")));
+        when(repository.autoArchiveAssignment(900L, "Archived automatically after 3 years.", NOW)).thenReturn(1);
+
+        assertEquals(1, service.autoArchiveOldAssignments());
+
+        verify(notificationService).notifyClassAssignmentArchived(eq(22L), eq(900L), anyString(), anyString(),
+                anyString(), anyString(), eq(NOW));
+        verify(notificationService).notifyPrincipalsAssignmentAutoArchived(eq(22L), eq(900L), anyString(),
+                anyString(), anyString(), anyString(), eq(NOW));
+    }
+
     private AssignmentContext assignment(String status) {
         return new AssignmentContext(
                 900L, "SCHOOL-001", 700L, 22L, "Teacher One", 1, "Science",

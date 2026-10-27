@@ -10,6 +10,7 @@ import com.capstone.assessment.v3.assessment.dto.V3AssessmentRequest;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentResponse;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentSummaryResponse;
 import com.capstone.assessment.v3.assessment.dto.V3PartSkillMappingRequest;
+import com.capstone.assessment.v3.assessment.dto.V3SameDayAssessmentsResponse;
 import com.capstone.assessment.v3.assessment.dto.V3QuestionOptionRequest;
 import com.capstone.assessment.v3.assessment.dto.V3RubricCriterionRequest;
 import com.capstone.assessment.v3.assessment.dto.V3RubricRequest;
@@ -440,6 +441,31 @@ public class V3AssessmentService {
                 now
         );
         return requireAssessment(user, testId);
+    }
+
+    /**
+     * GEN-2: warn (never block) when another assessment of the same class assignment opens on
+     * the same day (Philippine time); the web asks the teacher to confirm before saving.
+     */
+    @Transactional(readOnly = true)
+    public V3SameDayAssessmentsResponse findSameDayAssessments(
+            V3AuthenticatedUser user,
+            long classAssignmentId,
+            Instant openAt,
+            Long excludeTestId
+    ) {
+        requireTeacher(user);
+        requireOwnedActiveOrHistoricalAssignment(user, classAssignmentId);
+        java.time.LocalDate day = openAt.atZone(SCHOOL_TIMEZONE).toLocalDate();
+        List<V3SameDayAssessmentsResponse.Item> items = repository.findSameDayAssessments(classAssignmentId,
+                day.atStartOfDay(SCHOOL_TIMEZONE).toInstant(),
+                day.plusDays(1).atStartOfDay(SCHOOL_TIMEZONE).toInstant(), excludeTestId);
+        String message = items.isEmpty() ? null
+                : "This class already has " + (items.size() == 1 ? "an assessment" : items.size() + " assessments")
+                        + " opening on " + TERM_DAY.format(openAt.atZone(SCHOOL_TIMEZONE))
+                        + ": " + items.stream().map(V3SameDayAssessmentsResponse.Item::testName)
+                        .collect(Collectors.joining(", ")) + ". Save anyway?";
+        return new V3SameDayAssessmentsResponse(!items.isEmpty(), message, items);
     }
 
     /** ASM-7: what the teacher may do now; the web shows the buttons from these flags. */

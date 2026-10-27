@@ -31,6 +31,7 @@ import com.capstone.assessment.v3.assessment.dto.V3AssessmentDetailsRequest;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentEditEligibilityResponse;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.isNull;
+import com.capstone.assessment.v3.assessment.dto.V3SameDayAssessmentsResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -456,6 +457,23 @@ class V3AssessmentServiceTest {
 
         assertEquals("ASSESSMENT_HAS_RESULTS", exception.getCode());
         verify(repository, never()).deleteParts(anyLong());
+    }
+
+    @Test
+    void gen2ASecondAssessmentOnTheSameDayIsOnlyAWarning() {
+        when(repository.findAssignmentContext(77L)).thenReturn(Optional.of(ASSIGNMENT));
+        // NOW is 08:00 on Sep 1 in Manila, so the day runs from Aug 31 16:00 to Sep 1 16:00 UTC.
+        when(repository.findSameDayAssessments(77L, Instant.parse("2026-08-31T16:00:00Z"),
+                Instant.parse("2026-09-01T16:00:00Z"), 1000L)).thenReturn(List.of(
+                new V3SameDayAssessmentsResponse.Item(1001L, "Science Quiz 2", "active", NOW.plusSeconds(3600))));
+
+        V3SameDayAssessmentsResponse check = service.findSameDayAssessments(TEACHER, 77L, NOW, 1000L);
+
+        assertEquals(true, check.hasSameDayAssessments());
+        assertEquals("This class already has an assessment opening on Sep 1, 2026: Science Quiz 2. Save anyway?",
+                check.message());
+        verify(repository, never()).insertTest(anyString(), anyString(), anyLong(), anyInt(), anyString(),
+                anyString(), nullable(String.class), anyInt());
     }
 
     private void stubOwned(String status) {

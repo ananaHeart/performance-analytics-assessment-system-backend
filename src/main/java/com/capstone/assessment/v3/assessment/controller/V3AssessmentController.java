@@ -7,6 +7,7 @@ import com.capstone.assessment.v3.assessment.dto.V3AssessmentReferenceDataRespon
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentRequest;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentResponse;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentSummaryResponse;
+import com.capstone.assessment.v3.assessment.dto.V3SameDayAssessmentsResponse;
 import com.capstone.assessment.v3.assessment.service.V3AssessmentService;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
@@ -154,6 +155,20 @@ public class V3AssessmentController {
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 assessment restored successfully.",
                 assessmentService.restoreAssessment(user, testId, requestMetadata(httpRequest))
+        ));
+    }
+
+    /** GEN-2: other assessments of the class opening the same day (a warning only). */
+    @GetMapping("/same-day-check")
+    public ResponseEntity<ApiResponse<V3SameDayAssessmentsResponse>> sameDayCheck(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @RequestParam long classAssignmentId,
+            @RequestParam java.time.Instant openAt,
+            @RequestParam(required = false) Long excludeTestId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Same-day check completed.",
+                assessmentService.findSameDayAssessments(user, classAssignmentId, openAt, excludeTestId)
         ));
     }
 

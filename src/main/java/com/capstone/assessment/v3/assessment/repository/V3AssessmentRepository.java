@@ -1,5 +1,6 @@
 package com.capstone.assessment.v3.assessment.repository;
 
+import com.capstone.assessment.v3.assessment.dto.V3SameDayAssessmentsResponse;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentReferenceDataResponse;
 import com.capstone.assessment.v3.assessment.dto.V3AssessmentSummaryResponse;
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.AcceptedAnswerRow;
@@ -874,6 +875,25 @@ public class V3AssessmentRepository {
                       SELECT 1 FROM questions WHERE questions.rubric_id = rubrics.rubric_id
                   )
                 """, rubricId, teacherUserId);
+    }
+
+    /** GEN-2: assessments of the class assignment that open within [dayStart, dayEnd). */
+    public List<V3SameDayAssessmentsResponse.Item> findSameDayAssessments(
+            long classAssignmentId, Instant dayStart, Instant dayEnd, Long excludeTestId) {
+        return jdbcTemplate.query("""
+                SELECT test.test_id, test.test_name, test.status, delivery.open_at
+                  FROM tests test
+                  JOIN test_assignments delivery ON delivery.test_id = test.test_id
+                 WHERE delivery.class_assignment_id = ?
+                   AND test.status <> 'archived'
+                   AND delivery.open_at >= ? AND delivery.open_at < ?
+                   AND test.test_id <> ?
+                 ORDER BY delivery.open_at, test.test_id
+                """, (rs, rowNum) -> new V3SameDayAssessmentsResponse.Item(
+                rs.getLong("test_id"), rs.getString("test_name"), rs.getString("status"),
+                rs.getTimestamp("open_at").toInstant()
+        ), classAssignmentId, Timestamp.from(dayStart), Timestamp.from(dayEnd),
+                excludeTestId == null ? -1L : excludeTestId);
     }
 
     /** ASM-7: learners' results saved for this assessment. */

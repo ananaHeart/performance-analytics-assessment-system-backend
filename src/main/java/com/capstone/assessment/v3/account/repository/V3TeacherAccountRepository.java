@@ -196,6 +196,44 @@ public class V3TeacherAccountRepository {
         );
     }
 
+    /** TCH-8: teachers archived before the cutoff whose personal details are still there (id, email). */
+    public List<java.util.Map.Entry<Long, String>> findTeachersArchivedBefore(Instant cutoff) {
+        return jdbcTemplate.query("""
+                SELECT u.user_id, u.email
+                  FROM users u
+                  JOIN roles role ON role.role_id = u.role_id AND role.role_name = 'teacher'
+                  JOIN statuses status ON status.status_id = u.status_id AND status.status_name = 'archived'
+                 WHERE u.archived_at < ?
+                   AND u.email NOT LIKE 'anonymized-%@invalid.local'
+                 ORDER BY u.user_id
+                """, (rs, rowNum) -> java.util.Map.entry(rs.getLong("user_id"), rs.getString("email")),
+                Timestamp.from(cutoff));
+    }
+
+    /**
+     * TCH-8 (D5): erase the personal details but keep the account row, so assessments and
+     * learners' results stay linked. Email and contact number become unique placeholders.
+     */
+    public int anonymizeTeacher(long userId, Instant now) {
+        jdbcTemplate.update("""
+                UPDATE addresses
+                   SET region_code = NULL, region_name = NULL, province_code = NULL, province_name = NULL,
+                       city_municipality_code = NULL, city_municipality_name = NULL, barangay_code = NULL,
+                       barangay_name = NULL, address_line = NULL, postal_code = NULL
+                 WHERE address_id = (SELECT address_id FROM users WHERE user_id = ?)
+                """, userId);
+        return jdbcTemplate.update("""
+                UPDATE users
+                   SET first_name = 'Former', middle_name = NULL, last_name = CONCAT('Teacher ', user_id),
+                       suffix_id = NULL, birth_date = NULL, teaching_start_month = NULL, teaching_start_year = NULL,
+                       email = CONCAT('anonymized-', user_id, '@invalid.local'),
+                       contact_number = CONCAT('ANON-', user_id),
+                       password_hash = '!anonymized', email_verified_at = NULL, contact_verified_at = NULL,
+                       updated_at = ?
+                 WHERE user_id = ? AND archived_at IS NOT NULL
+                """, Timestamp.from(now), userId);
+    }
+
     /** TCH-9: the teacher's open class assignments end, so the class and subject can be reassigned. */
     public int endOpenClassAssignments(long teacherUserId, long principalUserId, String reason, Instant endedAt) {
         return jdbcTemplate.update(

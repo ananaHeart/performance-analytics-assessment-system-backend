@@ -597,6 +597,24 @@ public class V3SchoolSetupRepository {
                 """, Timestamp.from(now), principalUserId, reason, classAssignmentId);
     }
 
+    /** CLS-6: assignments given more than 3 years ago that are not archived yet (all schools). */
+    public List<AssignmentContext> findAssignmentsAssignedBefore(Instant cutoff) {
+        return jdbcTemplate.query(ASSIGNMENT_SELECT + """
+                 WHERE assignment.status IN ('active', 'inactive', 'completed')
+                   AND assignment.assigned_at < ?
+                 ORDER BY assignment.class_assignment_id
+                """, this::mapAssignmentContext, Timestamp.from(cutoff));
+    }
+
+    /** CLS-6: archived by the nightly job, so no principal is recorded as the one who changed it. */
+    public int autoArchiveAssignment(long classAssignmentId, String reason, Instant now) {
+        return jdbcTemplate.update("""
+                UPDATE class_assignments
+                   SET status = 'archived', ended_at = ?, status_changed_by_user_id = NULL, status_reason = ?
+                 WHERE class_assignment_id = ? AND status IN ('active', 'inactive', 'completed')
+                """, Timestamp.from(now), reason, classAssignmentId);
+    }
+
     /** CLS-7: active and inactive switch both ways; the assignment keeps its history. */
     public int changeAssignmentStatus(
             long classAssignmentId,

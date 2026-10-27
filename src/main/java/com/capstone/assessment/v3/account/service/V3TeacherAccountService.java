@@ -49,6 +49,8 @@ public class V3TeacherAccountService {
     static final String ARCHIVED_STATUS = "archived";
     /** REG-2 (D2): a teacher account is valid for the 3-year contract. */
     static final int CONTRACT_YEARS = 3;
+    /** TCH-8 (D5): personal details of archived teachers are kept this long. */
+    static final int ARCHIVE_RETENTION_YEARS = 10;
     private static final ZoneId SCHOOL_TIMEZONE = ZoneId.of("Asia/Manila");
 
     private static final String PRINCIPAL_ROLE = "principal";
@@ -464,6 +466,28 @@ public class V3TeacherAccountService {
         auditService.record(principal.userId(), "teacher.update", "users", Long.toString(teacherUserId),
                 "success", metadata, details, now);
         return reload(principal, teacherUserId);
+    }
+
+    /**
+     * TCH-8 (D5): runs daily. Teachers archived more than 10 years ago keep their account row
+     * (so assessments and results stay), but their personal details are erased.
+     */
+    public int anonymizeLongArchivedTeachers() {
+        Instant now = clock.instant();
+        Instant cutoff = now.atZone(SCHOOL_TIMEZONE).minusYears(ARCHIVE_RETENTION_YEARS).toInstant();
+        int anonymized = 0;
+        for (Map.Entry<Long, String> teacher : repository.findTeachersArchivedBefore(cutoff)) {
+            long userId = teacher.getKey();
+            if (repository.anonymizeTeacher(userId, now) == 1) {
+                registrationRepository.anonymizeLoginAttempts(userId, teacher.getValue(),
+                        "anonymized-" + userId + "@invalid.local");
+                repository.revokeSessions(userId, now);
+                auditService.record(null, "teacher.anonymize", "users", Long.toString(userId), "success", null,
+                        Map.of("retentionYears", ARCHIVE_RETENTION_YEARS), now);
+                anonymized++;
+            }
+        }
+        return anonymized;
     }
 
     /** REG-2 (D2): runs daily; an ended contract makes the account inactive, never deleted. */
