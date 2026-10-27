@@ -644,6 +644,37 @@ public class V3RegistrationRepository {
 
     // ---------------------------------------------------------------- REG-3 teacher_subjects
 
+    /** REG-3: every subject, with the major of the same name. */
+    public List<V3RegistrationReferenceDataResponse.SubjectOption> listSubjects() {
+        return jdbcTemplate.query("""
+                SELECT subject.subject_id, subject.subject_code, subject.subject_name, major.major_id
+                  FROM subjects subject
+                  LEFT JOIN majors major ON major.major_name = subject.subject_name
+                 ORDER BY subject.subject_name
+                """, (rs, rowNum) -> {
+            int majorId = rs.getInt("major_id");
+            return new V3RegistrationReferenceDataResponse.SubjectOption(
+                    rs.getInt("subject_id"),
+                    rs.getString("subject_code"),
+                    rs.getString("subject_name"),
+                    rs.wasNull() ? null : majorId
+            );
+        });
+    }
+
+    /** REG-3: the subject that has the same name as the major, if any. */
+    public Integer findSubjectIdForMajor(Integer majorId) {
+        if (majorId == null) {
+            return null;
+        }
+        return jdbcTemplate.query("""
+                SELECT subject.subject_id
+                  FROM majors major
+                  JOIN subjects subject ON subject.subject_name = major.major_name
+                 WHERE major.major_id = ?
+                """, (rs, rowNum) -> rs.getInt(1), majorId).stream().findFirst().orElse(null);
+    }
+
     public int countExistingSubjects(List<Integer> subjectIds) {
         String placeholders = String.join(", ", java.util.Collections.nCopies(subjectIds.size(), "?"));
         Integer count = jdbcTemplate.queryForObject(

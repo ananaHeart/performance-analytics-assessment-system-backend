@@ -105,7 +105,8 @@ public class V3TeacherRegistrationService {
                         properties.getResendCooldown().toSeconds(),
                         properties.getMaxOtpAttempts(),
                         properties.getRegistrationRetention().toDays()
-                )
+                ),
+                repository.listSubjects()
         );
     }
 
@@ -235,7 +236,8 @@ public class V3TeacherRegistrationService {
         }
 
         // REG-3: optional additional majors and subjects taught before.
-        V3TeacherSubjects.validate(V3TeacherSubjects.clean(request.additionalMajorSubjectIds(), request.majorId()),
+        V3TeacherSubjects.validate(V3TeacherSubjects.clean(request.additionalMajorSubjectIds(),
+                        repository.findSubjectIdForMajor(request.majorId())),
                 "additionalMajorSubjectIds", repository, errors);
         V3TeacherSubjects.validate(V3TeacherSubjects.clean(request.taughtSubjectIds(), null),
                 "taughtSubjectIds", repository, errors);

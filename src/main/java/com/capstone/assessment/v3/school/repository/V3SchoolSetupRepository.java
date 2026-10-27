@@ -269,7 +269,9 @@ public class V3SchoolSetupRepository {
         return jdbcTemplate.query("""
                 SELECT teacher.user_id, teacher.first_name, teacher.middle_name, teacher.last_name,
                        suffix.suffix_name,
-                       teacher.major_id = ? AS main_major,
+                       EXISTS (SELECT 1 FROM majors major
+                                 JOIN subjects subject ON subject.subject_name = major.major_name
+                                WHERE major.major_id = teacher.major_id AND subject.subject_id = ?) AS main_major,
                        EXISTS (SELECT 1 FROM teacher_subjects ts
                                 WHERE ts.user_id = teacher.user_id AND ts.subject_id = ?
                                   AND ts.relation = 'additional_major') AS additional_major,

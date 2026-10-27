@@ -367,7 +367,7 @@ public class V3AccountSettingsService {
         requireTeacher(user);
         AccountRow account = requireAccount(user);
         List<Integer> additional = V3TeacherSubjects.clean(request.additionalMajorSubjectIds(),
-                repository.findMajorId(account.userId()));
+                registrationRepository.findSubjectIdForMajor(repository.findMajorId(account.userId())));
         List<Integer> taught = V3TeacherSubjects.clean(request.taughtSubjectIds(), null);
         Map<String, Object> errors = new LinkedHashMap<>();
         V3TeacherSubjects.validate(additional, "additionalMajorSubjectIds", registrationRepository, errors);

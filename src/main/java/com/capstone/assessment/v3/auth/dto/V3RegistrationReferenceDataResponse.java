@@ -9,8 +9,14 @@ public record V3RegistrationReferenceDataResponse(
         List<ReferenceOption> educationalAttainments,
         List<SchoolOption> schools,
         List<VerificationMethodOption> verificationMethods,
-        VerificationPolicy verificationPolicy
+        VerificationPolicy verificationPolicy,
+        // REG-3: choices for additional majors and subjects taught before.
+        List<SubjectOption> subjects
 ) {
+    /** majorId is the major with the same name (null when none), so the web never assumes equal IDs. */
+    public record SubjectOption(int subjectId, String subjectCode, String subjectName, Integer majorId) {
+    }
+
     public record ReferenceOption(long id, String name) {
     }
 

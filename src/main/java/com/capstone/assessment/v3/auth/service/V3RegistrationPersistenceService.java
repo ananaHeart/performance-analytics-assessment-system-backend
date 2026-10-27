@@ -94,7 +94,8 @@ public class V3RegistrationPersistenceService {
                 now
         );
         repository.replaceTeacherSubjects(userId, V3TeacherSubjects.ADDITIONAL_MAJOR,
-                V3TeacherSubjects.clean(request.additionalMajorSubjectIds(), request.majorId()));
+                V3TeacherSubjects.clean(request.additionalMajorSubjectIds(),
+                        repository.findSubjectIdForMajor(request.majorId())));
         repository.replaceTeacherSubjects(userId, V3TeacherSubjects.TAUGHT_BEFORE,
                 V3TeacherSubjects.clean(request.taughtSubjectIds(), null));
 

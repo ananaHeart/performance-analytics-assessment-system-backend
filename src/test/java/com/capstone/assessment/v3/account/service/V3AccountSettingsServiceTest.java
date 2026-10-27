@@ -159,6 +159,7 @@ class V3AccountSettingsServiceTest {
     @Test
     void reg3ATeacherSavesExtraMajorsWithoutRepeatingTheMainMajor() {
         when(repository.findMajorId(42L)).thenReturn(3);
+        when(registrationRepository.findSubjectIdForMajor(3)).thenReturn(3);
         when(registrationRepository.countExistingSubjects(java.util.List.of(1))).thenReturn(1);
         when(registrationRepository.countExistingSubjects(java.util.List.of(2, 5))).thenReturn(2);
 

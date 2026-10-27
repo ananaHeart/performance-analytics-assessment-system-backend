@@ -22,7 +22,7 @@ public final class V3TeacherSubjects {
     private V3TeacherSubjects() {
     }
 
-    /** Distinct positive IDs in the order given, without the main major when one is passed. */
+    /** Distinct positive IDs in the order given, without the main major's subject when one is passed. */
     public static List<Integer> clean(List<Integer> ids, Integer mainMajorId) {
         if (ids == null) {
             return List.of();
