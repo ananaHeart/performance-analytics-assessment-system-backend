@@ -285,6 +285,28 @@ public class V3TeacherRegistrationService {
         return null;
     }
 
+    /** The registration password rule, shared with change password (SET-6). */
+    public static boolean isStrongPassword(String value) {
+        return value != null && STRONG_PASSWORD_PATTERN.matcher(value).matches();
+    }
+
+    /** The registration email rule, shared with the email change (SET-1). */
+    public static boolean isValidEmailAddress(String value) {
+        return value != null && EMAIL_PATTERN.matcher(value).matches()
+                && !value.contains("..")
+                && !value.startsWith(".")
+                && !value.endsWith(".");
+    }
+
+    /** 09XXXXXXXXX or +639XXXXXXXXX as +639XXXXXXXXX; null when neither (SET-1). */
+    public static String toE164Contact(String value) {
+        String normalized = value == null ? "" : value.trim();
+        if (LOCAL_CONTACT_PATTERN.matcher(normalized).matches()) {
+            return "+63" + normalized.substring(1);
+        }
+        return INTERNATIONAL_CONTACT_PATTERN.matcher(normalized).matches() ? normalized : null;
+    }
+
     private boolean isValidEmail(String value) {
         return EMAIL_PATTERN.matcher(value).matches()
                 && !value.contains("..")

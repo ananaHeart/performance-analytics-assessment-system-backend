@@ -61,6 +61,8 @@ public class V3SystemSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v3/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v3/auth/logout").authenticated()
                         .requestMatchers("/api/v3/auth/mfa/**").hasAnyRole("PRINCIPAL", "TEACHER")
+                        .requestMatchers("/api/v3/account", "/api/v3/account/**")
+                            .hasAnyRole("PRINCIPAL", "TEACHER")
                         .requestMatchers("/api/v3/notifications/**").hasAnyRole("PRINCIPAL", "TEACHER")
                         .requestMatchers("/api/v3/reports/**").hasAnyRole("PRINCIPAL", "TEACHER")
                         .requestMatchers(

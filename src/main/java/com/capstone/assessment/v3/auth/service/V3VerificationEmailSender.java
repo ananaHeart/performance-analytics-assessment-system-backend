@@ -219,7 +219,7 @@ public class V3VerificationEmailSender {
                 """.formatted(otp, properties.getOtpTtl().toMinutes());
     }
 
-    static String maskEmail(String email) {
+    public static String maskEmail(String email) {
         int at = email == null ? -1 : email.indexOf('@');
         if (at <= 1) {
             return "***";
