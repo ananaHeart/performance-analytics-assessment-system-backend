@@ -53,6 +53,9 @@ public class V3SystemSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v3/system/readiness").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/system/mobile-release-readiness").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v3/auth/teacher-registration/reference-data").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v3/auth/teacher-registration/availability").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v3/auth/password-reset/request",
+                                "/api/v3/auth/password-reset/resend", "/api/v3/auth/password-reset/confirm").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v3/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v3/auth/register-teacher").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v3/auth/verify-teacher-email").permitAll()

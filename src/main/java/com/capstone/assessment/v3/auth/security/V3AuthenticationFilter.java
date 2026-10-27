@@ -29,6 +29,10 @@ public class V3AuthenticationFilter extends OncePerRequestFilter {
     private static final Set<String> PUBLIC_PATHS = Set.of(
             "/api/v3/auth/login",
             "/api/v3/auth/teacher-registration/reference-data",
+            "/api/v3/auth/teacher-registration/availability",
+            "/api/v3/auth/password-reset/request",
+            "/api/v3/auth/password-reset/resend",
+            "/api/v3/auth/password-reset/confirm",
             "/api/v3/auth/register-teacher",
             "/api/v3/auth/verify-teacher-email",
             "/api/v3/auth/resend-teacher-verification",

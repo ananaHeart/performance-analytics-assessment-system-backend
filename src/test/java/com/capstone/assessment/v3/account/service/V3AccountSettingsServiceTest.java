@@ -19,6 +19,7 @@ import com.capstone.assessment.v3.auth.service.V3SmsVerificationSender;
 import com.capstone.assessment.v3.auth.service.V3VerificationEmailSender;
 import org.junit.jupiter.api.BeforeEach;
 import com.capstone.assessment.v3.account.dto.V3TeacherSubjectsRequest;
+import com.capstone.assessment.v3.account.dto.V3PasswordResetRequest;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -174,6 +175,45 @@ class V3AccountSettingsServiceTest {
                 "active", "s");
         assertEquals("TEACHER_ROLE_REQUIRED", assertThrows(V3AuthException.class,
                 () -> service.getSubjects(principal)).getCode());
+    }
+
+    @Test
+    void tch7AnUnknownAddressGetsTheSameAnswerButNoCode() {
+        when(repository.findResettableUserId("email", "nobody@example.com")).thenReturn(Optional.empty());
+
+        V3AccountCodeResponse answer = service.requestPasswordReset(
+                new V3PasswordResetRequest("Nobody@Example.com", null, null, null), null);
+
+        assertEquals("email", answer.channel());
+        verify(emailSender, never()).sendVerificationCode(anyString(), anyString());
+        verify(repository, never()).insertChallenge(anyString(), anyLong(), anyString(), anyString(), anyString(),
+                anyString(), anyInt(), anyInt(), any(), any(), any());
+    }
+
+    @Test
+    void tch7TheCodeResetsThePasswordAndEndsEverySession() {
+        ArgumentCaptor<String> hash = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> otp = ArgumentCaptor.forClass(String.class);
+        when(repository.findResettableUserId("email", "ana@example.com")).thenReturn(Optional.of(42L));
+        when(repository.insertChallenge(anyString(), eq(42L), eq("sensitive_action"), eq("email"), anyString(),
+                hash.capture(), anyInt(), anyInt(), any(), any(), any())).thenReturn(9L);
+
+        V3AccountCodeResponse sent = service.requestPasswordReset(
+                new V3PasswordResetRequest("ana@example.com", null, null, null), null);
+
+        verify(emailSender).sendVerificationCode(eq("ana@example.com"), otp.capture());
+        when(repository.findChallengeOwner(sent.challengeUuid())).thenReturn(Optional.of(42L));
+        when(repository.lockChallenge(sent.challengeUuid(), 42L)).thenReturn(Optional.of(new ChallengeRow(
+                9L, sent.challengeUuid(), "sensitive_action", "email", hash.getValue(), "pending", "sent",
+                0, 5, 0, NOW, NOW.plusSeconds(600))));
+        assertThrows(V3FieldValidationException.class, () -> service.confirmPasswordReset(
+                new V3PasswordResetRequest(null, sent.challengeUuid(), otp.getValue(), "weak"), null));
+
+        service.confirmPasswordReset(
+                new V3PasswordResetRequest(null, sent.challengeUuid(), otp.getValue(), "New#Passw0rd"), null);
+
+        verify(repository).updatePassword(eq(42L), anyString(), eq(NOW));
+        verify(repository).endSessionsAndClearLock(42L, NOW);
     }
 
     private static AccountRow account(Instant emailVerifiedAt, Instant contactVerifiedAt) {

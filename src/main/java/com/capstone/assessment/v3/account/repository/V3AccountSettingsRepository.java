@@ -48,6 +48,36 @@ public class V3AccountSettingsRepository {
         return jdbcTemplate.queryForObject("SELECT major_id FROM users WHERE user_id = ?", Integer.class, userId);
     }
 
+    /**
+     * TCH-7: the account a reset code may go to: approved (active, inactive or locked) and the
+     * email or number itself verified, so a code never goes to an address nobody confirmed.
+     */
+    public Optional<Long> findResettableUserId(String channel, String destination) {
+        String condition = "sms".equals(channel)
+                ? "u.contact_number = ? AND u.contact_verified_at IS NOT NULL"
+                : "LOWER(u.email) = LOWER(?) AND u.email_verified_at IS NOT NULL";
+        return jdbcTemplate.query("""
+                SELECT u.user_id
+                  FROM users u
+                  JOIN statuses status ON status.status_id = u.status_id
+                 WHERE status.status_name IN ('active', 'inactive', 'locked')
+                   AND """ + condition, (rs, rowNum) -> rs.getLong(1), destination).stream().findFirst();
+    }
+
+    /** TCH-7: the owner of a code, for the signed-out reset flow. */
+    public Optional<Long> findChallengeOwner(String challengeUuid) {
+        return jdbcTemplate.query("SELECT user_id FROM verification_challenges WHERE challenge_uuid = ?",
+                (rs, rowNum) -> rs.getLong(1), challengeUuid).stream().findFirst();
+    }
+
+    /** TCH-7: after a reset every session ends and an old lockout no longer blocks the new password. */
+    public void endSessionsAndClearLock(long userId, Instant now) {
+        jdbcTemplate.update("UPDATE auth_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL",
+                Timestamp.from(now), userId);
+        jdbcTemplate.update("UPDATE users SET failed_login_count = 0, locked_until_at = NULL WHERE user_id = ?",
+                userId);
+    }
+
     public boolean emailUsedByAnother(String email, long userId) {
         return exists("SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(?) AND user_id <> ?", email, userId);
     }

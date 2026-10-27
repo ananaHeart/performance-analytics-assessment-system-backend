@@ -7,6 +7,7 @@ import com.capstone.assessment.v3.account.dto.V3AccountVerificationRequest;
 import com.capstone.assessment.v3.account.dto.V3ContactChangeRequest;
 import com.capstone.assessment.v3.account.dto.V3EmailChangeRequest;
 import com.capstone.assessment.v3.account.dto.V3PasswordChangeRequest;
+import com.capstone.assessment.v3.account.dto.V3PasswordResetRequest;
 import com.capstone.assessment.v3.account.dto.V3TeacherSubjectsRequest;
 import com.capstone.assessment.v3.account.dto.V3TeacherSubjectsResponse;
 import com.capstone.assessment.v3.account.repository.V3AccountSettingsRepository;
@@ -39,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -62,7 +64,9 @@ public class V3AccountSettingsService {
         EMAIL_CHANGE("sensitive_action", "email", "email-change|"),
         CONTACT_CHANGE("sensitive_action", "sms", "contact-change|"),
         VERIFY_EMAIL("email_verification", "email", "verify-email|"),
-        VERIFY_SMS("contact_verification", "sms", "verify-sms|");
+        VERIFY_SMS("contact_verification", "sms", "verify-sms|"),
+        RESET_EMAIL("sensitive_action", "email", "password-reset|"),
+        RESET_SMS("sensitive_action", "sms", "password-reset|");
 
         final String purpose;
         final String channel;
@@ -267,6 +271,78 @@ public class V3AccountSettingsService {
         auditService.record(account.userId(), flow == Flow.VERIFY_SMS ? "account.verify_contact" : "account.verify_email",
                 "users", Long.toString(account.userId()), "success", metadata, Map.of("channel", flow.channel), now);
         return toResponse(requireAccount(user));
+    }
+
+    /**
+     * TCH-7: forgot password. The answer looks the same whether or not the account exists, so the
+     * form cannot be used to find out who is registered.
+     */
+    @Transactional(noRollbackFor = V3AuthException.class)
+    public V3AccountCodeResponse requestPasswordReset(V3PasswordResetRequest request, V3RequestMetadata metadata) {
+        String identifier = request.identifier() == null ? "" : request.identifier().trim();
+        boolean bySms = !identifier.contains("@");
+        String destination = bySms
+                ? V3TeacherRegistrationService.toE164Contact(identifier)
+                : identifier.toLowerCase(Locale.ROOT);
+        if (destination == null || (!bySms && !V3TeacherRegistrationService.isValidEmailAddress(destination))) {
+            throw fieldError("identifier", "Enter your email or mobile number (09XXXXXXXXX).");
+        }
+        Flow flow = bySms ? Flow.RESET_SMS : Flow.RESET_EMAIL;
+        if (bySms && !smsSender.isEnabled()) {
+            throw new V3AuthException("SMS_NOT_AVAILABLE", "SMS codes are not available. Use your email instead.",
+                    HttpStatus.CONFLICT);
+        }
+        Optional<Long> userId = repository.findResettableUserId(flow.channel, destination);
+        if (userId.isEmpty()) {
+            return lookalikeCode(flow.channel, bySms ? maskPhone(destination) : V3VerificationEmailSender.maskEmail(destination));
+        }
+        AccountRow account = repository.lockAccount(userId.get()).orElseThrow(this::invalidChallenge);
+        return sendCode(account, flow, destination, 0, metadata);
+    }
+
+    @Transactional(noRollbackFor = V3AuthException.class)
+    public V3AccountCodeResponse resendPasswordReset(V3PasswordResetRequest request, V3RequestMetadata metadata) {
+        String challengeUuid = request.challengeUuid() == null ? "" : request.challengeUuid().trim();
+        Optional<Long> owner = repository.findChallengeOwner(challengeUuid);
+        if (owner.isEmpty()) {
+            return lookalikeCode("email", "your registered address");
+        }
+        AccountRow account = repository.lockAccount(owner.get()).orElseThrow(this::invalidChallenge);
+        ChallengeRow previous = requireChallenge(account, challengeUuid);
+        Flow flow = "sms".equals(previous.channel()) ? Flow.RESET_SMS : Flow.RESET_EMAIL;
+        return resend(account, flow, challengeUuid, resetDestination(account, flow), metadata);
+    }
+
+    /** TCH-7: a correct code sets the new password and ends every session. */
+    @Transactional(noRollbackFor = V3AuthException.class)
+    public Instant confirmPasswordReset(V3PasswordResetRequest request, V3RequestMetadata metadata) {
+        if (!V3TeacherRegistrationService.isStrongPassword(request.newPassword())) {
+            throw fieldError("newPassword",
+                    "Password must have at least 10 characters, uppercase, lowercase, number, and special character.");
+        }
+        String challengeUuid = request.challengeUuid() == null ? "" : request.challengeUuid().trim();
+        long owner = repository.findChallengeOwner(challengeUuid).orElseThrow(this::invalidChallenge);
+        AccountRow account = repository.lockAccount(owner).orElseThrow(this::invalidChallenge);
+        ChallengeRow challenge = requireChallenge(account, challengeUuid);
+        Flow flow = "sms".equals(challenge.channel()) ? Flow.RESET_SMS : Flow.RESET_EMAIL;
+        Instant now = clock.instant();
+        confirmCode(account, flow, challengeUuid, request.code(), resetDestination(account, flow), now);
+        repository.updatePassword(account.userId(), passwordEncoder.encode(request.newPassword()), now);
+        repository.endSessionsAndClearLock(account.userId(), now);
+        auditService.record(account.userId(), "account.password_reset", "users", Long.toString(account.userId()),
+                "success", metadata, Map.of("channel", flow.channel, "sessionsEnded", true), now);
+        return now;
+    }
+
+    private String resetDestination(AccountRow account, Flow flow) {
+        return flow == Flow.RESET_SMS ? account.contactNumber() : account.email();
+    }
+
+    /** The same shape as a real code, for an address that has no resettable account. */
+    private V3AccountCodeResponse lookalikeCode(String channel, String masked) {
+        Instant now = clock.instant();
+        return new V3AccountCodeResponse(UUID.randomUUID().toString(), channel, masked,
+                now.plus(properties.getOtpTtl()), now.plus(properties.getResendCooldown()));
     }
 
     /** REG-3: the teacher's own additional majors and subjects taught before. */
