@@ -10,6 +10,8 @@ public record V3CurrentUserResponse(
         String email,
         String role,
         String status,
-        boolean mfaRequired
+        boolean mfaRequired,
+        // SES-1: the web shows "Stay signed in?" a minute before this; 0 means no idle limit.
+        long sessionIdleTimeoutSeconds
 ) {
 }

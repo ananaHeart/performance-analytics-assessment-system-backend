@@ -8,6 +8,8 @@ import java.time.Duration;
 public class V3AuthProperties {
 
     private Duration sessionTtl = Duration.ofHours(8);
+    // SES-1 (D4): a browser session ends after this long without activity; 0 turns it off.
+    private Duration sessionIdleTimeout = Duration.ofMinutes(5);
     /** Off by default (school capstone): wrong passwords are still recorded in login_attempts,
      *  but never lock the account or rate-limit login. Every phone and browser on the laptop
      *  reaches the backend as 127.0.0.1, so an IP-based throttle locked out everyone at once. */
@@ -46,6 +48,14 @@ public class V3AuthProperties {
 
     public void setSessionTtl(Duration sessionTtl) {
         this.sessionTtl = sessionTtl;
+    }
+
+    public Duration getSessionIdleTimeout() {
+        return sessionIdleTimeout;
+    }
+
+    public void setSessionIdleTimeout(Duration sessionIdleTimeout) {
+        this.sessionIdleTimeout = sessionIdleTimeout;
     }
 
     public boolean isLoginLockoutEnabled() {

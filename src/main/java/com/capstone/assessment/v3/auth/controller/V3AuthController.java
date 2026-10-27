@@ -112,6 +112,15 @@ public class V3AuthController {
         ));
     }
 
+    /** SES-1: the web calls this on user activity (at most once a minute) to stay signed in. */
+    @PostMapping("/session/touch")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> touchSession(
+            @AuthenticationPrincipal V3AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Session is active.",
+                java.util.Map.of("sessionIdleTimeoutSeconds", authService.sessionIdleTimeoutSeconds())));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @AuthenticationPrincipal V3AuthenticatedUser authenticatedUser,

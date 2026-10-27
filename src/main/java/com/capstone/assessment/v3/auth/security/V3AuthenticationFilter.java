@@ -71,7 +71,15 @@ public class V3AuthenticationFilter extends OncePerRequestFilter {
         }
 
         String rawToken = authorization.substring(BEARER_PREFIX.length()).trim();
-        Optional<V3AuthenticatedUser> authenticatedUser = authService.authenticate(rawToken);
+        // SES-1: automatic polling sends X-Marka-Background: 1 so it does not keep an idle session alive.
+        boolean background = "1".equals(request.getHeader("X-Marka-Background"));
+        Optional<V3AuthenticatedUser> authenticatedUser;
+        try {
+            authenticatedUser = background ? authService.authenticate(rawToken, false) : authService.authenticate(rawToken);
+        } catch (com.capstone.assessment.v3.auth.exception.V3AuthException exception) {
+            authenticationEntryPoint.commence(response, exception.getCode(), exception.getMessage());
+            return;
+        }
         if (authenticatedUser.isEmpty()) {
             authenticationEntryPoint.commence(request, response, null);
             return;

@@ -313,6 +313,29 @@ public class V3AuthRepository {
         );
     }
 
+    /** SES-1: when the session was last used and from what kind of client. */
+    public Optional<SessionActivity> findSessionActivity(String tokenHash) {
+        return jdbcTemplate.query("""
+                SELECT session_uuid, user_id, issued_at, last_used_at, user_agent
+                  FROM auth_sessions
+                 WHERE refresh_token_hash = ?
+                """, (rs, rowNum) -> new SessionActivity(
+                rs.getString("session_uuid"),
+                rs.getLong("user_id"),
+                toInstant(rs.getTimestamp("issued_at")),
+                toInstant(rs.getTimestamp("last_used_at")),
+                rs.getString("user_agent")
+        ), tokenHash).stream().findFirst();
+    }
+
+    public record SessionActivity(String sessionUuid, long userId, Instant issuedAt, Instant lastUsedAt,
+                                  String userAgent) {
+        /** Browsers send a Mozilla/... user agent; the phone app (okhttp) is not idled out. */
+        public boolean browser() {
+            return userAgent != null && userAgent.startsWith("Mozilla/");
+        }
+    }
+
     public void touchSession(String sessionUuid, Instant usedAt) {
         jdbcTemplate.update(
                 """

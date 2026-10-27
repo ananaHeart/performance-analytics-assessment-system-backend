@@ -317,16 +317,51 @@ public class V3AuthService {
     }
 
     public Optional<V3AuthenticatedUser> authenticate(String rawToken) {
+        return authenticate(rawToken, true);
+    }
+
+    /**
+     * SES-1: a browser session idle longer than the limit is ended (401 SESSION_IDLE_EXPIRED).
+     * Automatic background calls (touch = false) do not count as activity.
+     */
+    public Optional<V3AuthenticatedUser> authenticate(String rawToken, boolean touch) {
         if (rawToken == null || rawToken.isBlank()) {
             return Optional.empty();
         }
         Instant now = clock.instant();
-        Optional<V3AuthenticatedUser> user = authRepository.findAuthenticatedUserByTokenHash(
-                tokenService.hashToken(rawToken),
-                now
-        );
-        user.ifPresent(value -> authRepository.touchSession(value.sessionUuid(), now));
+        String tokenHash = tokenService.hashToken(rawToken);
+        Optional<V3AuthenticatedUser> user = authRepository.findAuthenticatedUserByTokenHash(tokenHash, now);
+        if (user.isEmpty()) {
+            return user;
+        }
+        java.time.Duration idleLimit = properties.getSessionIdleTimeout();
+        if (idleLimit != null && !idleLimit.isZero() && !idleLimit.isNegative()) {
+            Optional<V3AuthRepository.SessionActivity> activity = authRepository.findSessionActivity(tokenHash);
+            if (activity.isPresent() && activity.get().browser()) {
+                Instant lastActivity = activity.get().lastUsedAt() != null
+                        ? activity.get().lastUsedAt()
+                        : activity.get().issuedAt();
+                if (lastActivity != null && lastActivity.plus(idleLimit).isBefore(now)) {
+                    authRepository.revokeSession(activity.get().sessionUuid(), activity.get().userId(), now);
+                    throw new V3AuthException(
+                            "SESSION_IDLE_EXPIRED",
+                            "You were signed out after " + idleLimit.toMinutes()
+                                    + " minutes without activity. Please sign in again.",
+                            HttpStatus.UNAUTHORIZED
+                    );
+                }
+            }
+        }
+        if (touch) {
+            authRepository.touchSession(user.get().sessionUuid(), now);
+        }
         return user;
+    }
+
+    /** SES-1: the idle limit in seconds, for the web's "Stay signed in?" warning. */
+    public long sessionIdleTimeoutSeconds() {
+        java.time.Duration idleLimit = properties.getSessionIdleTimeout();
+        return idleLimit == null || idleLimit.isNegative() ? 0 : idleLimit.toSeconds();
     }
 
     public V3CurrentUserResponse getCurrentUser(V3AuthenticatedUser authenticatedUser) {
@@ -468,7 +503,8 @@ public class V3AuthService {
                 user.email(),
                 user.role(),
                 user.status(),
-                user.mfaRequired()
+                user.mfaRequired(),
+                sessionIdleTimeoutSeconds()
         );
     }
 

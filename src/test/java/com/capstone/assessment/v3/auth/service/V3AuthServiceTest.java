@@ -12,6 +12,7 @@ import com.capstone.assessment.v3.auth.model.V3VerifiedMfaLogin;
 import com.capstone.assessment.v3.auth.repository.V3AuthRepository;
 import com.capstone.assessment.v3.auth.repository.V3RegistrationRepository;
 import org.junit.jupiter.api.BeforeEach;
+import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -285,6 +286,40 @@ class V3AuthServiceTest {
         assertEquals("ACCOUNT_CONTRACT_ENDED", exception.getCode());
         assertEquals("2026-08-30", exception.getDetails().get("contractEndDate"));
         verify(authRepository).markContractEnded(42L, java.time.LocalDate.of(2026, 8, 31), NOW);
+    }
+
+    @Test
+    void ses1AnIdleBrowserSessionEndsButThePhoneAppDoesNot() {
+        V3AuthenticatedUser signedIn = new V3AuthenticatedUser(42L, "SCHOOL-001", EMAIL, "teacher", "active", "s-1");
+        when(tokenService.hashToken("raw")).thenReturn("hash");
+        when(authRepository.findAuthenticatedUserByTokenHash("hash", NOW)).thenReturn(Optional.of(signedIn));
+        when(authRepository.findSessionActivity("hash")).thenReturn(Optional.of(new V3AuthRepository.SessionActivity(
+                "s-1", 42L, NOW.minusSeconds(3600), NOW.minusSeconds(301), "Mozilla/5.0 (Windows NT 10.0)")));
+
+        V3AuthException exception = assertThrows(V3AuthException.class, () -> service.authenticate("raw"));
+
+        assertEquals("SESSION_IDLE_EXPIRED", exception.getCode());
+        assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
+        verify(authRepository).revokeSession("s-1", 42L, NOW);
+
+        when(authRepository.findSessionActivity("hash")).thenReturn(Optional.of(new V3AuthRepository.SessionActivity(
+                "s-1", 42L, NOW.minusSeconds(3600), NOW.minusSeconds(3000), "okhttp/4.9.2")));
+        assertEquals(Optional.of(signedIn), service.authenticate("raw"));
+        verify(authRepository).touchSession("s-1", NOW);
+    }
+
+    @Test
+    void ses1BackgroundPollingDoesNotKeepTheSessionAlive() {
+        V3AuthenticatedUser signedIn = new V3AuthenticatedUser(42L, "SCHOOL-001", EMAIL, "teacher", "active", "s-1");
+        when(tokenService.hashToken("raw")).thenReturn("hash");
+        when(authRepository.findAuthenticatedUserByTokenHash("hash", NOW)).thenReturn(Optional.of(signedIn));
+        when(authRepository.findSessionActivity("hash")).thenReturn(Optional.of(new V3AuthRepository.SessionActivity(
+                "s-1", 42L, NOW.minusSeconds(600), NOW.minusSeconds(60), "Mozilla/5.0")));
+
+        service.authenticate("raw", false);
+
+        verify(authRepository, never()).touchSession(anyString(), any());
+        assertEquals(300L, service.sessionIdleTimeoutSeconds());
     }
 
     private V3UserAccount lockedUser(int failedLoginCount, Instant lockedUntilAt) {

@@ -38,6 +38,7 @@ public class CorsConfig implements WebMvcConfigurer {
 
     private static final List<String> ALLOWED_HEADERS = List.of(
             "Authorization",
+            "X-Marka-Background",
             "Content-Type",
             "Accept",
             "Origin",

@@ -178,7 +178,8 @@ public class V3CloudConfiguration {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(frontendOrigins(required(environment, "app.v3.cloud.frontend-origin")));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
+        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With",
+                "X-Marka-Background"));
         cors.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);
