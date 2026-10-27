@@ -11,6 +11,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 import java.time.LocalDate;
 
 public record V3TeacherRegistrationRequest(
@@ -30,8 +32,22 @@ public record V3TeacherRegistrationRequest(
         @NotNull @Positive Integer genderId,
         @NotNull @Positive Integer majorId,
         @NotNull @Positive Integer educationalAttainmentId,
-        @NotNull @Valid Address address
+        @NotNull @Valid Address address,
+        // REG-3: optional; subject IDs (majors and subjects share the same IDs).
+        @Size(max = 10, message = "Choose up to 10 additional majors.") List<Integer> additionalMajorSubjectIds,
+        @Size(max = 10, message = "Choose up to 10 subjects.") List<Integer> taughtSubjectIds
 ) {
+    public V3TeacherRegistrationRequest(String schoolCode, String verificationMethod, String firstName,
+                                        String middleName, String lastName, Integer suffixId,
+                                        java.time.LocalDate birthDate, Integer teachingStartMonth,
+                                        Integer teachingStartYear, String email, String contactNumber,
+                                        String password, Integer genderId, Integer majorId,
+                                        Integer educationalAttainmentId, Address address) {
+        this(schoolCode, verificationMethod, firstName, middleName, lastName, suffixId, birthDate,
+                teachingStartMonth, teachingStartYear, email, contactNumber, password, genderId, majorId,
+                educationalAttainmentId, address, null, null);
+    }
+
     public record Address(
             @Pattern(regexp = "[A-Za-z]{2}", message = "countryCode must contain two letters")
             String countryCode,

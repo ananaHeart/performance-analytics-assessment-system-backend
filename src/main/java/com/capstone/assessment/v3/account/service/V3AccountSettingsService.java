@@ -7,6 +7,8 @@ import com.capstone.assessment.v3.account.dto.V3AccountVerificationRequest;
 import com.capstone.assessment.v3.account.dto.V3ContactChangeRequest;
 import com.capstone.assessment.v3.account.dto.V3EmailChangeRequest;
 import com.capstone.assessment.v3.account.dto.V3PasswordChangeRequest;
+import com.capstone.assessment.v3.account.dto.V3TeacherSubjectsRequest;
+import com.capstone.assessment.v3.account.dto.V3TeacherSubjectsResponse;
 import com.capstone.assessment.v3.account.repository.V3AccountSettingsRepository;
 import com.capstone.assessment.v3.account.repository.V3AccountSettingsRepository.AccountRow;
 import com.capstone.assessment.v3.account.repository.V3AccountSettingsRepository.ChallengeRow;
@@ -20,6 +22,7 @@ import com.capstone.assessment.v3.auth.service.V3AuditService;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
 import com.capstone.assessment.v3.auth.service.V3SmsVerificationSender;
 import com.capstone.assessment.v3.auth.service.V3TeacherRegistrationService;
+import com.capstone.assessment.v3.auth.service.V3TeacherSubjects;
 import com.capstone.assessment.v3.auth.service.V3VerificationEmailSender;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -33,6 +36,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -263,6 +267,53 @@ public class V3AccountSettingsService {
         auditService.record(account.userId(), flow == Flow.VERIFY_SMS ? "account.verify_contact" : "account.verify_email",
                 "users", Long.toString(account.userId()), "success", metadata, Map.of("channel", flow.channel), now);
         return toResponse(requireAccount(user));
+    }
+
+    /** REG-3: the teacher's own additional majors and subjects taught before. */
+    @Transactional(readOnly = true)
+    public V3TeacherSubjectsResponse getSubjects(V3AuthenticatedUser user) {
+        requireTeacher(user);
+        return toSubjectsResponse(registrationRepository.listTeacherSubjects(user.userId()));
+    }
+
+    @Transactional
+    public V3TeacherSubjectsResponse updateSubjects(V3AuthenticatedUser user, V3TeacherSubjectsRequest request,
+                                                    V3RequestMetadata metadata) {
+        requireTeacher(user);
+        AccountRow account = requireAccount(user);
+        List<Integer> additional = V3TeacherSubjects.clean(request.additionalMajorSubjectIds(),
+                repository.findMajorId(account.userId()));
+        List<Integer> taught = V3TeacherSubjects.clean(request.taughtSubjectIds(), null);
+        Map<String, Object> errors = new LinkedHashMap<>();
+        V3TeacherSubjects.validate(additional, "additionalMajorSubjectIds", registrationRepository, errors);
+        V3TeacherSubjects.validate(taught, "taughtSubjectIds", registrationRepository, errors);
+        if (!errors.isEmpty()) {
+            errors.put("code", "VALIDATION_FAILED");
+            throw new V3FieldValidationException("Validation failed.", HttpStatus.BAD_REQUEST, errors);
+        }
+        registrationRepository.replaceTeacherSubjects(account.userId(), V3TeacherSubjects.ADDITIONAL_MAJOR, additional);
+        registrationRepository.replaceTeacherSubjects(account.userId(), V3TeacherSubjects.TAUGHT_BEFORE, taught);
+        auditService.record(account.userId(), "account.subjects_update", "users", Long.toString(account.userId()),
+                "success", metadata, Map.of("additionalMajorSubjectIds", additional, "taughtSubjectIds", taught),
+                clock.instant());
+        return getSubjects(user);
+    }
+
+    /** REG-3: shared by the teacher's own view and the principal's teacher details. */
+    public static V3TeacherSubjectsResponse toSubjectsResponse(List<V3RegistrationRepository.TeacherSubject> rows) {
+        return new V3TeacherSubjectsResponse(
+                rows.stream().filter(row -> V3TeacherSubjects.ADDITIONAL_MAJOR.equals(row.relation()))
+                        .map(row -> new V3TeacherSubjectsResponse.Subject(row.subjectId(), row.subjectName())).toList(),
+                rows.stream().filter(row -> V3TeacherSubjects.TAUGHT_BEFORE.equals(row.relation()))
+                        .map(row -> new V3TeacherSubjectsResponse.Subject(row.subjectId(), row.subjectName())).toList()
+        );
+    }
+
+    private static void requireTeacher(V3AuthenticatedUser user) {
+        if (user == null || !"teacher".equalsIgnoreCase(user.role())) {
+            throw new V3AuthException("TEACHER_ROLE_REQUIRED", "Only a teacher has majors and subjects taught.",
+                    HttpStatus.FORBIDDEN);
+        }
     }
 
     // ------------------------------------------------------------------ codes

@@ -93,6 +93,10 @@ public class V3RegistrationPersistenceService {
                 passwordEncoder.encode(request.password()),
                 now
         );
+        repository.replaceTeacherSubjects(userId, V3TeacherSubjects.ADDITIONAL_MAJOR,
+                V3TeacherSubjects.clean(request.additionalMajorSubjectIds(), request.majorId()));
+        repository.replaceTeacherSubjects(userId, V3TeacherSubjects.TAUGHT_BEFORE,
+                V3TeacherSubjects.clean(request.taughtSubjectIds(), null));
 
         V3PendingRegistrationChallenge challenge = createChallenge(
                 userId,

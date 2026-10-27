@@ -43,6 +43,11 @@ public class V3AccountSettingsRepository {
         return Optional.ofNullable(last).map(Timestamp::toInstant);
     }
 
+    /** REG-3: the main major, which is never repeated as an additional major. */
+    public Integer findMajorId(long userId) {
+        return jdbcTemplate.queryForObject("SELECT major_id FROM users WHERE user_id = ?", Integer.class, userId);
+    }
+
     public boolean emailUsedByAnother(String email, long userId) {
         return exists("SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(?) AND user_id <> ?", email, userId);
     }

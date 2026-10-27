@@ -52,10 +52,10 @@ class V3DatabaseReadinessServiceTest {
     void cloudRequiresTheFullBaselineAndEnabledChecksRatherThanAcceptingThePartialImport() {
         properties.setDatabaseEngine(V3BaselineProperties.DatabaseEngine.TIDB);
         properties.setExpectedDatabase("performance_assessment_v3_test");
-        properties.setExpectedTableCount(79);
-        properties.setExpectedForeignKeyCount(200);
+        properties.setExpectedTableCount(80);
+        properties.setExpectedForeignKeyCount(202);
         properties.setExpectedCheckConstraintCount(131);
-        properties.setExpectedUniqueConstraintCount(118);
+        properties.setExpectedUniqueConstraintCount(119);
         properties.setExpectedOmrTemplateCount(2);
         properties.setExpectedApprovedOmrTemplateCount(2);
         when(repository.readSnapshot()).thenReturn(cloudSnapshot(131, 15, 16));
@@ -77,7 +77,7 @@ class V3DatabaseReadinessServiceTest {
     }
 
     private V3DatabaseBaselineSnapshot cloudSnapshot(int checks, int hardening, int calendar) {
-        return new V3DatabaseBaselineSnapshot("performance_assessment_v3_test", 79, 200, checks, 118,
+        return new V3DatabaseBaselineSnapshot("performance_assessment_v3_test", 80, 202, checks, 119,
                 6, 18, hardening, 3, 20, calendar, 3, 3, 15, 5, 2, 2, 0, 4);
     }
 

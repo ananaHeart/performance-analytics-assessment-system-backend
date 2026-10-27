@@ -640,5 +640,39 @@ public class V3RegistrationRepository {
                 && trimToNull(address.cityMunicipalityCode()) != null
                 && trimToNull(address.barangayCode()) != null;
         return hasApiCodes ? "api" : "manual";
+    }
+
+    // ---------------------------------------------------------------- REG-3 teacher_subjects
+
+    public int countExistingSubjects(List<Integer> subjectIds) {
+        String placeholders = String.join(", ", java.util.Collections.nCopies(subjectIds.size(), "?"));
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM subjects WHERE subject_id IN (" + placeholders + ")",
+                Integer.class, subjectIds.toArray());
+        return count == null ? 0 : count;
+    }
+
+    /** Replaces one list (additional_major or taught_before) of the teacher. */
+    public void replaceTeacherSubjects(long userId, String relation, List<Integer> subjectIds) {
+        jdbcTemplate.update("DELETE FROM teacher_subjects WHERE user_id = ? AND relation = ?", userId, relation);
+        for (Integer subjectId : subjectIds) {
+            jdbcTemplate.update(
+                    "INSERT INTO teacher_subjects (user_id, subject_id, relation) VALUES (?, ?, ?)",
+                    userId, subjectId, relation);
+        }
+    }
+
+    public List<TeacherSubject> listTeacherSubjects(long userId) {
+        return jdbcTemplate.query("""
+                SELECT ts.subject_id, subject.subject_name, ts.relation
+                  FROM teacher_subjects ts
+                  JOIN subjects subject ON subject.subject_id = ts.subject_id
+                 WHERE ts.user_id = ?
+                 ORDER BY ts.relation, subject.subject_name
+                """, (rs, rowNum) -> new TeacherSubject(
+                rs.getInt("subject_id"), rs.getString("subject_name"), rs.getString("relation")), userId);
+    }
+
+    public record TeacherSubject(int subjectId, String subjectName, String relation) {
     }
 }

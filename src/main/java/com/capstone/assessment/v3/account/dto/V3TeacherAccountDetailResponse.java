@@ -36,7 +36,9 @@ public record V3TeacherAccountDetailResponse(
         String approvalStatus,
         String accountStatus,
         LocalDate contractEndDate,
-        Instant archivedAt
+        Instant archivedAt,
+        // REG-3: optional lists the teacher chose; the main major is majorId above.
+        V3TeacherSubjectsResponse subjects
 ) {
 
     public record Address(

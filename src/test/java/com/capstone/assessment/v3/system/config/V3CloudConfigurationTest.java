@@ -43,10 +43,10 @@ class V3CloudConfigurationTest {
                     assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("synthetic-cloud-user");
                     assertThat(environment.getProperty("app.v3.baseline.database-engine")).isEqualTo("TIDB");
                     assertThat(environment.getProperty("app.v3.baseline.expected-database")).isEqualTo("performance_assessment_v3_test");
-                    assertThat(environment.getProperty("app.v3.baseline.expected-table-count")).isEqualTo("79");
-                    assertThat(environment.getProperty("app.v3.baseline.expected-foreign-key-count")).isEqualTo("200");
+                    assertThat(environment.getProperty("app.v3.baseline.expected-table-count")).isEqualTo("80");
+                    assertThat(environment.getProperty("app.v3.baseline.expected-foreign-key-count")).isEqualTo("202");
                     assertThat(environment.getProperty("app.v3.baseline.expected-check-constraint-count")).isEqualTo("131");
-                    assertThat(environment.getProperty("app.v3.baseline.expected-unique-constraint-count")).isEqualTo("118");
+                    assertThat(environment.getProperty("app.v3.baseline.expected-unique-constraint-count")).isEqualTo("119");
                     assertThat(environment.getProperty("app.v3.baseline.expected-hardening-constraint-count")).isEqualTo("15");
                     assertThat(environment.getProperty("app.v3.baseline.expected-academic-calendar-constraint-count")).isEqualTo("16");
                     assertThat(environment.getProperty("app.v3.baseline.validate-on-startup")).isEqualTo("true");
@@ -318,10 +318,10 @@ class V3CloudConfigurationTest {
                 .withProperty("spring.sql.init.mode", "never")
                 .withProperty("app.v3.baseline.expected-database", "performance_assessment_v3_test")
                 .withProperty("app.v3.baseline.database-engine", "TIDB")
-                .withProperty("app.v3.baseline.expected-table-count", "79")
-                .withProperty("app.v3.baseline.expected-foreign-key-count", "200")
+                .withProperty("app.v3.baseline.expected-table-count", "80")
+                .withProperty("app.v3.baseline.expected-foreign-key-count", "202")
                 .withProperty("app.v3.baseline.expected-check-constraint-count", "131")
-                .withProperty("app.v3.baseline.expected-unique-constraint-count", "118")
+                .withProperty("app.v3.baseline.expected-unique-constraint-count", "119")
                 .withProperty("app.v3.baseline.expected-hardening-constraint-count", "15")
                 .withProperty("app.v3.baseline.expected-academic-calendar-constraint-count", "16")
                 .withProperty("app.v3.baseline.validate-on-startup", "true")

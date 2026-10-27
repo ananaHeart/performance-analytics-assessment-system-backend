@@ -107,6 +107,21 @@ class V3TeacherRegistrationServiceTest {
     }
 
     @Test
+    void reg3AnUnknownSubjectIsRefusedAtRegistration() {
+        V3TeacherRegistrationRequest base = validRequest(LocalDate.of(1995, 1, 1));
+        V3TeacherRegistrationRequest withSubjects = new V3TeacherRegistrationRequest(base.schoolCode(),
+                base.verificationMethod(), base.firstName(), base.middleName(), base.lastName(), base.suffixId(),
+                base.birthDate(), base.teachingStartMonth(), base.teachingStartYear(), base.email(),
+                base.contactNumber(), base.password(), base.genderId(), base.majorId(),
+                base.educationalAttainmentId(), base.address(), java.util.List.of(77), null);
+
+        V3FieldValidationException exception = assertThrows(V3FieldValidationException.class,
+                () -> service.register(withSubjects, metadata()));
+
+        assertEquals("Choose subjects from the list.", exception.getErrors().get("additionalMajorSubjectIds"));
+    }
+
+    @Test
     void reg1TheMinimumAgeIsASetting() {
         properties.setMinimumTeacherAge(21);
 

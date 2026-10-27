@@ -8,6 +8,8 @@ import com.capstone.assessment.v3.account.dto.V3AccountVerificationRequest;
 import com.capstone.assessment.v3.account.dto.V3ContactChangeRequest;
 import com.capstone.assessment.v3.account.dto.V3EmailChangeRequest;
 import com.capstone.assessment.v3.account.dto.V3PasswordChangeRequest;
+import com.capstone.assessment.v3.account.dto.V3TeacherSubjectsRequest;
+import com.capstone.assessment.v3.account.dto.V3TeacherSubjectsResponse;
 import com.capstone.assessment.v3.account.service.V3AccountSettingsService;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
@@ -51,6 +53,24 @@ public class V3AccountSettingsController {
     ) {
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully.",
                 service.updateProfile(user, request, metadata(httpRequest))));
+    }
+
+    /** REG-3: the teacher's own additional majors and subjects taught before. */
+    @GetMapping("/subjects")
+    public ResponseEntity<ApiResponse<V3TeacherSubjectsResponse>> subjects(
+            @AuthenticationPrincipal V3AuthenticatedUser user
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Subjects retrieved successfully.", service.getSubjects(user)));
+    }
+
+    @PutMapping("/subjects")
+    public ResponseEntity<ApiResponse<V3TeacherSubjectsResponse>> updateSubjects(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @Valid @RequestBody V3TeacherSubjectsRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("Subjects updated successfully.",
+                service.updateSubjects(user, request, metadata(httpRequest))));
     }
 
     @PostMapping("/password")

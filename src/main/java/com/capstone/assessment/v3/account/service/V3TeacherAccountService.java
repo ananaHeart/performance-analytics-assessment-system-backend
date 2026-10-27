@@ -723,7 +723,8 @@ public class V3TeacherAccountService {
                 approvalStatus(teacher.status()),
                 accountStatus(teacher.status()),
                 teacher.contractEndDate(),
-                teacher.archivedAt()
+                teacher.archivedAt(),
+                V3AccountSettingsService.toSubjectsResponse(registrationRepository.listTeacherSubjects(teacher.userId()))
         );
     }
 

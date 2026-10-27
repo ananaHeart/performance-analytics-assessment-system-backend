@@ -9,6 +9,7 @@ import com.capstone.assessment.v3.school.dto.V3ClassAssignmentResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusChangeRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentDeleteEligibilityResponse;
+import com.capstone.assessment.v3.school.dto.V3TeacherOptionsResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassResponse;
 import com.capstone.assessment.v3.school.dto.V3ManualStudentEnrollmentRequest;
@@ -179,6 +180,19 @@ public class V3SchoolSetupController {
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 class assignments retrieved successfully.",
                 service.listAssignments(principal, academicYearId, view != null ? view : status)
+        ));
+    }
+
+    /** CLS-9: teachers for a subject, best match first (main major, additional major, taught before, others). */
+    @GetMapping("/teacher-options")
+    public ResponseEntity<ApiResponse<V3TeacherOptionsResponse>> teacherOptions(
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @RequestParam int subjectId,
+            @RequestParam(required = false) Long classId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Teacher options retrieved successfully.",
+                service.getTeacherOptions(principal, subjectId, classId)
         ));
     }
 

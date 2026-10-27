@@ -12,6 +12,8 @@ import com.capstone.assessment.v3.school.dto.V3ClassAssignmentResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusChangeRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentDeleteEligibilityResponse;
+import com.capstone.assessment.v3.school.dto.V3TeacherOptionsResponse;
+import com.capstone.assessment.v3.school.repository.V3SchoolSetupRepository;
 import com.capstone.assessment.v3.school.dto.V3ClassRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassResponse;
 import com.capstone.assessment.v3.school.dto.V3ManualStudentEnrollmentRequest;
@@ -229,6 +231,48 @@ public class V3SchoolSetupService {
         AssignmentContext saved = repository.findAssignment(principal.schoolId(), classAssignmentId)
                 .orElseThrow(this::assignmentNotFound);
         return repository.toAssignmentResponse(saved, false);
+    }
+
+    /**
+     * CLS-9: pick the subject first; teachers come back grouped by how well they fit it, so the
+     * principal sees the best matches first. classId (optional) marks teachers already given
+     * that subject in that class.
+     */
+    @Transactional(readOnly = true)
+    public V3TeacherOptionsResponse getTeacherOptions(V3AuthenticatedUser principal, int subjectId, Long classId) {
+        requirePrincipal(principal);
+        String subjectName = repository.findSubjectName(subjectId)
+                .orElseThrow(() -> invalid("subjectId", "The selected subject does not exist."));
+        Map<String, List<V3TeacherOptionsResponse.Teacher>> grouped = new java.util.LinkedHashMap<>();
+        for (String key : List.of("main_major", "additional_major", "taught_before", "others")) {
+            grouped.put(key, new java.util.ArrayList<>());
+        }
+        for (V3SchoolSetupRepository.TeacherSubjectMatch match
+                : repository.listTeacherSubjectMatches(principal.schoolId(), subjectId, classId)) {
+            String key = match.mainMajor() ? "main_major"
+                    : match.additionalMajor() ? "additional_major"
+                    : match.taughtBefore() ? "taught_before"
+                    : "others";
+            int priority = List.of("main_major", "additional_major", "taught_before", "others").indexOf(key) + 1;
+            grouped.get(key).add(new V3TeacherOptionsResponse.Teacher(match.userId(), displayName(match), key,
+                    priority, match.alreadyAssigned()));
+        }
+        return new V3TeacherOptionsResponse(subjectId, subjectName, List.of(
+                new V3TeacherOptionsResponse.Group("main_major", "Major: " + subjectName, grouped.get("main_major")),
+                new V3TeacherOptionsResponse.Group("additional_major", "Additional major",
+                        grouped.get("additional_major")),
+                new V3TeacherOptionsResponse.Group("taught_before", "Taught before", grouped.get("taught_before")),
+                new V3TeacherOptionsResponse.Group("others", "Other teachers", grouped.get("others"))
+        ));
+    }
+
+    /** "Last Suffix, First M." for the dropdown. */
+    private static String displayName(V3SchoolSetupRepository.TeacherSubjectMatch match) {
+        String last = match.lastName().trim()
+                + (match.suffixName() == null || match.suffixName().isBlank() ? "" : " " + match.suffixName().trim());
+        String middle = match.middleName() == null || match.middleName().isBlank()
+                ? "" : " " + match.middleName().trim().charAt(0) + ".";
+        return last + ", " + match.firstName().trim() + middle;
     }
 
     /** CLS-4: tells the web whether Delete or only Archive is allowed, with the reason. */

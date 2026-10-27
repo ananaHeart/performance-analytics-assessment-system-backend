@@ -33,12 +33,12 @@ class V3MobileReleaseReadinessServiceTest {
     @BeforeEach
     void setUp() {
         when(database.checkReadiness()).thenReturn(new V3DatabaseReadinessResponse(
-                "v3", "performance_assessment_v3_db", true, 79, 200, 131, 118,
+                "v3", "performance_assessment_v3_db", true, 80, 202, 131, 119,
                 5, 1, 4, List.of()));
-        baseline.setExpectedTableCount(79);
-        baseline.setExpectedForeignKeyCount(200);
+        baseline.setExpectedTableCount(80);
+        baseline.setExpectedForeignKeyCount(202);
         baseline.setExpectedCheckConstraintCount(131);
-        baseline.setExpectedUniqueConstraintCount(118);
+        baseline.setExpectedUniqueConstraintCount(119);
         baseline.setValidateOnStartup(true);
         mobile.getRelease().setProfileEnabled(true);
         mobile.getRelease().setHttpEnabled(true);

@@ -18,6 +18,7 @@ import com.capstone.assessment.v3.auth.service.V3AuditService;
 import com.capstone.assessment.v3.auth.service.V3SmsVerificationSender;
 import com.capstone.assessment.v3.auth.service.V3VerificationEmailSender;
 import org.junit.jupiter.api.BeforeEach;
+import com.capstone.assessment.v3.account.dto.V3TeacherSubjectsRequest;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -151,6 +152,28 @@ class V3AccountSettingsServiceTest {
         assertEquals("VERIFICATION_CODE_REPLACED", assertThrows(V3AuthException.class, () -> service.confirmEmailChange(
                 USER, new V3EmailChangeRequest("ana.new@example.com", "old", "123456"), null)).getCode());
         verify(repository, never()).updateEmail(anyLong(), anyString(), any());
+    }
+
+    @Test
+    void reg3ATeacherSavesExtraMajorsWithoutRepeatingTheMainMajor() {
+        when(repository.findMajorId(42L)).thenReturn(3);
+        when(registrationRepository.countExistingSubjects(java.util.List.of(1))).thenReturn(1);
+        when(registrationRepository.countExistingSubjects(java.util.List.of(2, 5))).thenReturn(2);
+
+        service.updateSubjects(USER, new V3TeacherSubjectsRequest(java.util.List.of(3, 1, 1),
+                java.util.List.of(2, 5)), null);
+
+        verify(registrationRepository).replaceTeacherSubjects(42L, "additional_major", java.util.List.of(1));
+        verify(registrationRepository).replaceTeacherSubjects(42L, "taught_before", java.util.List.of(2, 5));
+
+        when(registrationRepository.countExistingSubjects(java.util.List.of(77))).thenReturn(0);
+        assertEquals("Choose subjects from the list.", assertThrows(V3FieldValidationException.class,
+                () -> service.updateSubjects(USER, new V3TeacherSubjectsRequest(null, java.util.List.of(77)), null))
+                .getErrors().get("taughtSubjectIds"));
+        V3AuthenticatedUser principal = new V3AuthenticatedUser(7L, "SCHOOL-001", "p@example.com", "principal",
+                "active", "s");
+        assertEquals("TEACHER_ROLE_REQUIRED", assertThrows(V3AuthException.class,
+                () -> service.getSubjects(principal)).getCode());
     }
 
     private static AccountRow account(Instant emailVerifiedAt, Instant contactVerifiedAt) {

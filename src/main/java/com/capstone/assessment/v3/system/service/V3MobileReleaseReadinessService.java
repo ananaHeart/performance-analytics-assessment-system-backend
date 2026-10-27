@@ -25,10 +25,11 @@ import java.util.Locale;
 public class V3MobileReleaseReadinessService {
 
     static final String RELEASE_CONTRACT_PACK = "1.11.0";
-    static final int RELEASE_TABLE_COUNT = 79;
-    static final int RELEASE_FOREIGN_KEY_COUNT = 200;
+    // V3_026 added teacher_subjects (79 / 200 / 118 before).
+    static final int RELEASE_TABLE_COUNT = 80;
+    static final int RELEASE_FOREIGN_KEY_COUNT = 202;
     static final int RELEASE_CHECK_COUNT = 131;
-    static final int RELEASE_UNIQUE_COUNT = 118;
+    static final int RELEASE_UNIQUE_COUNT = 119;
 
     private final V3DatabaseReadinessService databaseReadinessService;
     private final V3MobileReleaseProperties mobile;
@@ -66,7 +67,7 @@ public class V3MobileReleaseReadinessService {
         add(checks, "database", database.ready(),
                 "The configured database must match the release baseline and reference seeds.");
         add(checks, "release_schema_counts", releaseCountsMatch(),
-                "Expected 79 tables, 200 foreign keys, 131 checks and 118 unique constraints.");
+                "Expected 80 tables, 202 foreign keys, 131 checks and 119 unique constraints.");
         add(checks, "startup_database_validation", baseline.isValidateOnStartup(),
                 "Startup database validation must remain enabled.");
         add(checks, "contract_pack", RELEASE_CONTRACT_PACK.equals(mobile.getRelease().getContractPack()),

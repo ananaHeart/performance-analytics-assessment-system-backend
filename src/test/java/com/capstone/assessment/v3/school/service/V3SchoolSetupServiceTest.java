@@ -632,6 +632,30 @@ class V3SchoolSetupServiceTest {
         assertThrows(V3FieldValidationException.class, () -> service.listAssignments(PRINCIPAL, null, "all"));
     }
 
+    @Test
+    void cls9TeachersComeBackBestMatchFirst() {
+        when(repository.findSubjectName(3)).thenReturn(Optional.of("Science"));
+        when(repository.listTeacherSubjectMatches("SCHOOL-001", 3, 700L)).thenReturn(List.of(
+                new V3SchoolSetupRepository.TeacherSubjectMatch(21L, "Ana", "Marie", "Cruz", "Jr.",
+                        false, false, true, false),
+                new V3SchoolSetupRepository.TeacherSubjectMatch(22L, "Ben", null, "Reyes", null,
+                        true, true, false, true),
+                new V3SchoolSetupRepository.TeacherSubjectMatch(23L, "Cara", null, "Lim", null,
+                        false, false, false, false)));
+
+        var options = service.getTeacherOptions(PRINCIPAL, 3, 700L);
+
+        assertEquals("Major: Science", options.groups().get(0).label());
+        assertEquals("Reyes, Ben", options.groups().get(0).teachers().get(0).displayName());
+        assertEquals(true, options.groups().get(0).teachers().get(0).alreadyAssignedToClass());
+        assertEquals(0, options.groups().get(1).teachers().size());
+        assertEquals("Cruz Jr., Ana M.", options.groups().get(2).teachers().get(0).displayName());
+        assertEquals(3, options.groups().get(2).teachers().get(0).priority());
+        assertEquals("others", options.groups().get(3).teachers().get(0).matchType());
+        when(repository.findSubjectName(99)).thenReturn(Optional.empty());
+        assertThrows(V3FieldValidationException.class, () -> service.getTeacherOptions(PRINCIPAL, 99, null));
+    }
+
     private AssignmentContext assignment(String status) {
         return new AssignmentContext(
                 900L, "SCHOOL-001", 700L, 22L, "Teacher One", 1, "Science",

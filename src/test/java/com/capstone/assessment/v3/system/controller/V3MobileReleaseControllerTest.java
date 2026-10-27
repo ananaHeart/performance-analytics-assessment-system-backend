@@ -67,10 +67,10 @@ class V3MobileReleaseControllerTest {
                 "app.v3.mobile.reopen-enabled=true",
                 "app.v3.mobile.correction-enabled=true",
                 "app.v3.mobile.supersede-enabled=true",
-                "app.v3.baseline.expected-table-count=79",
-                "app.v3.baseline.expected-foreign-key-count=200",
+                "app.v3.baseline.expected-table-count=80",
+                "app.v3.baseline.expected-foreign-key-count=202",
                 "app.v3.baseline.expected-check-constraint-count=131",
-                "app.v3.baseline.expected-unique-constraint-count=118",
+                "app.v3.baseline.expected-unique-constraint-count=119",
                 "app.v3.baseline.validate-on-startup=true",
                 "app.v3.scan-evidence.storage-directory=" + evidenceDirectory.toAbsolutePath()
         ).run(context -> webAppContextSetup(context).build()
@@ -100,7 +100,7 @@ class V3MobileReleaseControllerTest {
         @Bean V3DatabaseReadinessService databaseReadinessService() {
             var database = mock(V3DatabaseReadinessService.class);
             when(database.checkReadiness()).thenReturn(new V3DatabaseReadinessResponse(
-                    "v3", "synthetic", true, 79, 200, 131, 118, 5, 1, 4, List.of()));
+                    "v3", "synthetic", true, 80, 202, 131, 119, 5, 1, 4, List.of()));
             return database;
         }
 

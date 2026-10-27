@@ -234,6 +234,12 @@ public class V3TeacherRegistrationService {
             errors.put("educationalAttainmentId", "The selected educational attainment is unavailable.");
         }
 
+        // REG-3: optional additional majors and subjects taught before.
+        V3TeacherSubjects.validate(V3TeacherSubjects.clean(request.additionalMajorSubjectIds(), request.majorId()),
+                "additionalMajorSubjectIds", repository, errors);
+        V3TeacherSubjects.validate(V3TeacherSubjects.clean(request.taughtSubjectIds(), null),
+                "taughtSubjectIds", repository, errors);
+
         if (errors.size() > 1) {
             throw new V3FieldValidationException("Validation failed.", HttpStatus.BAD_REQUEST, errors);
         }

@@ -264,6 +264,61 @@ public class V3SchoolSetupRepository {
         ), schoolId);
     }
 
+    /** CLS-9: approved, active teachers with how they relate to the subject. */
+    public List<TeacherSubjectMatch> listTeacherSubjectMatches(String schoolId, int subjectId, Long classId) {
+        return jdbcTemplate.query("""
+                SELECT teacher.user_id, teacher.first_name, teacher.middle_name, teacher.last_name,
+                       suffix.suffix_name,
+                       teacher.major_id = ? AS main_major,
+                       EXISTS (SELECT 1 FROM teacher_subjects ts
+                                WHERE ts.user_id = teacher.user_id AND ts.subject_id = ?
+                                  AND ts.relation = 'additional_major') AS additional_major,
+                       EXISTS (SELECT 1 FROM teacher_subjects ts
+                                WHERE ts.user_id = teacher.user_id AND ts.subject_id = ?
+                                  AND ts.relation = 'taught_before') AS taught_before,
+                       EXISTS (SELECT 1 FROM class_assignments assignment
+                                WHERE assignment.user_id = teacher.user_id AND assignment.class_id = ?
+                                  AND assignment.subject_id = ?
+                                  AND assignment.status IN ('active', 'inactive')) AS already_assigned
+                  FROM users teacher
+                  JOIN roles role ON role.role_id = teacher.role_id AND role.role_name = 'teacher'
+                  JOIN statuses status
+                    ON status.status_id = teacher.status_id AND status.status_name = 'active'
+                  LEFT JOIN suffixes suffix ON suffix.suffix_id = teacher.suffix_id
+                 WHERE teacher.school_id = ?
+                   AND (teacher.email_verified_at IS NOT NULL OR teacher.contact_verified_at IS NOT NULL)
+                 ORDER BY teacher.last_name, teacher.first_name, teacher.user_id
+                """, (rs, rowNum) -> new TeacherSubjectMatch(
+                rs.getLong("user_id"),
+                rs.getString("first_name"),
+                rs.getString("middle_name"),
+                rs.getString("last_name"),
+                rs.getString("suffix_name"),
+                rs.getBoolean("main_major"),
+                rs.getBoolean("additional_major"),
+                rs.getBoolean("taught_before"),
+                rs.getBoolean("already_assigned")
+        ), subjectId, subjectId, subjectId, classId, subjectId, schoolId);
+    }
+
+    public java.util.Optional<String> findSubjectName(int subjectId) {
+        return jdbcTemplate.query("SELECT subject_name FROM subjects WHERE subject_id = ?",
+                (rs, rowNum) -> rs.getString(1), subjectId).stream().findFirst();
+    }
+
+    public record TeacherSubjectMatch(
+            long userId,
+            String firstName,
+            String middleName,
+            String lastName,
+            String suffixName,
+            boolean mainMajor,
+            boolean additionalMajor,
+            boolean taughtBefore,
+            boolean alreadyAssigned
+    ) {
+    }
+
     public List<V3SchoolSetupReferenceDataResponse.GenderOption> listGenders() {
         return jdbcTemplate.query("""
                 SELECT gender_id, gender_name
