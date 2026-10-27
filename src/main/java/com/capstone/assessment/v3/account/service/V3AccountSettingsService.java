@@ -20,6 +20,7 @@ import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.repository.V3AuthRepository;
 import com.capstone.assessment.v3.auth.repository.V3RegistrationRepository;
 import com.capstone.assessment.v3.auth.service.V3AuditService;
+import com.capstone.assessment.v3.auth.service.V3EmailCodePurpose;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
 import com.capstone.assessment.v3.auth.service.V3SmsVerificationSender;
 import com.capstone.assessment.v3.auth.service.V3TeacherRegistrationService;
@@ -339,6 +340,14 @@ public class V3AccountSettingsService {
     }
 
     /** The same shape as a real code, for an address that has no resettable account. */
+    private static V3EmailCodePurpose emailPurpose(Flow flow) {
+        return switch (flow) {
+            case EMAIL_CHANGE -> V3EmailCodePurpose.EMAIL_CHANGE;
+            case RESET_EMAIL, RESET_SMS -> V3EmailCodePurpose.PASSWORD_RESET;
+            default -> V3EmailCodePurpose.VERIFY_EMAIL;
+        };
+    }
+
     private V3AccountCodeResponse lookalikeCode(String channel, String masked) {
         Instant now = clock.instant();
         return new V3AccountCodeResponse(UUID.randomUUID().toString(), channel, masked,
@@ -417,7 +426,7 @@ public class V3AccountSettingsService {
         try {
             String provider = "sms".equals(flow.channel)
                     ? smsSender.send(destination, otp)
-                    : emailSender.sendVerificationCode(destination, otp);
+                    : emailSender.sendVerificationCode(destination, otp, emailPurpose(flow));
             registrationRepository.markDeliverySent(challengeId, now, provider);
         } catch (V3SmsVerificationSender.SmsRateLimitedException exception) {
             registrationRepository.markDeliveryFailed(challengeId, now, smsSender.provider());

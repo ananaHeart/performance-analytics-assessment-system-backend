@@ -15,6 +15,7 @@ import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.repository.V3AuthRepository;
 import com.capstone.assessment.v3.auth.repository.V3RegistrationRepository;
 import com.capstone.assessment.v3.auth.service.V3AuditService;
+import com.capstone.assessment.v3.auth.service.V3EmailCodePurpose;
 import com.capstone.assessment.v3.auth.service.V3SmsVerificationSender;
 import com.capstone.assessment.v3.auth.service.V3VerificationEmailSender;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,7 +65,7 @@ class V3AccountSettingsServiceTest {
                 emailSender, smsSender, ENCODER, new V3AuthProperties(), Clock.fixed(NOW, ZoneOffset.UTC));
         when(repository.lockAccount(42L)).thenReturn(Optional.of(account(NOW, null)));
         when(repository.findLastChange(anyLong(), anyString())).thenReturn(Optional.empty());
-        when(emailSender.sendVerificationCode(anyString(), anyString())).thenReturn("local_log");
+        when(emailSender.sendVerificationCode(anyString(), anyString(), any())).thenReturn("local_log");
     }
 
     @Test
@@ -91,7 +92,7 @@ class V3AccountSettingsServiceTest {
         V3AccountCodeResponse sent = service.startEmailChange(USER,
                 new V3EmailChangeRequest("Ana.New@Example.com", null, null), null);
 
-        verify(emailSender).sendVerificationCode(eq("ana.new@example.com"), otp.capture());
+        verify(emailSender).sendVerificationCode(eq("ana.new@example.com"), otp.capture(), eq(V3EmailCodePurpose.EMAIL_CHANGE));
         when(repository.lockChallenge(sent.challengeUuid(), 42L)).thenReturn(Optional.of(new ChallengeRow(
                 7L, sent.challengeUuid(), "sensitive_action", "email", hash.getValue(), "pending", "sent",
                 0, 5, 0, NOW, NOW.plusSeconds(600))));
@@ -118,7 +119,7 @@ class V3AccountSettingsServiceTest {
         assertEquals("CHANGE_NOT_ALLOWED_YET", exception.getCode());
         assertEquals(Instant.parse("2027-03-01T02:00:00Z"), exception.getDetails().get("nextAllowedAt"));
         assertEquals(Instant.parse("2027-03-01T02:00:00Z"), service.getAccount(USER).nextEmailChangeAt());
-        verify(emailSender, never()).sendVerificationCode(anyString(), anyString());
+        verify(emailSender, never()).sendVerificationCode(anyString(), anyString(), any());
     }
 
     @Test
@@ -142,7 +143,7 @@ class V3AccountSettingsServiceTest {
                 new V3AccountVerificationRequest("email", null, null), null);
 
         assertEquals("email", sent.channel());
-        verify(emailSender).sendVerificationCode(eq("ana@example.com"), anyString());
+        verify(emailSender).sendVerificationCode(eq("ana@example.com"), anyString(), eq(V3EmailCodePurpose.VERIFY_EMAIL));
     }
 
     @Test
@@ -185,7 +186,7 @@ class V3AccountSettingsServiceTest {
                 new V3PasswordResetRequest("Nobody@Example.com", null, null, null), null);
 
         assertEquals("email", answer.channel());
-        verify(emailSender, never()).sendVerificationCode(anyString(), anyString());
+        verify(emailSender, never()).sendVerificationCode(anyString(), anyString(), any());
         verify(repository, never()).insertChallenge(anyString(), anyLong(), anyString(), anyString(), anyString(),
                 anyString(), anyInt(), anyInt(), any(), any(), any());
     }
@@ -201,7 +202,7 @@ class V3AccountSettingsServiceTest {
         V3AccountCodeResponse sent = service.requestPasswordReset(
                 new V3PasswordResetRequest("ana@example.com", null, null, null), null);
 
-        verify(emailSender).sendVerificationCode(eq("ana@example.com"), otp.capture());
+        verify(emailSender).sendVerificationCode(eq("ana@example.com"), otp.capture(), eq(V3EmailCodePurpose.PASSWORD_RESET));
         when(repository.findChallengeOwner(sent.challengeUuid())).thenReturn(Optional.of(42L));
         when(repository.lockChallenge(sent.challengeUuid(), 42L)).thenReturn(Optional.of(new ChallengeRow(
                 9L, sent.challengeUuid(), "sensitive_action", "email", hash.getValue(), "pending", "sent",

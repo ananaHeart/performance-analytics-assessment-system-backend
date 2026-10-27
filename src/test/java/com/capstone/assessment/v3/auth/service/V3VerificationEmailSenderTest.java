@@ -58,6 +58,26 @@ class V3VerificationEmailSenderTest {
     }
 
     @Test
+    void aPasswordResetCodeHasItsOwnSubjectAndWording() throws Exception {
+        AtomicReference<String> body = new AtomicReference<>();
+        V3VerificationEmailSender sender = new V3VerificationEmailSender(mailSender, brevoProperties(), (u, k, b) -> {
+            body.set(b);
+            return 201;
+        });
+
+        sender.sendVerificationCode("teacher@example.invalid", "482915", V3EmailCodePurpose.PASSWORD_RESET);
+
+        JsonNode json = new ObjectMapper().readTree(body.get());
+        assertEquals("Your Marka password reset code", json.get("subject").asText());
+        String text = json.get("textContent").asText();
+        assertTrue(text.contains("Reset your password"), text);
+        assertTrue(text.contains("482915"), text);
+        assertTrue(text.contains("Your password stays the same."), text);
+        assertTrue(json.get("htmlContent").asText().contains(">Password reset</div>"));
+        assertTrue(json.get("htmlContent").asText().contains("Enter this code in Marka to set a new password."));
+    }
+
+    @Test
     void aRejectedOrUnreachableBrevoRequestIsReportedAsADeliveryFailure() {
         V3VerificationEmailSender rejected = new V3VerificationEmailSender(mailSender, brevoProperties(), (u, k, b) -> 401);
         V3VerificationEmailSender unreachable = new V3VerificationEmailSender(mailSender, brevoProperties(), (u, k, b) -> {

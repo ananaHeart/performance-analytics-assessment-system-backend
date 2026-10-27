@@ -36,7 +36,6 @@ public class V3VerificationEmailSender {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(V3VerificationEmailSender.class);
 
-    private static final String SUBJECT = "Verify your Marka teacher account";
     private static final String SENDER_NAME = "Marka";
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -69,13 +68,18 @@ public class V3VerificationEmailSender {
     }
 
     public String sendVerificationCode(String recipient, String otp) {
+        return sendVerificationCode(recipient, otp, V3EmailCodePurpose.REGISTRATION);
+    }
+
+    /** Sends a 6-digit code with the subject and wording of its purpose (registration, reset, ...). */
+    public String sendVerificationCode(String recipient, String otp, V3EmailCodePurpose purpose) {
         String mode = properties.getEmailDeliveryMode().trim().toLowerCase(Locale.ROOT);
         if ("log".equals(mode)) {
-            LOGGER.warn("LOCAL-ONLY V3 teacher verification code for {}: {}", maskEmail(recipient), otp);
+            LOGGER.warn("LOCAL-ONLY V3 {} code for {}: {}", purpose.label(), maskEmail(recipient), otp);
             return "local_log";
         }
         if ("brevo-api".equals(mode)) {
-            return sendWithBrevoApi(recipient, otp);
+            return sendWithBrevoApi(recipient, otp, purpose);
         }
         if (!"smtp".equals(mode)) {
             throw unavailable("V3 email delivery mode must be log, smtp or brevo-api.");
@@ -91,8 +95,8 @@ public class V3VerificationEmailSender {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(properties.getEmailFromAddress(), SENDER_NAME);
             helper.setTo(recipient);
-            helper.setSubject(SUBJECT);
-            helper.setText(plainText(otp), htmlText(otp));
+            helper.setSubject(purpose.subject());
+            helper.setText(plainText(otp, purpose), htmlText(otp, purpose));
             mailSender.send(message);
             return "smtp";
         } catch (MailException | MessagingException | UnsupportedEncodingException exception) {
@@ -107,7 +111,7 @@ public class V3VerificationEmailSender {
 
     /** Same email as SMTP, over Brevo's HTTPS API: free hosts such as Render Free block the
      *  outbound SMTP ports (25/465/587) but allow HTTPS. */
-    private String sendWithBrevoApi(String recipient, String otp) {
+    private String sendWithBrevoApi(String recipient, String otp, V3EmailCodePurpose purpose) {
         String apiKey = properties.getBrevoApiKey();
         if (apiKey == null || apiKey.isBlank()) {
             throw unavailable("Brevo API email delivery is not configured.");
@@ -117,9 +121,9 @@ public class V3VerificationEmailSender {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("sender", Map.of("name", SENDER_NAME, "email", properties.getEmailFromAddress()));
             payload.put("to", List.of(Map.of("email", recipient)));
-            payload.put("subject", SUBJECT);
-            payload.put("textContent", plainText(otp));
-            payload.put("htmlContent", htmlText(otp));
+            payload.put("subject", purpose.subject());
+            payload.put("textContent", plainText(otp, purpose));
+            payload.put("htmlContent", htmlText(otp, purpose));
             body = JSON.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Could not build the verification email.", exception);
@@ -171,20 +175,20 @@ public class V3VerificationEmailSender {
         return new V3AuthException("EMAIL_DELIVERY_UNAVAILABLE", message, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
-    private String plainText(String otp) {
+    private String plainText(String otp, V3EmailCodePurpose purpose) {
         return """
                 Marka
 
-                Verify your teacher email address
+                %s
 
                 Your verification code is: %s
 
                 This code expires in %d minutes. Do not share this code with anyone.
-                If you did not request this registration, you may ignore this email.
-                """.formatted(otp, properties.getOtpTtl().toMinutes());
+                %s
+                """.formatted(purpose.heading(), otp, properties.getOtpTtl().toMinutes(), purpose.ignoreNote());
     }
 
-    private String htmlText(String otp) {
+    private String htmlText(String otp, V3EmailCodePurpose purpose) {
         return """
                 <!doctype html>
                 <html lang="en">
@@ -197,9 +201,9 @@ public class V3VerificationEmailSender {
                           <div style="margin-top:4px;font-size:13px;color:#dcebd7;">Scan, score, and see how every learner is doing.</div>
                         </td></tr>
                         <tr><td style="padding:36px 32px 20px;">
-                          <div style="font-size:13px;font-weight:700;color:#2d7d24;text-transform:uppercase;">Teacher email verification</div>
-                          <h1 style="margin:10px 0 12px;font-size:28px;">Verify your email address</h1>
-                          <p style="margin:0;font-size:16px;line-height:1.6;color:#4d5d73;">Enter this code in Marka to continue registration.</p>
+                          <div style="font-size:13px;font-weight:700;color:#2d7d24;text-transform:uppercase;">%s</div>
+                          <h1 style="margin:10px 0 12px;font-size:28px;">%s</h1>
+                          <p style="margin:0;font-size:16px;line-height:1.6;color:#4d5d73;">%s</p>
                         </td></tr>
                         <tr><td style="padding:8px 32px 24px;">
                           <div style="padding:22px;text-align:center;background:#eef9e8;border:1px solid #b9e5a7;">
@@ -216,7 +220,8 @@ public class V3VerificationEmailSender {
                   </table>
                 </body>
                 </html>
-                """.formatted(otp, properties.getOtpTtl().toMinutes());
+                """.formatted(purpose.label(), purpose.heading(), purpose.instruction(), otp,
+                properties.getOtpTtl().toMinutes());
     }
 
     public static String maskEmail(String email) {
