@@ -8,6 +8,7 @@ import com.capstone.assessment.v3.auth.exception.V3AuthException;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3AuditService;
 import org.junit.jupiter.api.BeforeEach;
+import com.capstone.assessment.v3.answersheet.model.V3AnswerSheetModels;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
@@ -158,5 +159,18 @@ class V3AnswerSheetServiceTest {
         when(repository.findQuestions(assignment.testId())).thenReturn(questions);
         when(repository.findValidatedTemplate("A4"))
                 .thenReturn(Optional.of(V3AnswerSheetTestFixtures.validatedTemplate()));
+    }
+    @Test
+    void asm8AnOlderVersionStaysValidAndPointsToTheNewerOne() {
+        when(repository.findOwnedVersion(6L, TEACHER.userId(), TEACHER.schoolId())).thenReturn(Optional.of(
+                new V3AnswerSheetModels.StoredVersion(6L, "sheet-6", 1021L, "assignment-uuid", "A4", 1, 1, 20, 2, 1,
+                        "hash", "ready", "key", "pdf-hash", 100L, java.time.Instant.parse("2026-09-16T00:00:00Z"))));
+        when(repository.findLatestReadyVersionId(1021L, "A4")).thenReturn(Optional.of(9L));
+
+        var older = service.getVersion(TEACHER, 6L);
+
+        assertEquals(false, older.latest());
+        assertEquals(9L, older.latestAnswerSheetVersionId());
+        assertEquals("/api/v3/answer-sheet-versions/6/manifest", older.manifestPath());
     }
 }

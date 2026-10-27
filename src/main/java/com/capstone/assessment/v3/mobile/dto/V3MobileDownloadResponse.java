@@ -213,7 +213,11 @@ public record V3MobileDownloadResponse(
             int manifestVersion,
             String manifestHash,
             String requiredScannerVersion,
-            Instant generatedAt
+            Instant generatedAt,
+            // ASM-8: printed sheets of an older version still scan; the app can tell the teacher
+            // that a newer version exists for new printing.
+            boolean latest,
+            String latestAnswerSheetUuid
     ) {
     }
 }

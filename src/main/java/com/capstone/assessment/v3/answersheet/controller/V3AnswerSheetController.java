@@ -9,6 +9,8 @@ import com.capstone.assessment.v3.answersheet.service.V3AnswerSheetService;
 import com.capstone.assessment.v3.answersheet.service.V3AnswerSheetService.PdfDownload;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
+import com.capstone.assessment.v3.mobile.dto.V3AnswerSheetManifestResponse;
+import com.capstone.assessment.v3.mobile.service.V3MobileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
@@ -31,9 +33,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class V3AnswerSheetController {
 
     private final V3AnswerSheetService answerSheetService;
+    private final V3MobileService mobileService;
 
-    public V3AnswerSheetController(V3AnswerSheetService answerSheetService) {
+    public V3AnswerSheetController(V3AnswerSheetService answerSheetService, V3MobileService mobileService) {
         this.answerSheetService = answerSheetService;
+        this.mobileService = mobileService;
     }
 
     @GetMapping("/answer-sheets/reference-data")
@@ -84,6 +88,19 @@ public class V3AnswerSheetController {
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 answer-sheet version retrieved successfully.",
                 answerSheetService.getVersion(user, answerSheetVersionId)
+        ));
+    }
+
+    /** ASM-8: the exact layout of this (possibly older) version, the same manifest the phone scans with. */
+    @GetMapping("/answer-sheet-versions/{answerSheetVersionId}/manifest")
+    public ResponseEntity<ApiResponse<V3AnswerSheetManifestResponse>> getManifest(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @PathVariable long answerSheetVersionId
+    ) {
+        V3AnswerSheetVersionResponse version = answerSheetService.getVersion(user, answerSheetVersionId);
+        return ResponseEntity.ok(ApiResponse.success(
+                "V3 answer-sheet manifest retrieved successfully.",
+                mobileService.getManifest(user, version.assignmentUuid(), version.answerSheetUuid())
         ));
     }
 

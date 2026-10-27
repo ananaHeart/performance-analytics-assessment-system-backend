@@ -18,6 +18,10 @@ public record V3AnswerSheetVersionResponse(
         String pdfContentHash,
         long pdfFileSizeBytes,
         Instant generatedAt,
-        String pdfDownloadPath
+        String pdfDownloadPath,
+        // ASM-8: older versions stay valid and scannable; these say whether a newer one exists.
+        boolean latest,
+        Long latestAnswerSheetVersionId,
+        String manifestPath
 ) {
 }

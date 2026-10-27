@@ -877,6 +877,8 @@ public class V3AnswerSheetService {
     }
 
     private V3AnswerSheetVersionResponse toResponse(StoredVersion stored) {
+        Long latestVersionId = repository.findLatestReadyVersionId(stored.testAssignmentId(), stored.paperSizeCode())
+                .orElse(null);
         return new V3AnswerSheetVersionResponse(
                 stored.answerSheetVersionId(),
                 stored.answerSheetUuid(),
@@ -893,7 +895,10 @@ public class V3AnswerSheetService {
                 stored.pdfContentHash(),
                 stored.pdfFileSizeBytes(),
                 stored.generatedAt(),
-                "/api/v3/answer-sheet-versions/%d/pdf".formatted(stored.answerSheetVersionId())
+                "/api/v3/answer-sheet-versions/%d/pdf".formatted(stored.answerSheetVersionId()),
+                latestVersionId == null || latestVersionId == stored.answerSheetVersionId(),
+                latestVersionId,
+                "/api/v3/answer-sheet-versions/%d/manifest".formatted(stored.answerSheetVersionId())
         );
     }
 

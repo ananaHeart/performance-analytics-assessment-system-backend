@@ -854,5 +854,19 @@ public class V3AnswerSheetRepository {
 
     private <T> Optional<T> first(List<T> rows) {
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    /** ASM-8: the newest ready version for the same assessment and paper size. */
+    public Optional<Long> findLatestReadyVersionId(long testAssignmentId, String paperSizeCode) {
+        return jdbcTemplate.query("""
+                SELECT newer.answer_sheet_version_id
+                  FROM answer_sheet_versions newer
+                  JOIN paper_sizes size ON size.paper_size_id = newer.paper_size_id
+                 WHERE newer.test_assignment_id = ?
+                   AND size.paper_size_code = ?
+                   AND newer.generation_status = 'ready'
+                 ORDER BY newer.generation_number DESC
+                 LIMIT 1
+                """, (rs, rowNum) -> rs.getLong(1), testAssignmentId, paperSizeCode).stream().findFirst();
     }
 }

@@ -707,7 +707,14 @@ public class V3MobileRepository {
                             WHERE page.answer_sheet_version_id = sheet.answer_sheet_version_id
                               AND page.page_status = 'ready'
                        ), '') AS required_scanner_version,
-                       sheet.generated_at
+                       sheet.generated_at,
+                       (SELECT newer.answer_sheet_uuid
+                          FROM answer_sheet_versions newer
+                         WHERE newer.test_assignment_id = sheet.test_assignment_id
+                           AND newer.paper_size_id = sheet.paper_size_id
+                           AND newer.generation_status = 'ready'
+                         ORDER BY newer.generation_number DESC
+                         LIMIT 1) AS latest_answer_sheet_uuid
                   FROM answer_sheet_versions sheet
                   JOIN paper_sizes size ON size.paper_size_id = sheet.paper_size_id
                   JOIN test_assignments delivery
@@ -736,7 +743,9 @@ public class V3MobileRepository {
                         rs.getInt("manifest_version"),
                         rs.getString("manifest_hash"),
                         rs.getString("required_scanner_version"),
-                        toInstant(rs.getTimestamp("generated_at"))
+                        toInstant(rs.getTimestamp("generated_at")),
+                        rs.getString("answer_sheet_uuid").equals(rs.getString("latest_answer_sheet_uuid")),
+                        rs.getString("latest_answer_sheet_uuid")
                 ),
                 teacherUserId,
                 schoolId,
