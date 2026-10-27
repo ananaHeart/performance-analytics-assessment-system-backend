@@ -483,6 +483,26 @@ public class V3SchoolSetupRepository {
                 """, assignmentRole, Timestamp.from(now), principalUserId, reason, classAssignmentId);
     }
 
+    /** CLS-4: assessments given through this assignment. */
+    public int countAssignmentAssessments(long classAssignmentId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM test_assignments WHERE class_assignment_id = ?",
+                Integer.class, classAssignmentId);
+        return count == null ? 0 : count;
+    }
+
+    /** CLS-4: learners' results saved under this assignment's assessments. */
+    public int countAssignmentResults(long classAssignmentId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                  FROM test_results result
+                  JOIN test_assignments test_assignment
+                    ON test_assignment.test_assignment_id = result.test_assignment_id
+                 WHERE test_assignment.class_assignment_id = ?
+                """, Integer.class, classAssignmentId);
+        return count == null ? 0 : count;
+    }
+
     /** CLS-3: whether any assessment was ever given through this assignment. */
     public boolean assignmentHasAssessments(long classAssignmentId) {
         Integer count = jdbcTemplate.queryForObject(

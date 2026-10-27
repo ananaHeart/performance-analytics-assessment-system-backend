@@ -562,6 +562,26 @@ class V3SchoolSetupServiceTest {
     }
 
     @Test
+    void cls4EligibilitySaysWhetherDeleteOrOnlyArchiveIsAllowed() {
+        when(repository.findAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
+        when(repository.countAssignmentAssessments(900L)).thenReturn(3);
+        when(repository.countAssignmentResults(900L)).thenReturn(15);
+
+        var used = service.getDeleteEligibility(PRINCIPAL, 900L);
+
+        assertEquals(false, used.canHardDelete());
+        assertEquals(true, used.canArchive());
+        assertEquals(15, used.resultCount());
+        assertEquals("This assignment already has assessment results, so it can only be archived.", used.reason());
+
+        when(repository.countAssignmentAssessments(900L)).thenReturn(0);
+        var unused = service.getDeleteEligibility(PRINCIPAL, 900L);
+        assertEquals(true, unused.canHardDelete());
+        assertEquals(0, unused.resultCount());
+        assertEquals(null, unused.reason());
+    }
+
+    @Test
     void cls4AnUnusedAssignmentIsReallyDeleted() {
         when(repository.lockAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
         when(repository.assignmentHasAssessments(900L)).thenReturn(false);

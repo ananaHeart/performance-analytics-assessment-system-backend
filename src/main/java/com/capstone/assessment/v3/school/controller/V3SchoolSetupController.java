@@ -8,6 +8,7 @@ import com.capstone.assessment.v3.school.dto.V3ClassAssignmentUpdateRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusChangeRequest;
+import com.capstone.assessment.v3.school.dto.V3ClassAssignmentDeleteEligibilityResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassResponse;
 import com.capstone.assessment.v3.school.dto.V3ManualStudentEnrollmentRequest;
@@ -171,11 +172,25 @@ public class V3SchoolSetupController {
     public ResponseEntity<ApiResponse<List<V3ClassAssignmentResponse>>> assignments(
             @AuthenticationPrincipal V3AuthenticatedUser principal,
             @RequestParam(required = false) Integer academicYearId,
-            @RequestParam(required = false) String view
+            @RequestParam(required = false) String view,
+            @RequestParam(required = false) String status
     ) {
+        // CLS-8: ?view=archived and ?status=archived mean the same.
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 class assignments retrieved successfully.",
-                service.listAssignments(principal, academicYearId, view)
+                service.listAssignments(principal, academicYearId, view != null ? view : status)
+        ));
+    }
+
+    /** CLS-4: whether Delete or only Archive is allowed, with the counts and the reason. */
+    @GetMapping("/class-assignments/{classAssignmentId}/delete-eligibility")
+    public ResponseEntity<ApiResponse<V3ClassAssignmentDeleteEligibilityResponse>> deleteEligibility(
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @PathVariable long classAssignmentId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Class assignment delete eligibility retrieved successfully.",
+                service.getDeleteEligibility(principal, classAssignmentId)
         ));
     }
 

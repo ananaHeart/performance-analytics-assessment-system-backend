@@ -11,6 +11,7 @@ import com.capstone.assessment.v3.school.dto.V3ClassAssignmentUpdateRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusChangeRequest;
+import com.capstone.assessment.v3.school.dto.V3ClassAssignmentDeleteEligibilityResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassResponse;
 import com.capstone.assessment.v3.school.dto.V3ManualStudentEnrollmentRequest;
@@ -228,6 +229,27 @@ public class V3SchoolSetupService {
         AssignmentContext saved = repository.findAssignment(principal.schoolId(), classAssignmentId)
                 .orElseThrow(this::assignmentNotFound);
         return repository.toAssignmentResponse(saved, false);
+    }
+
+    /** CLS-4: tells the web whether Delete or only Archive is allowed, with the reason. */
+    @Transactional(readOnly = true)
+    public V3ClassAssignmentDeleteEligibilityResponse getDeleteEligibility(
+            V3AuthenticatedUser principal,
+            long classAssignmentId
+    ) {
+        requirePrincipal(principal);
+        AssignmentContext assignment = repository.findAssignment(principal.schoolId(), classAssignmentId)
+                .orElseThrow(this::assignmentNotFound);
+        int assessmentCount = repository.countAssignmentAssessments(classAssignmentId);
+        int resultCount = assessmentCount == 0 ? 0 : repository.countAssignmentResults(classAssignmentId);
+        boolean canArchive = "active".equals(assignment.status()) || "inactive".equals(assignment.status());
+        String reason = resultCount > 0
+                ? "This assignment already has assessment results, so it can only be archived."
+                : assessmentCount > 0
+                        ? "This assignment already has assessments, so it can only be archived."
+                        : null;
+        return new V3ClassAssignmentDeleteEligibilityResponse(classAssignmentId, assignment.status(),
+                assessmentCount == 0, canArchive, assessmentCount, resultCount, reason);
     }
 
     /**
