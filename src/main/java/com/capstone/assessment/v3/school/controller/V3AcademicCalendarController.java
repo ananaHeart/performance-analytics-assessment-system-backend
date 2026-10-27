@@ -6,6 +6,8 @@ import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearRequest;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearResponse;
 import com.capstone.assessment.v3.school.dto.V3LifecycleReasonRequest;
+import com.capstone.assessment.v3.school.dto.V3TermDatesRequest;
+import com.capstone.assessment.v3.school.dto.V3AcademicYearArchiveEligibilityResponse;
 import com.capstone.assessment.v3.school.service.V3AcademicCalendarService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -91,6 +93,33 @@ public class V3AcademicCalendarController {
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 academic year activated successfully.",
                 service.activateAcademicYear(principal, academicYearId, request, metadata(httpRequest))
+        ));
+    }
+
+    /** SET-5: whether the school year can be archived now, and why not. */
+    @GetMapping("/{academicYearId}/archive-eligibility")
+    public ResponseEntity<ApiResponse<V3AcademicYearArchiveEligibilityResponse>> archiveEligibility(
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @PathVariable int academicYearId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Academic year archive eligibility retrieved successfully.",
+                service.getArchiveEligibility(principal, academicYearId)
+        ));
+    }
+
+    /** SET-4: extend or correct a planned or active term's dates, with a reason. */
+    @PatchMapping("/{academicYearId}/term-periods/{termPeriodId}/dates")
+    public ResponseEntity<ApiResponse<V3AcademicYearResponse>> updateTermDates(
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @PathVariable int academicYearId,
+            @PathVariable int termPeriodId,
+            @Valid @RequestBody V3TermDatesRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Term dates updated successfully.",
+                service.updateTermDates(principal, academicYearId, termPeriodId, request, metadata(httpRequest))
         ));
     }
 

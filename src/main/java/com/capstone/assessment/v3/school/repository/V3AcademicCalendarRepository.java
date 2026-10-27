@@ -268,6 +268,59 @@ public class V3AcademicCalendarRepository {
         );
     }
 
+    /** SET-4: how many times the principal already changed this term's dates (from the audit log). */
+    public int countTermDateEdits(int termPeriodId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                  FROM audit_logs
+                 WHERE action = 'term_period.dates_update'
+                   AND entity_type = 'term_periods'
+                   AND entity_id = ?
+                   AND outcome = 'success'
+                """, Integer.class, Integer.toString(termPeriodId));
+        return count == null ? 0 : count;
+    }
+
+    /** SET-4: assessments of this term whose opening date would fall outside the new dates. */
+    public int countAssessmentsOutside(int termPeriodId, Instant startAt, Instant endAt) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                  FROM tests test
+                  JOIN test_assignments delivery ON delivery.test_id = test.test_id
+                 WHERE test.term_period_id = ?
+                   AND test.status <> 'archived'
+                   AND delivery.open_at IS NOT NULL
+                   AND (delivery.open_at < ? OR delivery.open_at > ?)
+                """, Integer.class, termPeriodId, Timestamp.from(startAt), Timestamp.from(endAt));
+        return count == null ? 0 : count;
+    }
+
+    /** SET-4: new dates for a planned or active term, with who changed it and why. */
+    public int updateTermDates(int termPeriodId, Instant startAt, Instant endAt, long userId, String reason,
+                               Instant now) {
+        return jdbcTemplate.update("""
+                UPDATE term_periods
+                   SET start_at = ?, end_at = ?, overridden_by_user_id = ?, override_reason = ?, overridden_at = ?
+                 WHERE term_period_id = ? AND status IN ('planned', 'active')
+                """, Timestamp.from(startAt), Timestamp.from(endAt), userId, reason, Timestamp.from(now),
+                termPeriodId);
+    }
+
+    /** SET-5: active assessments of this school year that can still receive answer sheets. */
+    public int countOpenAssessments(int academicYearId, Instant now) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                  FROM tests test
+                  JOIN term_periods term ON term.term_period_id = test.term_period_id
+                  JOIN test_assignments delivery ON delivery.test_id = test.test_id
+                 WHERE term.academic_year_id = ?
+                   AND test.status = 'active'
+                   AND delivery.assignment_status IN ('planned', 'open')
+                   AND (delivery.close_at IS NULL OR delivery.close_at > ?)
+                """, Integer.class, academicYearId, Timestamp.from(now));
+        return count == null ? 0 : count;
+    }
+
     public int activateAcademicYear(int academicYearId) {
         return jdbcTemplate.update("""
                 UPDATE academic_years

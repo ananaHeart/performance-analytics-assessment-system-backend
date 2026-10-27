@@ -11,6 +11,7 @@ import com.capstone.assessment.v3.school.model.V3AcademicCalendarModels.Academic
 import com.capstone.assessment.v3.school.model.V3AcademicCalendarModels.TermPeriodRow;
 import com.capstone.assessment.v3.school.repository.V3AcademicCalendarRepository;
 import org.junit.jupiter.api.BeforeEach;
+import com.capstone.assessment.v3.school.dto.V3TermDatesRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -230,7 +231,7 @@ class V3AcademicCalendarServiceTest {
         when(repository.listTermPeriods(100)).thenReturn(legacy ? termRows("planned", "automatic") : threeTermRows("planned", "automatic"));
         when(repository.activateAcademicYear(100)).thenReturn(1);
         service.activateAcademicYear(PRINCIPAL, 100, reason(), null);
-        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("active")));
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(endedYear("active")));
         when(repository.listTermPeriods(100)).thenReturn(legacy ? termRows("completed", "automatic") : threeTermRows("completed", "automatic"));
         when(repository.completeAcademicYear(100)).thenReturn(1);
         service.completeAcademicYear(PRINCIPAL, 100, reason(), null);
@@ -317,6 +318,72 @@ class V3AcademicCalendarServiceTest {
 
     private V3TermPeriodRequest term(String name, int order, String start, String end) {
         return new V3TermPeriodRequest(name, order, Instant.parse(start), Instant.parse(end), "automatic");
+    }
+
+    @Test
+    void set5AYearIsNotArchivedBeforeItsEndDateOrWithOpenAssessments() {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("active")));
+        when(repository.listTermPeriods(100)).thenReturn(threeTermRows("completed", "automatic"));
+        assertEquals("ACADEMIC_YEAR_NOT_ENDED", assertThrows(V3AuthException.class,
+                () -> service.completeAcademicYear(PRINCIPAL, 100, reason(), null)).getCode());
+
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(endedYear("active")));
+        when(repository.countOpenAssessments(100, NOW)).thenReturn(2);
+        V3AuthException open = assertThrows(V3AuthException.class,
+                () -> service.completeAcademicYear(PRINCIPAL, 100, reason(), null));
+        assertEquals("ACADEMIC_YEAR_HAS_OPEN_ASSESSMENTS", open.getCode());
+        assertEquals(2, open.getDetails().get("openAssessmentCount"));
+        verify(repository, never()).completeAcademicYear(anyInt());
+    }
+
+    @Test
+    void set5EligibilityListsEveryReason() {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("active")));
+        when(repository.listTermPeriods(100)).thenReturn(threeTermRows("planned", "automatic"));
+        when(repository.countOpenAssessments(100, NOW)).thenReturn(1);
+
+        var eligibility = service.getArchiveEligibility(PRINCIPAL, 100);
+
+        assertEquals(false, eligibility.canArchive());
+        assertEquals(false, eligibility.endDateReached());
+        assertEquals(3, eligibility.incompleteTermCount());
+        assertEquals(List.of("The school year ends on 2027-03-31.", "3 term(s) are not completed yet.",
+                "1 assessment(s) are still open."), eligibility.reasons());
+    }
+
+    @Test
+    void set4ATermCanBeExtendedWithAReasonUpToThreeTimes() {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("active")));
+        TermPeriodRow first = new TermPeriodRow(11, 100, "First Term", 1, Instant.parse("2026-05-31T16:00:00Z"),
+                Instant.parse("2026-09-30T16:00:00Z"), "active", "automatic", null, null, null, null, null);
+        TermPeriodRow second = new TermPeriodRow(12, 100, "Second Term", 2, Instant.parse("2026-10-31T16:00:00Z"),
+                Instant.parse("2027-01-31T16:00:00Z"), "planned", "automatic", null, null, null, null, null);
+        when(repository.findTermPeriod(100, 11)).thenReturn(Optional.of(first));
+        when(repository.listTermPeriods(100)).thenReturn(List.of(first, second));
+        when(repository.updateTermDates(eq(11), any(), any(), eq(7L), eq("Typhoon week added"), eq(NOW)))
+                .thenReturn(1);
+
+        Instant extendedEnd = Instant.parse("2026-10-14T16:00:00Z");
+        service.updateTermDates(PRINCIPAL, 100, 11,
+                new V3TermDatesRequest(first.startAt(), extendedEnd, "Typhoon week added"), null);
+        verify(repository).updateTermDates(11, first.startAt(), extendedEnd, 7L, "Typhoon week added", NOW);
+
+        V3FieldValidationException overlap = assertThrows(V3FieldValidationException.class, () ->
+                service.updateTermDates(PRINCIPAL, 100, 11, new V3TermDatesRequest(first.startAt(),
+                        Instant.parse("2026-11-15T16:00:00Z"), "Typhoon week added"), null));
+        assertEquals("These dates overlap Second Term (2026-11-01 to 2027-02-01).", overlap.getErrors().get("endAt"));
+
+        when(repository.countTermDateEdits(11)).thenReturn(3);
+        assertEquals("TERM_EDIT_LIMIT_REACHED", assertThrows(V3AuthException.class, () ->
+                service.updateTermDates(PRINCIPAL, 100, 11,
+                        new V3TermDatesRequest(first.startAt(), extendedEnd, "Typhoon week added"), null)).getCode());
+    }
+
+    private AcademicYearRow endedYear(String status) {
+        return new AcademicYearRow(
+                100, "SCHOOL-001", 1, "K to 12", "2025-2026",
+                LocalDate.of(2025, 6, 1), LocalDate.of(2026, 3, 31), status, NOW, NOW
+        );
     }
 
     private AcademicYearRow year(String status) {

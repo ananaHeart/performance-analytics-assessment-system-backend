@@ -8,6 +8,8 @@ import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearRequest;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearResponse;
 import com.capstone.assessment.v3.school.dto.V3LifecycleReasonRequest;
+import com.capstone.assessment.v3.school.dto.V3AcademicYearArchiveEligibilityResponse;
+import com.capstone.assessment.v3.school.dto.V3TermDatesRequest;
 import com.capstone.assessment.v3.school.dto.V3TermPeriodRequest;
 import com.capstone.assessment.v3.school.model.V3AcademicCalendarLayout;
 import com.capstone.assessment.v3.school.model.V3AcademicCalendarModels.AcademicYearRow;
@@ -39,6 +41,8 @@ public class V3AcademicCalendarService {
     private static final String PRINCIPAL_ROLE = "principal";
     private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Manila");
     private static final Set<String> ACTIVATION_MODES = Set.of("automatic", "manual");
+    /** SET-4 (D8): the panel's limit of changes per term. */
+    static final int MAX_TERM_DATE_EDITS = 3;
 
     private final V3AcademicCalendarRepository repository;
     private final V3AuditService auditService;
@@ -239,6 +243,18 @@ public class V3AcademicCalendarService {
                 .anyMatch(term -> !"completed".equals(term.status()))) {
             throw conflict("TERM_PERIODS_NOT_COMPLETED",
                     "Complete all term periods before completing the academic year.");
+        }
+        // SET-5: not before the year's end date, and not while assessments are still open.
+        if (LocalDate.ofInstant(clock.instant(), SCHOOL_ZONE).isBefore(year.endDate())) {
+            throw new V3AuthException("ACADEMIC_YEAR_NOT_ENDED",
+                    "The school year ends on " + year.endDate() + ". It can be archived from that day.",
+                    HttpStatus.CONFLICT, Map.of("endDate", year.endDate().toString()));
+        }
+        int openAssessments = repository.countOpenAssessments(academicYearId, clock.instant());
+        if (openAssessments > 0) {
+            throw new V3AuthException("ACADEMIC_YEAR_HAS_OPEN_ASSESSMENTS",
+                    openAssessments + " assessment(s) are still open. Close or archive them first.",
+                    HttpStatus.CONFLICT, Map.of("openAssessmentCount", openAssessments));
         }
         if (repository.completeAcademicYear(academicYearId) != 1) {
             throw conflict("ACADEMIC_YEAR_COMPLETION_CONFLICT",
@@ -492,6 +508,113 @@ public class V3AcademicCalendarService {
                 principal.userId(), action, "term_periods", Integer.toString(termPeriodId),
                 "success", metadata, details, clock.instant()
         );
+    }
+
+    /** SET-5: whether the school year can be archived (completed) now, with every reason it cannot. */
+    @Transactional(readOnly = true)
+    public V3AcademicYearArchiveEligibilityResponse getArchiveEligibility(
+            V3AuthenticatedUser principal,
+            int academicYearId
+    ) {
+        requirePrincipal(principal);
+        AcademicYearRow year = requireAcademicYear(principal.schoolId(), academicYearId);
+        boolean endDateReached = !LocalDate.ofInstant(clock.instant(), SCHOOL_ZONE).isBefore(year.endDate());
+        int incompleteTerms = (int) repository.listTermPeriods(academicYearId).stream()
+                .filter(term -> !"completed".equals(term.status()))
+                .count();
+        int openAssessments = repository.countOpenAssessments(academicYearId, clock.instant());
+        List<String> reasons = new java.util.ArrayList<>();
+        if ("completed".equals(year.status())) {
+            reasons.add("The school year is already archived.");
+        } else if (!"active".equals(year.status())) {
+            reasons.add("Only an active school year can be archived.");
+        }
+        if (!endDateReached) {
+            reasons.add("The school year ends on " + year.endDate() + ".");
+        }
+        if (incompleteTerms > 0) {
+            reasons.add(incompleteTerms + " term(s) are not completed yet.");
+        }
+        if (openAssessments > 0) {
+            reasons.add(openAssessments + " assessment(s) are still open.");
+        }
+        return new V3AcademicYearArchiveEligibilityResponse(academicYearId, year.status(), reasons.isEmpty(),
+                year.endDate(), endDateReached, incompleteTerms, openAssessments, reasons);
+    }
+
+    /**
+     * SET-4 (D8): extend or correct a planned or active term in an active (or planned) school year.
+     * The dates stay inside the year and do not overlap other terms; at most 3 changes per term;
+     * no assessment may end up outside the term; every change is audited with the old and new dates.
+     */
+    @Transactional
+    public V3AcademicYearResponse updateTermDates(
+            V3AuthenticatedUser principal,
+            int academicYearId,
+            int termPeriodId,
+            V3TermDatesRequest request,
+            V3RequestMetadata metadata
+    ) {
+        requirePrincipal(principal);
+        String reason = requireReason(new V3LifecycleReasonRequest(request.reason()));
+        repository.lockAcademicYear(principal.schoolId(), academicYearId);
+        AcademicYearRow year = requireAcademicYear(principal.schoolId(), academicYearId);
+        if ("completed".equals(year.status())) {
+            throw conflict("ACADEMIC_YEAR_LOCKED", "An archived school year cannot change.");
+        }
+        TermPeriodRow term = requireTerm(academicYearId, termPeriodId);
+        if ("completed".equals(term.status())) {
+            throw conflict("TERM_PERIOD_LOCKED", "A completed term cannot change.");
+        }
+        Instant startAt = request.startAt();
+        Instant endAt = request.endAt();
+        Instant now = clock.instant();
+        if (!endAt.isAfter(startAt)) {
+            throw invalid("endAt", "The end must be later than the start.");
+        }
+        Instant yearStart = year.startDate().atStartOfDay(SCHOOL_ZONE).toInstant();
+        Instant yearEnd = year.endDate().plusDays(1).atStartOfDay(SCHOOL_ZONE).toInstant();
+        if (startAt.isBefore(yearStart) || endAt.isAfter(yearEnd)) {
+            throw invalid("endAt", "The term must stay inside the school year (" + year.startDate()
+                    + " to " + year.endDate() + ").");
+        }
+        if ("active".equals(term.status()) && !endAt.isAfter(now)) {
+            throw invalid("endAt", "The current term must end in the future.");
+        }
+        for (TermPeriodRow other : repository.listTermPeriods(academicYearId)) {
+            if (other.termPeriodId() != termPeriodId
+                    && other.startAt().isBefore(endAt) && startAt.isBefore(other.endAt())) {
+                throw invalid("endAt", "These dates overlap " + other.termName() + " ("
+                        + other.startAt().atZone(SCHOOL_ZONE).toLocalDate() + " to "
+                        + other.endAt().atZone(SCHOOL_ZONE).toLocalDate() + ").");
+            }
+        }
+        int edits = repository.countTermDateEdits(termPeriodId);
+        if (edits >= MAX_TERM_DATE_EDITS) {
+            throw new V3AuthException("TERM_EDIT_LIMIT_REACHED",
+                    "This term's dates were already changed " + edits + " times, the most allowed.",
+                    HttpStatus.CONFLICT, Map.of("editCount", edits, "maxEdits", MAX_TERM_DATE_EDITS));
+        }
+        int outside = repository.countAssessmentsOutside(termPeriodId, startAt, endAt);
+        if (outside > 0) {
+            throw new V3AuthException("TERM_HAS_ASSESSMENTS_OUTSIDE",
+                    outside + " assessment(s) of this term would fall outside the new dates.",
+                    HttpStatus.CONFLICT, Map.of("assessmentCount", outside));
+        }
+        if (repository.updateTermDates(termPeriodId, startAt, endAt, principal.userId(), reason, now) != 1) {
+            throw conflict("TERM_PERIOD_UPDATE_CONFLICT", "The term changed before it was saved.");
+        }
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("academicYearId", academicYearId);
+        details.put("previousStartAt", term.startAt().toString());
+        details.put("previousEndAt", term.endAt().toString());
+        details.put("startAt", startAt.toString());
+        details.put("endAt", endAt.toString());
+        details.put("reason", reason);
+        details.put("editNumber", edits + 1);
+        auditService.record(principal.userId(), "term_period.dates_update", "term_periods",
+                Integer.toString(termPeriodId), "success", metadata, details, now);
+        return toResponse(requireAcademicYear(principal.schoolId(), academicYearId));
     }
 
     private V3FieldValidationException invalid(String field, String message) {
