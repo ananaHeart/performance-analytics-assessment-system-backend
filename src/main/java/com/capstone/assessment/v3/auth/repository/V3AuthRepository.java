@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Optional;
 
 @Profile("v3")
@@ -32,12 +33,15 @@ public class V3AuthRepository {
                    u.locked_until_at,
                    COALESCE(u.email_verified_at, u.contact_verified_at) AS verified_at,
                    u.mfa_required,
-                   u.created_at
+                   u.created_at,
+                   u.contract_end_date
               FROM users u
               JOIN roles role ON role.role_id = u.role_id
               JOIN statuses status ON status.status_id = u.status_id
               LEFT JOIN suffixes suffix ON suffix.suffix_id = u.suffix_id
             """;
+
+    private static final java.time.ZoneId SCHOOL_TIMEZONE = java.time.ZoneId.of("Asia/Manila");
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -275,6 +279,7 @@ public class V3AuthRepository {
                    AND session.revoked_at IS NULL
                    AND session.expires_at > ?
                    AND status.status_name = 'active'
+                   AND (u.contract_end_date IS NULL OR u.contract_end_date >= ?)
                    AND (u.mfa_required = FALSE OR session.authentication_level = 'mfa')
                 """,
                 (resultSet, rowNumber) -> new V3AuthenticatedUser(
@@ -286,8 +291,26 @@ public class V3AuthRepository {
                         resultSet.getString("session_uuid")
                 ),
                 tokenHash,
-                Timestamp.from(now)
+                Timestamp.from(now),
+                LocalDate.ofInstant(now, SCHOOL_TIMEZONE)
         ).stream().findFirst();
+    }
+
+    /** REG-2 (D2): an active account whose contract has ended becomes inactive. */
+    public int markContractEnded(long userId, LocalDate today, Instant updatedAt) {
+        return jdbcTemplate.update(
+                """
+                UPDATE users
+                   SET status_id = (SELECT status_id FROM statuses WHERE status_name = 'inactive' AND is_active = TRUE),
+                       updated_at = ?
+                 WHERE user_id = ?
+                   AND contract_end_date < ?
+                   AND status_id = (SELECT status_id FROM statuses WHERE status_name = 'active' AND is_active = TRUE)
+                """,
+                Timestamp.from(updatedAt),
+                userId,
+                today
+        );
     }
 
     public void touchSession(String sessionUuid, Instant usedAt) {
@@ -384,7 +407,8 @@ public class V3AuthRepository {
                 toInstant(resultSet.getTimestamp("locked_until_at")),
                 toInstant(resultSet.getTimestamp("verified_at")),
                 resultSet.getBoolean("mfa_required"),
-                resultSet.getTimestamp("created_at").toInstant()
+                resultSet.getTimestamp("created_at").toInstant(),
+                resultSet.getObject("contract_end_date", LocalDate.class)
         );
     }
 

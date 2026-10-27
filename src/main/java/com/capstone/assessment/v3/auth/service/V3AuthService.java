@@ -165,6 +165,9 @@ public class V3AuthService {
             }
             case "inactive" -> {
                 recordFailedAttempt(user.userId(), email, "inactive_account", normalizedMetadata, now);
+                if (user.contractEndedBefore(schoolToday(now))) {
+                    throw contractEnded(user);
+                }
                 throw new V3AuthException(
                         "ACCOUNT_INACTIVE",
                         "The account is inactive. Contact the school administrator.",
@@ -179,8 +182,21 @@ public class V3AuthService {
                         HttpStatus.LOCKED
                 );
             }
+            case "archived" -> {
+                recordFailedAttempt(user.userId(), email, "archived_account", normalizedMetadata, now);
+                throw new V3AuthException(
+                        "ACCOUNT_ARCHIVED",
+                        "This account has been archived. Contact the school principal.",
+                        HttpStatus.FORBIDDEN
+                );
+            }
             case "active" -> {
-                // Continue below.
+                // REG-2 (D2): the daily job may not have run yet; the account still becomes inactive.
+                if (user.contractEndedBefore(schoolToday(now))) {
+                    authRepository.markContractEnded(user.userId(), schoolToday(now), now);
+                    recordFailedAttempt(user.userId(), email, "inactive_account", normalizedMetadata, now);
+                    throw contractEnded(user);
+                }
             }
             default -> {
                 recordFailedAttempt(user.userId(), email, "other", normalizedMetadata, now);
@@ -453,6 +469,20 @@ public class V3AuthService {
                 user.role(),
                 user.status(),
                 user.mfaRequired()
+        );
+    }
+
+    private static java.time.LocalDate schoolToday(Instant now) {
+        return java.time.LocalDate.ofInstant(now, java.time.ZoneId.of("Asia/Manila"));
+    }
+
+    private static V3AuthException contractEnded(V3UserAccount user) {
+        return new V3AuthException(
+                "ACCOUNT_CONTRACT_ENDED",
+                "Your teaching contract ended on " + user.contractEndDate()
+                        + ". Ask the school principal to extend it.",
+                HttpStatus.FORBIDDEN,
+                Map.of("contractEndDate", user.contractEndDate().toString())
         );
     }
 

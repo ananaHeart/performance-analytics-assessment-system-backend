@@ -479,7 +479,7 @@ public class V3SchoolSetupRepository {
                 UPDATE class_assignments
                    SET assignment_role = ?, status = 'active', assigned_at = ?,
                        ended_at = NULL, status_changed_by_user_id = ?, status_reason = ?
-                 WHERE class_assignment_id = ? AND status IN ('archived', 'completed')
+                 WHERE class_assignment_id = ? AND status IN ('archived', 'completed', 'inactive')
                 """, assignmentRole, Timestamp.from(now), principalUserId, reason, classAssignmentId);
     }
 
@@ -516,15 +516,46 @@ public class V3SchoolSetupRepository {
                 UPDATE class_assignments
                    SET status = 'archived', ended_at = ?, status_changed_by_user_id = ?,
                        status_reason = ?
-                 WHERE class_assignment_id = ? AND status = 'active'
+                 WHERE class_assignment_id = ? AND status IN ('active', 'inactive')
                 """, Timestamp.from(now), principalUserId, reason, classAssignmentId);
     }
 
-    public List<V3ClassAssignmentResponse> listAssignments(String schoolId, Integer academicYearId) {
+    /** CLS-7: active and inactive switch both ways; the assignment keeps its history. */
+    public int changeAssignmentStatus(
+            long classAssignmentId,
+            String expectedStatus,
+            String targetStatus,
+            long principalUserId,
+            String reason
+    ) {
+        return jdbcTemplate.update("""
+                UPDATE class_assignments
+                   SET status = ?, status_changed_by_user_id = ?, status_reason = ?
+                 WHERE class_assignment_id = ? AND status = ?
+                """, targetStatus, principalUserId, reason, classAssignmentId, expectedStatus);
+    }
+
+    /** CLS-4: a real delete, only for an assignment that never had an assessment. */
+    public int deleteUnusedAssignment(long classAssignmentId) {
+        jdbcTemplate.update("""
+                DELETE FROM class_assignment_schedules
+                 WHERE class_assignment_id = ?
+                   AND NOT EXISTS (SELECT 1 FROM test_assignments WHERE class_assignment_id = ?)
+                """, classAssignmentId, classAssignmentId);
+        return jdbcTemplate.update("""
+                DELETE FROM class_assignments
+                 WHERE class_assignment_id = ?
+                   AND NOT EXISTS (SELECT 1 FROM test_assignments WHERE class_assignment_id = ?)
+                """, classAssignmentId, classAssignmentId);
+    }
+
+    /** CLS-8: archived assignments are listed only in the Archived view. */
+    public List<V3ClassAssignmentResponse> listAssignments(String schoolId, Integer academicYearId, boolean archived) {
         String sql = ASSIGNMENT_SELECT + """
                  WHERE section_row.school_id = ?
                    AND class_row.status <> 'archived'
-                """ + (academicYearId == null ? "" : " AND class_row.academic_year_id = ? ") + """
+                """ + (archived ? " AND assignment.status = 'archived' " : " AND assignment.status <> 'archived' ")
+                + (academicYearId == null ? "" : " AND class_row.academic_year_id = ? ") + """
                  ORDER BY academic_year.start_date DESC, grade_level.grade_level_name,
                           section_row.section_name, subject.subject_name, teacher.last_name,
                           teacher.first_name

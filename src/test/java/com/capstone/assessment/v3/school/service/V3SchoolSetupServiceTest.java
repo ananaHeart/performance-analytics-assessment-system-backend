@@ -20,6 +20,8 @@ import com.capstone.assessment.v3.school.model.V3SchoolSetupModels.EnrollmentCon
 import com.capstone.assessment.v3.school.model.V3SchoolSetupModels.StudentContext;
 import com.capstone.assessment.v3.school.repository.V3SchoolSetupRepository;
 import org.junit.jupiter.api.BeforeEach;
+import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusChangeRequest;
+import com.capstone.assessment.v3.auth.exception.V3FieldValidationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -557,6 +559,57 @@ class V3SchoolSetupServiceTest {
         when(repository.lockAssignment("SCHOOL-001", 901L)).thenReturn(Optional.of(assignment("archived")));
         assertEquals("CLASS_ASSIGNMENT_ARCHIVED", assertThrows(V3AuthException.class, () -> service.updateAssignment(
                 PRINCIPAL, 901L, new V3ClassAssignmentUpdateRequest(22L, 1, "primary", null), METADATA)).getCode());
+    }
+
+    @Test
+    void cls4AnUnusedAssignmentIsReallyDeleted() {
+        when(repository.lockAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
+        when(repository.assignmentHasAssessments(900L)).thenReturn(false);
+        when(repository.deleteUnusedAssignment(900L)).thenReturn(1);
+
+        service.deleteAssignment(PRINCIPAL, 900L, "Wrong section", METADATA);
+
+        verify(auditService).record(eq(11L), eq("class_assignment.delete"), eq("class_assignments"), eq("900"),
+                eq("success"), eq(METADATA), anyMap(), eq(NOW));
+    }
+
+    @Test
+    void cls4AnAssignmentWithAssessmentsCanOnlyBeArchived() {
+        when(repository.lockAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
+        when(repository.assignmentHasAssessments(900L)).thenReturn(true);
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> service.deleteAssignment(PRINCIPAL, 900L, null, METADATA));
+
+        assertEquals("CLASS_ASSIGNMENT_HAS_ASSESSMENTS", exception.getCode());
+        assertEquals(true, exception.getDetails().get("canArchive"));
+        verify(repository, never()).deleteUnusedAssignment(anyLong());
+    }
+
+    @Test
+    void cls7AnAssignmentCanBePausedButNotAnArchivedOne() {
+        when(repository.lockAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("active")));
+        when(repository.changeAssignmentStatus(900L, "active", "inactive", 11L, "Teacher on leave")).thenReturn(1);
+        when(repository.findAssignment("SCHOOL-001", 900L)).thenReturn(Optional.of(assignment("inactive")));
+
+        service.changeAssignmentStatus(PRINCIPAL, 900L,
+                new V3ClassAssignmentStatusChangeRequest("Inactive", "Teacher on leave"), METADATA);
+
+        verify(repository).changeAssignmentStatus(900L, "active", "inactive", 11L, "Teacher on leave");
+        when(repository.lockAssignment("SCHOOL-001", 901L)).thenReturn(Optional.of(assignment("archived")));
+        assertEquals("CLASS_ASSIGNMENT_ARCHIVED", assertThrows(V3AuthException.class,
+                () -> service.changeAssignmentStatus(PRINCIPAL, 901L,
+                        new V3ClassAssignmentStatusChangeRequest("active", "Back again"), METADATA)).getCode());
+    }
+
+    @Test
+    void cls8ArchivedAssignmentsAreListedOnlyInTheArchivedView() {
+        service.listAssignments(PRINCIPAL, null, null);
+        service.listAssignments(PRINCIPAL, 2026, "archived");
+
+        verify(repository).listAssignments("SCHOOL-001", null, false);
+        verify(repository).listAssignments("SCHOOL-001", 2026, true);
+        assertThrows(V3FieldValidationException.class, () -> service.listAssignments(PRINCIPAL, null, "all"));
     }
 
     private AssignmentContext assignment(String status) {

@@ -1,6 +1,7 @@
 package com.capstone.assessment.v3.account.dto;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 public record V3TeacherAccountSummaryResponse(
         long userId,
@@ -11,6 +12,10 @@ public record V3TeacherAccountSummaryResponse(
         String status,
         Instant emailVerifiedAt,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String approvalStatus,
+        String accountStatus,
+        LocalDate contractEndDate,
+        Instant archivedAt
 ) {
 }

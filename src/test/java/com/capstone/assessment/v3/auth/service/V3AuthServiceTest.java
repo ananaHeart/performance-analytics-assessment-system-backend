@@ -257,6 +257,36 @@ class V3AuthServiceTest {
         assertEquals("raw-access-token", response.accessToken());
     }
 
+    @Test
+    void tch4AnArchivedTeacherSeesAClearMessage() {
+        V3UserAccount user = user("archived", false, NOW.minus(Duration.ofDays(10)));
+        when(authRepository.findUserByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, PASSWORD_HASH)).thenReturn(true);
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> service.login(loginRequest(), metadata()));
+
+        assertEquals("ACCOUNT_ARCHIVED", exception.getCode());
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+    }
+
+    @Test
+    void reg2AnEndedContractBecomesInactiveAtLoginEvenBeforeTheNightlyCheck() {
+        V3UserAccount base = user("active", false, NOW.minus(Duration.ofDays(10)));
+        V3UserAccount user = new V3UserAccount(base.userId(), base.schoolId(), base.addressId(), base.firstName(),
+                null, base.lastName(), null, EMAIL, PASSWORD_HASH, "teacher", "active", 0, null, base.verifiedAt(),
+                false, base.createdAt(), java.time.LocalDate.of(2026, 8, 30));
+        when(authRepository.findUserByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, PASSWORD_HASH)).thenReturn(true);
+
+        V3AuthException exception = assertThrows(V3AuthException.class,
+                () -> service.login(loginRequest(), metadata()));
+
+        assertEquals("ACCOUNT_CONTRACT_ENDED", exception.getCode());
+        assertEquals("2026-08-30", exception.getDetails().get("contractEndDate"));
+        verify(authRepository).markContractEnded(42L, java.time.LocalDate.of(2026, 8, 31), NOW);
+    }
+
     private V3UserAccount lockedUser(int failedLoginCount, Instant lockedUntilAt) {
         V3UserAccount base = user("active", false, NOW.minus(Duration.ofDays(10)));
         return new V3UserAccount(base.userId(), base.schoolId(), 77L, "Test", null, "Teacher", null, EMAIL,

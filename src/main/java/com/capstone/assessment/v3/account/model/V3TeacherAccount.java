@@ -29,7 +29,10 @@ public record V3TeacherAccount(
         Instant contactVerifiedAt,
         Instant createdAt,
         Instant updatedAt,
-        Address address
+        Address address,
+        // REG-2: last valid day of the teacher's contract; TCH-4: when the principal archived them.
+        LocalDate contractEndDate,
+        Instant archivedAt
 ) {
 
     public record Address(

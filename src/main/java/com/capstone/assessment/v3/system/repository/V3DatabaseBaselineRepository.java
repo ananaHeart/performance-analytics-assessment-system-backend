@@ -78,6 +78,8 @@ public class V3DatabaseBaselineRepository {
                               'purge_reason',
                               'last_purge_error'
                           )
+                      OR table_name = 'users'
+                          AND column_name IN ('contract_end_date', 'archived_at')
                   )
                 """);
         int requiredHardeningConstraintCount = count("""

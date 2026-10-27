@@ -10,6 +10,7 @@ import com.capstone.assessment.v3.school.dto.V3ClassAssignmentRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentUpdateRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusRequest;
+import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusChangeRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassResponse;
 import com.capstone.assessment.v3.school.dto.V3ManualStudentEnrollmentRequest;
@@ -172,9 +173,100 @@ public class V3SchoolSetupService {
             V3AuthenticatedUser principal,
             Integer academicYearId
     ) {
+        return listAssignments(principal, academicYearId, null);
+    }
+
+    /** CLS-8: {@code view} is "current" (default: active, inactive, completed) or "archived". */
+    public List<V3ClassAssignmentResponse> listAssignments(
+            V3AuthenticatedUser principal,
+            Integer academicYearId,
+            String view
+    ) {
         requirePrincipal(principal);
         validateOptionalPositive(academicYearId, "academicYearId");
-        return repository.listAssignments(principal.schoolId(), academicYearId);
+        String normalizedView = view == null || view.isBlank() ? "current" : view.trim().toLowerCase(Locale.ROOT);
+        if (!"current".equals(normalizedView) && !"archived".equals(normalizedView)) {
+            throw invalid("view", "Use current or archived.");
+        }
+        return repository.listAssignments(principal.schoolId(), academicYearId, "archived".equals(normalizedView));
+    }
+
+    /** CLS-7: the principal pauses (inactive) or resumes (active) an assignment; phones get only active. */
+    @Transactional
+    public V3ClassAssignmentResponse changeAssignmentStatus(
+            V3AuthenticatedUser principal,
+            long classAssignmentId,
+            V3ClassAssignmentStatusChangeRequest request,
+            V3RequestMetadata metadata
+    ) {
+        requirePrincipal(principal);
+        String target = request.status().trim().toLowerCase(Locale.ROOT);
+        String reason = requiredTrimmed(request.reason(), "reason", 255);
+        AssignmentContext assignment = repository.lockAssignment(principal.schoolId(), classAssignmentId)
+                .orElseThrow(this::assignmentNotFound);
+        if ("archived".equals(assignment.status())) {
+            throw conflict("CLASS_ASSIGNMENT_ARCHIVED", "Reactivate the archived assignment instead.");
+        }
+        if ("completed".equals(assignment.status())) {
+            throw conflict("CLASS_ASSIGNMENT_COMPLETED", "A completed assignment cannot be paused or resumed.");
+        }
+        if (!target.equals(assignment.status())) {
+            if ("active".equals(target)) {
+                requireActiveClass(requireClass(principal.schoolId(), assignment.classId()));
+                if (!repository.activeTeacherExists(principal.schoolId(), assignment.teacherUserId())) {
+                    throw conflict("TEACHER_ACCOUNT_INACTIVE",
+                            "The teacher account must be active before the assignment can be resumed.");
+                }
+            }
+            if (repository.changeAssignmentStatus(classAssignmentId, assignment.status(), target,
+                    principal.userId(), reason) != 1) {
+                throw conflict("CLASS_ASSIGNMENT_STATE_CHANGED",
+                        "The class assignment changed. Refresh before trying again.");
+            }
+            recordAssignmentStatusAudit(principal, assignment, target, reason, metadata, clock.instant());
+        }
+        AssignmentContext saved = repository.findAssignment(principal.schoolId(), classAssignmentId)
+                .orElseThrow(this::assignmentNotFound);
+        return repository.toAssignmentResponse(saved, false);
+    }
+
+    /**
+     * CLS-4 (D6): a real delete for a mistake, allowed only before any assessment was given
+     * through the assignment; otherwise it must be archived so learners' results are kept.
+     */
+    @Transactional
+    public V3ClassAssignmentResponse deleteAssignment(
+            V3AuthenticatedUser principal,
+            long classAssignmentId,
+            String reason,
+            V3RequestMetadata metadata
+    ) {
+        requirePrincipal(principal);
+        AssignmentContext assignment = repository.lockAssignment(principal.schoolId(), classAssignmentId)
+                .orElseThrow(this::assignmentNotFound);
+        if (repository.assignmentHasAssessments(classAssignmentId)) {
+            throw new V3AuthException("CLASS_ASSIGNMENT_HAS_ASSESSMENTS",
+                    "This assignment already has assessments, so it can only be archived.",
+                    HttpStatus.CONFLICT,
+                    Map.of("canArchive", !"archived".equals(assignment.status())));
+        }
+        V3ClassAssignmentResponse deleted = repository.toAssignmentResponse(assignment, false);
+        if (repository.deleteUnusedAssignment(classAssignmentId) != 1) {
+            throw conflict("CLASS_ASSIGNMENT_STATE_CHANGED",
+                    "The class assignment changed. Refresh before trying again.");
+        }
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("classId", assignment.classId());
+        details.put("teacherUserId", assignment.teacherUserId());
+        details.put("subjectId", assignment.subjectId());
+        details.put("assignmentRole", assignment.assignmentRole());
+        details.put("previousStatus", assignment.status());
+        if (reason != null && !reason.isBlank()) {
+            details.put("reason", reason.trim().length() > 255 ? reason.trim().substring(0, 255) : reason.trim());
+        }
+        auditService.record(principal.userId(), "class_assignment.delete", "class_assignments",
+                Long.toString(classAssignmentId), "success", metadata, details, clock.instant());
+        return deleted;
     }
 
     @Transactional
@@ -324,8 +416,8 @@ public class V3SchoolSetupService {
         String reason = requiredReason(request);
         AssignmentContext assignment = repository.lockAssignment(principal.schoolId(), classAssignmentId)
                 .orElseThrow(this::assignmentNotFound);
-        if (!"active".equals(assignment.status())) {
-            throw conflict("CLASS_ASSIGNMENT_NOT_ACTIVE", "Only an active assignment may be archived.");
+        if (!"active".equals(assignment.status()) && !"inactive".equals(assignment.status())) {
+            throw conflict("CLASS_ASSIGNMENT_NOT_ACTIVE", "Only an active or inactive assignment may be archived.");
         }
         Instant now = clock.instant();
         if (repository.archiveAssignment(classAssignmentId, principal.userId(), reason, now) != 1) {

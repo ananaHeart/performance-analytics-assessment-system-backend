@@ -23,7 +23,8 @@ public class V3BaselineProperties {
     private int expectedCheckConstraintCount = 87;
     private int expectedUniqueConstraintCount = 99;
     private int expectedDynamicTableCount = 6;
-    private int expectedHardeningColumnCount = 16;
+    // V3_025 added users.contract_end_date and users.archived_at (16 before).
+    private int expectedHardeningColumnCount = 18;
     private int expectedHardeningConstraintCount = 15;
     private int expectedSchoolScopedSectionRuleCount = 3;
     private int expectedAcademicCalendarColumnCount = 20;

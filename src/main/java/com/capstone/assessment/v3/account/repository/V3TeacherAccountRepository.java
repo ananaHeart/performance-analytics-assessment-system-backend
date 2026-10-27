@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +41,8 @@ public class V3TeacherAccountRepository {
                    status.status_name,
                    u.email_verified_at,
                    u.contact_verified_at,
+                   u.contract_end_date,
+                   u.archived_at,
                    u.created_at,
                    u.updated_at,
                    address.country_code,
@@ -72,17 +75,20 @@ public class V3TeacherAccountRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public List<V3TeacherAccount> findVerifiedTeachers(String schoolId, String status) {
+    public List<V3TeacherAccount> findVerifiedTeachers(String schoolId, List<String> statuses) {
+        String placeholders = String.join(", ", java.util.Collections.nCopies(statuses.size(), "?"));
+        List<Object> arguments = new java.util.ArrayList<>();
+        arguments.add(schoolId);
+        arguments.addAll(statuses);
         return jdbcTemplate.query(
                 TEACHER_SELECT + """
                          AND u.school_id = ?
-                         AND status.status_name = ?
+                         AND status.status_name IN (%s)
                          AND (u.email_verified_at IS NOT NULL OR u.contact_verified_at IS NOT NULL)
                          ORDER BY u.last_name, u.first_name, u.middle_name, u.user_id
-                        """,
+                        """.formatted(placeholders),
                 this::mapTeacher,
-                schoolId,
-                status
+                arguments.toArray()
         );
     }
 
@@ -152,6 +158,163 @@ public class V3TeacherAccountRepository {
         );
     }
 
+    /** REG-2: the last day the teacher's contract is valid. */
+    public int updateContractEndDate(long userId, LocalDate contractEndDate, Instant updatedAt) {
+        return jdbcTemplate.update(
+                "UPDATE users SET contract_end_date = ?, updated_at = ? WHERE user_id = ?",
+                contractEndDate,
+                Timestamp.from(updatedAt),
+                userId
+        );
+    }
+
+    /** TCH-4: archive or restore; archived_at is set only while the account is archived. */
+    public int transitionArchiveState(
+            String schoolId,
+            long userId,
+            String expectedStatus,
+            String targetStatus,
+            Instant archivedAt,
+            Instant updatedAt
+    ) {
+        return jdbcTemplate.update(
+                """
+                UPDATE users
+                   SET status_id = (SELECT status_id FROM statuses WHERE status_name = ? AND is_active = TRUE),
+                       archived_at = ?,
+                       updated_at = ?
+                 WHERE user_id = ?
+                   AND school_id = ?
+                   AND status_id = (SELECT status_id FROM statuses WHERE status_name = ? AND is_active = TRUE)
+                """,
+                targetStatus,
+                archivedAt == null ? null : Timestamp.from(archivedAt),
+                Timestamp.from(updatedAt),
+                userId,
+                schoolId,
+                expectedStatus
+        );
+    }
+
+    /** TCH-9: the teacher's open class assignments end, so the class and subject can be reassigned. */
+    public int endOpenClassAssignments(long teacherUserId, long principalUserId, String reason, Instant endedAt) {
+        return jdbcTemplate.update(
+                """
+                UPDATE class_assignments
+                   SET status = 'archived', ended_at = ?, status_changed_by_user_id = ?, status_reason = ?
+                 WHERE user_id = ?
+                   AND status IN ('active', 'inactive')
+                """,
+                Timestamp.from(endedAt),
+                principalUserId,
+                reason,
+                teacherUserId
+        );
+    }
+
+    /** Signs the teacher out everywhere (TCH-5 rejection, archive, inactive). */
+    public int revokeSessions(long userId, Instant revokedAt) {
+        return jdbcTemplate.update(
+                "UPDATE auth_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL",
+                Timestamp.from(revokedAt),
+                userId
+        );
+    }
+
+    /** REG-2 (D2): approved teachers whose contract has ended become inactive, never deleted. */
+    public List<Long> findActiveTeachersWithEndedContracts(LocalDate today) {
+        return jdbcTemplate.queryForList(
+                """
+                SELECT u.user_id
+                  FROM users u
+                  JOIN roles role ON role.role_id = u.role_id AND role.role_name = 'teacher'
+                  JOIN statuses status ON status.status_id = u.status_id AND status.status_name = 'active'
+                 WHERE u.contract_end_date < ?
+                """,
+                Long.class,
+                today
+        );
+    }
+
+    public int deactivateEndedContract(long userId, LocalDate today, Instant updatedAt) {
+        return jdbcTemplate.update(
+                """
+                UPDATE users
+                   SET status_id = (SELECT status_id FROM statuses WHERE status_name = 'inactive' AND is_active = TRUE),
+                       updated_at = ?
+                 WHERE user_id = ?
+                   AND contract_end_date < ?
+                   AND status_id = (SELECT status_id FROM statuses WHERE status_name = 'active' AND is_active = TRUE)
+                """,
+                Timestamp.from(updatedAt),
+                userId,
+                today
+        );
+    }
+
+    /** TCH-4: the principal corrects the teacher's details (not email, contact or password). */
+    public int updateTeacherDetails(long userId, TeacherDetails details, Instant updatedAt) {
+        return jdbcTemplate.update(
+                """
+                UPDATE users
+                   SET first_name = ?, middle_name = ?, last_name = ?, suffix_id = ?, gender_id = ?,
+                       birth_date = ?, major_id = ?, educational_attainment_id = ?,
+                       teaching_start_month = ?, teaching_start_year = ?, updated_at = ?
+                 WHERE user_id = ?
+                """,
+                details.firstName(),
+                details.middleName(),
+                details.lastName(),
+                details.suffixId(),
+                details.genderId(),
+                details.birthDate(),
+                details.majorId(),
+                details.educationalAttainmentId(),
+                details.teachingStartMonth(),
+                details.teachingStartYear(),
+                Timestamp.from(updatedAt),
+                userId
+        );
+    }
+
+    public int updateAddress(long addressId, V3TeacherAccount.Address address) {
+        return jdbcTemplate.update(
+                """
+                UPDATE addresses
+                   SET country_code = ?, region_code = ?, region_name = ?, province_code = ?,
+                       province_name = ?, city_municipality_code = ?, city_municipality_name = ?,
+                       barangay_code = ?, barangay_name = ?, address_line = ?, postal_code = ?
+                 WHERE address_id = ?
+                """,
+                address.countryCode(),
+                address.regionCode(),
+                address.regionName(),
+                address.provinceCode(),
+                address.provinceName(),
+                address.cityMunicipalityCode(),
+                address.cityMunicipalityName(),
+                address.barangayCode(),
+                address.barangayName(),
+                address.addressLine(),
+                address.postalCode(),
+                addressId
+        );
+    }
+
+    public record TeacherDetails(
+            String firstName,
+            String middleName,
+            String lastName,
+            Integer suffixId,
+            int genderId,
+            LocalDate birthDate,
+            int majorId,
+            int educationalAttainmentId,
+            int teachingStartMonth,
+            int teachingStartYear
+    ) {
+    }
+
     private V3TeacherAccount mapTeacher(ResultSet resultSet, int rowNumber) throws SQLException {
         return new V3TeacherAccount(
                 resultSet.getLong("user_id"),
@@ -192,7 +355,9 @@ public class V3TeacherAccountRepository {
                         resultSet.getString("address_line"),
                         resultSet.getString("postal_code"),
                         resultSet.getString("address_source")
-                )
+                ),
+                resultSet.getObject("contract_end_date", LocalDate.class),
+                nullableInstant(resultSet, "archived_at")
         );
     }
 

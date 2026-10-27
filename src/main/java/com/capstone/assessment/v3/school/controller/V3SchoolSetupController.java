@@ -7,6 +7,7 @@ import com.capstone.assessment.v3.school.dto.V3ClassAssignmentRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentUpdateRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentResponse;
 import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusRequest;
+import com.capstone.assessment.v3.school.dto.V3ClassAssignmentStatusChangeRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassRequest;
 import com.capstone.assessment.v3.school.dto.V3ClassResponse;
 import com.capstone.assessment.v3.school.dto.V3ManualStudentEnrollmentRequest;
@@ -24,6 +25,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -168,11 +170,12 @@ public class V3SchoolSetupController {
     @GetMapping("/class-assignments")
     public ResponseEntity<ApiResponse<List<V3ClassAssignmentResponse>>> assignments(
             @AuthenticationPrincipal V3AuthenticatedUser principal,
-            @RequestParam(required = false) Integer academicYearId
+            @RequestParam(required = false) Integer academicYearId,
+            @RequestParam(required = false) String view
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 class assignments retrieved successfully.",
-                service.listAssignments(principal, academicYearId)
+                service.listAssignments(principal, academicYearId, view)
         ));
     }
 
@@ -211,6 +214,34 @@ public class V3SchoolSetupController {
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 class assignment archived successfully.",
                 service.archiveAssignment(principal, classAssignmentId, request, metadata(httpRequest))
+        ));
+    }
+
+    /** CLS-7: switch an assignment between active and inactive. */
+    @PatchMapping("/class-assignments/{classAssignmentId}/status")
+    public ResponseEntity<ApiResponse<V3ClassAssignmentResponse>> changeAssignmentStatus(
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @PathVariable long classAssignmentId,
+            @Valid @RequestBody V3ClassAssignmentStatusChangeRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Class assignment status changed successfully.",
+                service.changeAssignmentStatus(principal, classAssignmentId, request, metadata(httpRequest))
+        ));
+    }
+
+    /** CLS-4: delete an assignment made by mistake (only when it has no assessments). */
+    @DeleteMapping("/class-assignments/{classAssignmentId}")
+    public ResponseEntity<ApiResponse<V3ClassAssignmentResponse>> deleteAssignment(
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @PathVariable long classAssignmentId,
+            @RequestParam(required = false) String reason,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Class assignment deleted successfully.",
+                service.deleteAssignment(principal, classAssignmentId, reason, metadata(httpRequest))
         ));
     }
 

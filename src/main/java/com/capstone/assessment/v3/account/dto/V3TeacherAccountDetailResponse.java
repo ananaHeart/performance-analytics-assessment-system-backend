@@ -32,7 +32,11 @@ public record V3TeacherAccountDetailResponse(
         Instant contactVerifiedAt,
         Instant createdAt,
         Instant updatedAt,
-        Address address
+        Address address,
+        String approvalStatus,
+        String accountStatus,
+        LocalDate contractEndDate,
+        Instant archivedAt
 ) {
 
     public record Address(

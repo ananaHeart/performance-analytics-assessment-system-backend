@@ -78,7 +78,7 @@ class V3DatabaseReadinessServiceTest {
 
     private V3DatabaseBaselineSnapshot cloudSnapshot(int checks, int hardening, int calendar) {
         return new V3DatabaseBaselineSnapshot("performance_assessment_v3_test", 79, 200, checks, 118,
-                6, 16, hardening, 3, 20, calendar, 3, 3, 15, 5, 2, 2, 0, 4);
+                6, 18, hardening, 3, 20, calendar, 3, 3, 15, 5, 2, 2, 0, 4);
     }
 
     private V3DatabaseBaselineSnapshot snapshot(ReadinessMismatch mismatch) {
@@ -88,7 +88,7 @@ class V3DatabaseReadinessServiceTest {
         int checkConstraintCount = 87;
         int uniqueConstraintCount = 99;
         int requiredDynamicTableCount = 6;
-        int requiredHardeningColumnCount = 16;
+        int requiredHardeningColumnCount = 18;
         int requiredHardeningConstraintCount = 15;
         int schoolScopedSectionRuleCount = 3;
         int academicCalendarColumnCount = 20;
@@ -110,7 +110,7 @@ class V3DatabaseReadinessServiceTest {
                 case CHECKS -> checkConstraintCount = 79;
                 case UNIQUES -> uniqueConstraintCount = 95;
                 case DYNAMIC_TABLES -> requiredDynamicTableCount = 5;
-                case HARDENING_COLUMNS -> requiredHardeningColumnCount = 15;
+                case HARDENING_COLUMNS -> requiredHardeningColumnCount = 17;
                 case HARDENING_CONSTRAINTS -> requiredHardeningConstraintCount = 14;
                 case SCHOOL_SCOPED_SECTIONS -> schoolScopedSectionRuleCount = 2;
                 case ACADEMIC_CALENDAR_COLUMNS -> academicCalendarColumnCount = 19;
