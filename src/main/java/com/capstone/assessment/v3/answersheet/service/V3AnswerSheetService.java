@@ -456,8 +456,9 @@ public class V3AnswerSheetService {
         }
 
         double totalPoints = contentRows.stream().mapToDouble(V3AnswerSheetRepository.QuestionContentRow::maximumPoints).sum();
+        // The header shows the school's name, not its ID code.
         DynamicSheetContext context = new DynamicSheetContext(
-                schoolId, assignment.testName(), assignment.subjectName(),
+                repository.findSchoolName(schoolId).orElse(null), assignment.testName(), assignment.subjectName(),
                 "%s - %s".formatted(assignment.gradeLevelName(), assignment.sectionName()), totalPoints);
         DynamicSheetRequest packerRequest = new DynamicSheetRequest(
                 sheetUuid, assignment.testAssignmentId(), assignment.assignmentUuid(),

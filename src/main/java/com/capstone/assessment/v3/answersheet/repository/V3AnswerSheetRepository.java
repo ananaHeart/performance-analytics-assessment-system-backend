@@ -869,4 +869,10 @@ public class V3AnswerSheetRepository {
                  LIMIT 1
                 """, (rs, rowNum) -> rs.getLong(1), testAssignmentId, paperSizeCode).stream().findFirst();
     }
+
+    /** The school's display name (editable by the principal), printed in the sheet header. */
+    public Optional<String> findSchoolName(String schoolId) {
+        return jdbcTemplate.query("SELECT school_name FROM school_profiles WHERE school_id = ?",
+                (rs, rowNum) -> rs.getString(1), schoolId).stream().findFirst();
+    }
 }

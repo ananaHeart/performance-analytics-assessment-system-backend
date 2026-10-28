@@ -80,6 +80,8 @@ class V3AnswerSheetPdfRebuildTest {
         List<StoredPage> pages = generateMixedSheet();
         when(storage.exists(STORAGE_KEY)).thenReturn(false);
         when(repository.listPages(VERSION_ID)).thenReturn(pages);
+        when(repository.findSchoolName(TEACHER.schoolId()))
+                .thenReturn(java.util.Optional.of("Marka Test National High School"));
 
         byte[] pdf = service.getPdf(TEACHER, VERSION_ID).bytes();
 
@@ -87,7 +89,9 @@ class V3AnswerSheetPdfRebuildTest {
         try (PDDocument document = Loader.loadPDF(pdf)) {
             assertThat(document.getNumberOfPages()).isEqualTo(pages.size());
             assertThat(new PDFTextStripper().getText(document))
-                    .contains("Ref " + manifestHash.get().substring(0, 8));
+                    .contains("Ref " + manifestHash.get().substring(0, 8))
+                    .contains("MARKA TEST NATIONAL HIGH SCHOOL")
+                    .doesNotContain(TEACHER.schoolId());
         }
         verify(storage, never()).read(any());
     }

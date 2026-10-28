@@ -213,7 +213,7 @@ public final class DynamicSheetPdfRenderer {
         float right = pageWidth - left;
         float width = right - left;
         String schoolName = context == null || context.schoolName() == null || context.schoolName().isBlank()
-                ? "SAN ROQUE NATIONAL HIGH SCHOOL" : context.schoolName();
+                ? "SCHOOL" : context.schoolName();
         String assessmentName = context == null || context.assessmentName() == null || context.assessmentName().isBlank()
                 ? "Assessment" : context.assessmentName();
         String subject = context == null || context.subject() == null ? "" : context.subject();
