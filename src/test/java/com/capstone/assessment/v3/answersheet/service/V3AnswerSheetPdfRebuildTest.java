@@ -87,7 +87,7 @@ class V3AnswerSheetPdfRebuildTest {
         try (PDDocument document = Loader.loadPDF(pdf)) {
             assertThat(document.getNumberOfPages()).isEqualTo(pages.size());
             assertThat(new PDFTextStripper().getText(document))
-                    .contains("Geometry " + manifestHash.get().substring(0, 12));
+                    .contains("Ref " + manifestHash.get().substring(0, 8));
         }
         verify(storage, never()).read(any());
     }

@@ -21,6 +21,7 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import com.capstone.assessment.v3.report.service.MarkaMark;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -52,6 +53,17 @@ public final class DynamicSheetPdfRenderer {
     private static final PDFont FONT_BOLD = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
     private static final float QUIET_ZONE = 6f;
     private static final String CONTINUED_SUFFIX = " (continued)";
+    // Print palette (RGB 0-1): dark ink text, Marka green accents, grey lines dark enough for
+    // school printers. Bubbles keep their original black outline for the scanner.
+    private static final float[] INK = {0.10f, 0.13f, 0.16f};
+    private static final float[] MUTED = {0.36f, 0.40f, 0.45f};
+    private static final float[] BLACK = {0f, 0f, 0f};
+    private static final float[] BRAND = {0f, 0.70f, 0.086f};
+    private static final float[] BRAND_DARK = {0.05f, 0.40f, 0.14f};
+    private static final float[] BRAND_TINT = {0.90f, 0.96f, 0.91f};
+    private static final float[] CARD = {0.95f, 0.97f, 0.96f};
+    private static final float[] LINE = {0.70f, 0.73f, 0.76f};
+    private static final float[] WRITE_LINE = {0.52f, 0.57f, 0.62f};
 
     /** Part name -> its per-item points, only for parts where every item is worth the same.
      *  Those points print once in the green part header ("1 pt each") instead of beside
@@ -191,13 +203,15 @@ public final class DynamicSheetPdfRenderer {
         content.fill();
     }
 
-    // draw_page_one_header (py:959-1021)
+    // Page-one header: everything stays above the body top (160 pt from the top edge), clear
+    // of the corner markers, so no scanned position moves.
     private void drawPageOneHeader(
             PDPageContentStream content, float pageWidth, float pageHeight,
             DynamicSheetContext context, DynamicPage page
     ) throws IOException {
-        float contentMarginX = 42f;
-        float contentRight = pageWidth - contentMarginX;
+        float left = 42f;
+        float right = pageWidth - left;
+        float width = right - left;
         String schoolName = context == null || context.schoolName() == null || context.schoolName().isBlank()
                 ? "SAN ROQUE NATIONAL HIGH SCHOOL" : context.schoolName();
         String assessmentName = context == null || context.assessmentName() == null || context.assessmentName().isBlank()
@@ -205,95 +219,158 @@ public final class DynamicSheetPdfRenderer {
         String subject = context == null || context.subject() == null ? "" : context.subject();
         String gradeSection = context == null || context.gradeSection() == null ? "" : context.gradeSection();
 
-        drawText(content, FONT_BOLD, 11.5f, contentMarginX, pageHeight - 43,
-                fitText(schoolName, FONT_BOLD, 11.5f, pageWidth * 0.56f));
-        drawRightText(content, FONT_BOLD, 9.5f, contentRight, pageHeight - 43, "ASSESSMENT ANSWER SHEET");
-        content.setStrokingColor(0.16f, 0.19f, 0.22f);
-        content.setLineWidth(0.7f);
-        content.moveTo(contentMarginX, pageHeight - 55);
-        content.lineTo(contentRight, pageHeight - 55);
+        // Identity row: logo, school name, title and page.
+        MarkaMark.draw(content, left, pageHeight - 66, 26);
+        setFill(content, INK);
+        drawText(content, FONT_BOLD, 12.5f, left + 34, pageHeight - 51,
+                fitText(schoolName.toUpperCase(Locale.ROOT), FONT_BOLD, 12.5f, width * 0.58f));
+        setFill(content, MUTED);
+        drawText(content, FONT_REGULAR, 7.5f, left + 34, pageHeight - 62, "Marka  |  Learner Answer Sheet");
+        setFill(content, BRAND_DARK);
+        drawRightText(content, FONT_BOLD, 12.5f, right, pageHeight - 51, "ANSWER SHEET");
+        setFill(content, MUTED);
+        drawRightText(content, FONT_REGULAR, 7.5f, right, pageHeight - 62,
+                "Page " + page.pageNumber() + " of " + page.totalPages());
+        content.setStrokingColor(BRAND[0], BRAND[1], BRAND[2]);
+        content.setLineWidth(1.4f);
+        content.moveTo(left, pageHeight - 71);
+        content.lineTo(right, pageHeight - 71);
         content.stroke();
 
+        // Assessment details in a light card.
+        float cardTop = pageHeight - 77;
+        float cardHeight = 27;
+        setFill(content, CARD);
+        content.addRect(left, cardTop - cardHeight, width, cardHeight);
+        content.fill();
         String maxPoints = context == null ? "" : formatPoints(context.totalPoints());
-        float metadataWidth = contentRight - contentMarginX;
-        float[] ratios = {0.37f, 0.15f, 0.23f, 0.13f, 0.12f};
-        String[] labels = {"ASSESSMENT", "SUBJECT", "GRADE & SECTION", "PAGE", "MAX POINTS"};
-        String[] values = {assessmentName, subject, gradeSection, page.pageNumber() + " of " + page.totalPages(), maxPoints};
-        float cellX = contentMarginX;
+        float[] ratios = {0.40f, 0.18f, 0.26f, 0.16f};
+        String[] labels = {"ASSESSMENT", "SUBJECT", "GRADE & SECTION", "TOTAL POINTS"};
+        String[] values = {assessmentName, subject, gradeSection, maxPoints};
+        float cellX = left + 8;
         for (int i = 0; i < labels.length; i++) {
-            float cellWidth = metadataWidth * ratios[i];
-            drawText(content, FONT_BOLD, 6.2f, cellX, pageHeight - 75, labels[i]);
-            drawText(content, FONT_BOLD, 8.2f, cellX, pageHeight - 86,
-                    fitText(values[i], FONT_BOLD, 8.2f, cellWidth - 7));
+            float cellWidth = width * ratios[i];
+            setFill(content, MUTED);
+            drawText(content, FONT_BOLD, 6f, cellX, cardTop - 10, labels[i]);
+            setFill(content, INK);
+            drawText(content, FONT_BOLD, 9f, cellX, cardTop - 21,
+                    fitText(values[i], FONT_BOLD, 9f, cellWidth - 12));
             cellX += cellWidth;
         }
 
-        drawField(content, "Name", "", contentMarginX, pageHeight - 113, metadataWidth);
+        // What the learner writes by hand.
+        float fieldsY = pageHeight - 124;
+        float scoreWidth = 92;
+        float dateWidth = 92;
+        float lrnWidth = 124;
+        float nameWidth = width - scoreWidth - dateWidth - lrnWidth - 30;
+        float fieldX = left;
+        drawField(content, "Name", fieldX, fieldsY, nameWidth);
+        fieldX += nameWidth + 10;
+        drawField(content, "LRN", fieldX, fieldsY, lrnWidth);
+        fieldX += lrnWidth + 10;
+        drawField(content, "Date", fieldX, fieldsY, dateWidth);
+        fieldX += dateWidth + 10;
+        drawField(content, "Score", fieldX, fieldsY, scoreWidth - 26);
+        setFill(content, INK);
+        drawText(content, FONT_BOLD, 8.5f, fieldX + scoreWidth - 24, fieldsY,
+                "/ " + (context == null ? "" : formatNumber(context.totalPoints())));
 
+        // How to answer.
         float instructionY = pageHeight - 151;
-        content.setNonStrokingColor(0.96f, 0.97f, 0.97f);
-        content.addRect(contentMarginX, instructionY, pageWidth - (2 * contentMarginX), 17);
+        setFill(content, BRAND_TINT);
+        content.addRect(left, instructionY, width, 17);
         content.fill();
-        content.setNonStrokingColor(0.18f, 0.22f, 0.27f);
-        drawText(content, FONT_REGULAR, 7.2f, contentMarginX + 7, instructionY + 5.5f,
-                "Shade objective bubbles completely. Write responses only on the provided lines.");
-        content.setNonStrokingColor(0, 0, 0);
+        setFill(content, BRAND_DARK);
+        content.addRect(left, instructionY, 3, 17);
+        content.fill();
+        setFill(content, INK);
+        drawText(content, FONT_REGULAR, 7.4f, left + 9, instructionY + 5.5f,
+                fitText("Fully shade one bubble per item with a dark pencil or pen. Write only on the lines "
+                        + "and inside the boxes. Do not fold or staple this sheet.",
+                        FONT_REGULAR, 7.4f, width - 14));
+        setFill(content, BLACK);
     }
 
-    // draw_continuation_header (py:1044-1062)
+    // Later pages: a slim header above the body top (70 pt from the top edge).
     private void drawContinuationHeader(PDPageContentStream content, float pageWidth, float pageHeight,
                                          int pageNumber, int totalPages) throws IOException {
-        float contentMarginX = 42f;
-        float contentRight = pageWidth - contentMarginX;
-        drawRightText(content, FONT_BOLD, 7.5f, contentRight, pageHeight - 47,
-                "CONTINUATION | PAGE " + pageNumber + " OF " + totalPages);
-        content.setStrokingColor(0.78f, 0.82f, 0.84f);
-        content.setLineWidth(0.5f);
-        content.moveTo(contentMarginX, pageHeight - 55);
-        content.lineTo(contentRight, pageHeight - 55);
+        float left = 42f;
+        float right = pageWidth - left;
+        MarkaMark.draw(content, left, pageHeight - 60, 16);
+        setFill(content, INK);
+        drawText(content, FONT_BOLD, 9f, left + 22, pageHeight - 52, "ANSWER SHEET (continued)");
+        setFill(content, MUTED);
+        drawRightText(content, FONT_REGULAR, 8f, right, pageHeight - 52,
+                "Page " + pageNumber + " of " + totalPages);
+        content.setStrokingColor(BRAND[0], BRAND[1], BRAND[2]);
+        content.setLineWidth(1f);
+        content.moveTo(left, pageHeight - 63);
+        content.lineTo(right, pageHeight - 63);
         content.stroke();
+        setFill(content, BLACK);
     }
 
-    // draw_part_header (py:1101-1116)
+    // Part header strip. Instructions that do not fit beside the title move under it instead
+    // of being cut off with "...".
     private void drawPartHeader(PDPageContentStream content, PartHeader header,
                                 Map<String, PartPoints> headerPointsByPartName) throws IOException {
-        content.setNonStrokingColor(0.93f, 0.97f, 0.94f);
-        content.addRect((float) header.x(), (float) header.y(), (float) header.width(), (float) header.height());
+        float x = (float) header.x();
+        float y = (float) header.y();
+        float width = (float) header.width();
+        float height = (float) header.height();
+        setFill(content, BRAND_TINT);
+        content.addRect(x, y, width, height);
         content.fill();
-        content.setNonStrokingColor(0.08f, 0.36f, 0.18f);
-        float titleX = (float) header.x() + 7;
-        drawText(content, FONT_BOLD, 9, titleX, (float) header.y() + 8, header.title());
-        float leftEnd = titleX + textWidth(FONT_BOLD, 9, header.title());
-        PartPoints partPoints = headerPointsByPartName.get(partBaseName(header.title()));
-        if (partPoints != null) {
-            // "1 pt each" for a multi-item part; just "5 pts" when the part has one item.
-            String pointsText = formatPoints(partPoints.pointsPerItem(), partPoints.itemCount() > 1);
-            drawText(content, FONT_REGULAR, 8.5f, leftEnd + 10, (float) header.y() + 8, pointsText);
-            leftEnd += 10 + textWidth(FONT_REGULAR, 8.5f, pointsText);
+        setFill(content, BRAND_DARK);
+        content.addRect(x, y, 3, height);
+        content.fill();
+
+        String title = header.title();
+        PartPoints partPoints = headerPointsByPartName.get(partBaseName(title));
+        String pointsText = partPoints == null ? null
+                : formatPoints(partPoints.pointsPerItem(), partPoints.itemCount() > 1);
+        String instruction = header.instructions() == null ? "" : header.instructions().trim();
+
+        float titleX = x + 9;
+        float titleEnd = titleX + textWidth(FONT_BOLD, 9.5f, title)
+                + (pointsText == null ? 0 : 8 + textWidth(FONT_REGULAR, 8.5f, pointsText));
+        float rightEdge = x + width - 8;
+        boolean oneLine = instruction.isEmpty()
+                || textWidth(FONT_REGULAR, 7f, instruction) <= rightEdge - titleEnd - 12;
+        float titleBaseline = oneLine ? y + 8.5f : y + 13.5f;
+
+        setFill(content, BRAND_DARK);
+        drawText(content, FONT_BOLD, 9.5f, titleX, titleBaseline, title);
+        if (pointsText != null) {
+            setFill(content, MUTED);
+            drawText(content, FONT_REGULAR, 8.5f, titleX + textWidth(FONT_BOLD, 9.5f, title) + 8,
+                    titleBaseline, pointsText);
         }
-        if (header.instructions() != null && !header.instructions().isBlank()) {
-            // Never let the right-aligned instructions run into the title and points.
-            float rightEdge = (float) (header.x() + header.width()) - 7;
-            float available = Math.min((float) header.width() * 0.48f, rightEdge - leftEnd - 14);
-            String instruction = available <= 0 ? "" : fitText(header.instructions(), FONT_REGULAR, 7, available);
-            content.setNonStrokingColor(0.18f, 0.22f, 0.20f);
-            drawRightText(content, FONT_REGULAR, 7, (float) (header.x() + header.width()) - 7,
-                    (float) header.y() + 8, instruction);
+        if (!instruction.isEmpty()) {
+            setFill(content, INK);
+            if (oneLine) {
+                drawRightText(content, FONT_REGULAR, 7f, rightEdge, y + 8.5f, instruction);
+            } else {
+                drawText(content, FONT_REGULAR, 6.6f, titleX, y + 4.5f,
+                        fitText(instruction, FONT_REGULAR, 6.6f, rightEdge - titleX));
+            }
         }
-        content.setNonStrokingColor(0, 0, 0);
+        setFill(content, BLACK);
     }
 
     // draw_objective_region (py:1119-1137)
     private void drawObjectiveRegion(PDPageContentStream content, DynamicRegion region) throws IOException {
         Rectangle r = region.rectangle();
         float centerY = (float) (r.y() + (r.height() / 2));
-        content.setStrokingColor(0.78f, 0.78f, 0.78f);
-        content.setLineWidth(0.45f);
+        content.setStrokingColor(LINE[0], LINE[1], LINE[2]);
+        content.setLineWidth(0.5f);
         content.moveTo((float) r.x(), (float) r.y());
         content.lineTo((float) (r.x() + r.width()), (float) r.y());
         content.stroke();
 
-        drawRightText(content, FONT_BOLD, 9, (float) r.x() + 28, centerY - 3, region.globalItemNumber() + ".");
+        setFill(content, INK);
+        drawRightText(content, FONT_BOLD, 9.5f, (float) r.x() + 28, centerY - 3, region.globalItemNumber() + ".");
         for (RegionOption option : region.options()) {
             float cx = (float) option.centerX();
             float cy = (float) option.centerY();
@@ -323,14 +400,14 @@ public final class DynamicSheetPdfRenderer {
 
         if ("essay".equals(type)) {
             content.setNonStrokingColor(1f, 1f, 1f);
-            content.setStrokingColor(0.72f, 0.78f, 0.82f);
-            content.setLineWidth(0.7f);
+            content.setStrokingColor(WRITE_LINE[0], WRITE_LINE[1], WRITE_LINE[2]);
+            content.setLineWidth(0.8f);
             content.addRect(x, y, width, height);
             content.fillAndStroke();
         }
 
-        content.setNonStrokingColor(0.08f, 0.11f, 0.14f);
-        drawText(content, FONT_BOLD, 8.5f, x + 8, y + height - 14, region.globalItemNumber() + ".");
+        setFill(content, INK);
+        drawText(content, FONT_BOLD, 9.5f, x + 8, y + height - 14, region.globalItemNumber() + ".");
         // Parts whose items are all worth the same show their points once in the part header.
         if (!headerPointsByPartName.containsKey(region.partName())) {
             drawRightText(content, FONT_REGULAR, 7, x + width - 8, y + height - 14,
@@ -341,8 +418,8 @@ public final class DynamicSheetPdfRenderer {
         float lineTop = y + height - 25;
         float availableHeight = Math.max(12f, lineTop - (y + 10));
         float spacing = availableHeight / lineCount;
-        content.setStrokingColor(0.66f, 0.72f, 0.76f);
-        content.setLineWidth(0.45f);
+        content.setStrokingColor(WRITE_LINE[0], WRITE_LINE[1], WRITE_LINE[2]);
+        content.setLineWidth(0.6f);
         for (int i = 0; i < lineCount; i++) {
             float lineY = lineTop - ((i + 1) * spacing);
             float lineX;
@@ -362,33 +439,49 @@ public final class DynamicSheetPdfRenderer {
         content.setNonStrokingColor(0, 0, 0);
     }
 
-    // draw_technical_footer (py:1065-1098)
+    // Footer: left of the QR code and below the body bottom (102 pt), so nothing scanned moves.
+    // The short reference is the start of the manifest hash, to trace a printed sheet if needed.
     private void drawTechnicalFooter(PDPageContentStream content, float pageWidth, String manifestHash,
                                       int pageNumber, int totalPages, Rectangle qrRect) throws IOException {
-        float contentMarginX = 42f;
-        float footerRight = (float) qrRect.x() - 10f;
-        float footerWidth = footerRight - contentMarginX;
-        float footerY = 39f;
-        content.setNonStrokingColor(0.32f, 0.37f, 0.42f);
-        drawText(content, FONT_REGULAR, 5.5f, contentMarginX, footerY,
-                fitText("Geometry " + manifestHash.substring(0, Math.min(12, manifestHash.length())),
-                        FONT_REGULAR, 5.5f, footerWidth * 0.42f));
-        drawCenteredText(content, FONT_REGULAR, 5.5f, contentMarginX + (footerWidth / 2), footerY + 14,
-                "Print at Actual Size / 100%");
-        drawRightText(content, FONT_REGULAR, 5.5f, footerRight, footerY,
-                fitText(pageNumber + "/" + totalPages, FONT_REGULAR, 5.5f, footerWidth * 0.54f));
-        content.setNonStrokingColor(0, 0, 0);
+        float left = 42f;
+        float footerRight = (float) qrRect.x() - 12f;
+        content.setStrokingColor(LINE[0], LINE[1], LINE[2]);
+        content.setLineWidth(0.5f);
+        content.moveTo(left, 66f);
+        content.lineTo(footerRight, 66f);
+        content.stroke();
+        setFill(content, INK);
+        drawText(content, FONT_BOLD, 7.5f, left, 54f, "Page " + pageNumber + " of " + totalPages);
+        setFill(content, MUTED);
+        drawText(content, FONT_REGULAR, 6.5f, left, 43f,
+                fitText("Print at actual size (100%). Keep the corner squares and QR code clean.",
+                        FONT_REGULAR, 6.5f, footerRight - left));
+        String reference = manifestHash == null ? "" : manifestHash.substring(0, Math.min(8, manifestHash.length()));
+        drawRightText(content, FONT_REGULAR, 6f, footerRight, 54f, "Marka  |  Ref " + reference);
+        setFill(content, BLACK);
     }
 
-    private void drawField(PDPageContentStream content, String label, String value, float x, float y, float width)
+    private void drawField(PDPageContentStream content, String label, float x, float y, float width)
             throws IOException {
-        drawText(content, FONT_REGULAR, 9, x, y, label + ":");
-        float labelWidth = textWidth(FONT_REGULAR, 9, label + ":");
-        float valueX = x + labelWidth + 5;
-        content.setLineWidth(0.5f);
+        setFill(content, MUTED);
+        drawText(content, FONT_BOLD, 7f, x, y, label.toUpperCase(Locale.ROOT));
+        float valueX = x + textWidth(FONT_BOLD, 7f, label.toUpperCase(Locale.ROOT)) + 5;
+        content.setStrokingColor(INK[0], INK[1], INK[2]);
+        content.setLineWidth(0.7f);
         content.moveTo(valueX, y - 2);
         content.lineTo(x + width, y - 2);
         content.stroke();
+    }
+
+    /** "50" or "1.5" for the score field. */
+    private static String formatNumber(double points) {
+        return points == Math.floor(points)
+                ? Long.toString((long) points)
+                : String.format(Locale.ROOT, "%.1f", points);
+    }
+
+    private static void setFill(PDPageContentStream content, float[] color) throws IOException {
+        content.setNonStrokingColor(color[0], color[1], color[2]);
     }
 
     private String formatPoints(double points) {

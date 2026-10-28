@@ -1,5 +1,8 @@
 package com.capstone.assessment.v3.report.service;
 
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import java.io.IOException;
+import java.awt.geom.PathIterator;
 import java.awt.Color;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
@@ -15,7 +18,7 @@ import java.util.regex.Pattern;
  * as-is; the PDF header ({@link ReportPdfDocument}) and the Excel header
  * ({@link ReportExcelSheet#logoPng()}) both draw it from here, so the two cannot drift apart.
  */
-final class MarkaMark {
+public final class MarkaMark {
 
     static final Color GREEN = new Color(0x00, 0xB3, 0x16);
     /** The light green rounded tile behind the mark, as in web-dashboard/public/favicon.svg. */
@@ -53,6 +56,42 @@ final class MarkaMark {
         placement.translate(-32, -32);
         mark.transform(placement);
         return mark;
+    }
+
+    /**
+     * Draws the mark on its light green rounded tile with its bottom-left corner at (x, y0), as
+     * vectors so it stays sharp in print. Shared by the report PDFs and the answer sheets.
+     */
+    public static void draw(PDPageContentStream content, float x, float y0, float size) throws IOException {
+        float s = size / 64f;
+        float r = 14 * s;
+        float k = r * 0.552284749831f;
+        content.setNonStrokingColor(TILE);
+        content.moveTo(x + r, y0);
+        content.lineTo(x + size - r, y0);
+        content.curveTo(x + size - r + k, y0, x + size, y0 + r - k, x + size, y0 + r);
+        content.lineTo(x + size, y0 + size - r);
+        content.curveTo(x + size, y0 + size - r + k, x + size - r + k, y0 + size, x + size - r, y0 + size);
+        content.lineTo(x + r, y0 + size);
+        content.curveTo(x + r - k, y0 + size, x, y0 + size - r + k, x, y0 + size - r);
+        content.lineTo(x, y0 + r);
+        content.curveTo(x, y0 + r - k, x + r - k, y0, x + r, y0);
+        content.fill();
+        content.setNonStrokingColor(GREEN);
+        float[] point = new float[6];
+        PathIterator path = onTile().getPathIterator(new AffineTransform(s, 0, 0, -s, x, y0 + size));
+        for (; !path.isDone(); path.next()) {
+            switch (path.currentSegment(point)) {
+                case PathIterator.SEG_MOVETO -> content.moveTo(point[0], point[1]);
+                case PathIterator.SEG_LINETO -> content.lineTo(point[0], point[1]);
+                case PathIterator.SEG_CUBICTO ->
+                        content.curveTo(point[0], point[1], point[2], point[3], point[4], point[5]);
+                case PathIterator.SEG_CLOSE -> content.closePath();
+                default -> throw new IllegalStateException("The Marka mark has only lines and cubic curves.");
+            }
+        }
+        content.fill();
+        content.setNonStrokingColor(Color.BLACK);
     }
 
     /** Reads absolute M/L/C/Z path data, the only commands the master uses. */

@@ -615,23 +615,7 @@ final class ReportPdfDocument {
      * 64x64 units are flipped to PDF's upward y axis.
      */
     private void drawLogo(float x, float y0, float size) throws IOException {
-        float s = size / 64f;
-        roundedRect(x, y0, size, size, 14 * s, MarkaMark.TILE);
-        content.setNonStrokingColor(MarkaMark.GREEN);
-        float[] point = new float[6];
-        PathIterator path = MarkaMark.onTile().getPathIterator(new AffineTransform(s, 0, 0, -s, x, y0 + size));
-        for (; !path.isDone(); path.next()) {
-            switch (path.currentSegment(point)) {
-                case PathIterator.SEG_MOVETO -> content.moveTo(point[0], point[1]);
-                case PathIterator.SEG_LINETO -> content.lineTo(point[0], point[1]);
-                case PathIterator.SEG_CUBICTO ->
-                        content.curveTo(point[0], point[1], point[2], point[3], point[4], point[5]);
-                case PathIterator.SEG_CLOSE -> content.closePath();
-                default -> throw new IllegalStateException("The Marka mark has only lines and cubic curves.");
-            }
-        }
-        content.fill();
-        content.setNonStrokingColor(Color.BLACK);
+        MarkaMark.draw(content, x, y0, size);
     }
 
     // ---------------------------------------------------------------- primitives
