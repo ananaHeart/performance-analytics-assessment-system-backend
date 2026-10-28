@@ -193,7 +193,7 @@ public class V3SchoolSetupRepository {
                 SELECT academic_year_id, curriculum_id, year_name, start_date, end_date, status
                   FROM academic_years
                  WHERE school_id = ?
-                   AND status <> 'archived'
+                   AND archived_at IS NULL
                  ORDER BY start_date DESC, academic_year_id DESC
                 """, (rs, rowNum) -> new V3SchoolSetupReferenceDataResponse.AcademicYearOption(
                 rs.getInt("academic_year_id"),
@@ -213,7 +213,7 @@ public class V3SchoolSetupRepository {
                   JOIN academic_years academic_year
                     ON academic_year.academic_year_id = term.academic_year_id
                  WHERE academic_year.school_id = ?
-                   AND academic_year.status <> 'archived'
+                   AND academic_year.archived_at IS NULL
                  ORDER BY academic_year_id DESC, term_order
                 """, (rs, rowNum) -> new V3SchoolSetupReferenceDataResponse.TermPeriodOption(
                 rs.getInt("term_period_id"),
@@ -356,7 +356,7 @@ public class V3SchoolSetupRepository {
         return exists("""
                 SELECT 1
                   FROM academic_years
-                 WHERE school_id = ? AND academic_year_id = ? AND status <> 'archived'
+                 WHERE school_id = ? AND academic_year_id = ? AND archived_at IS NULL
                 """, schoolId, academicYearId);
     }
 
@@ -458,7 +458,7 @@ public class V3SchoolSetupRepository {
     ) {
         StringBuilder sql = new StringBuilder(CLASS_SELECT)
                 .append(" WHERE section_row.school_id = ? AND class_row.status <> 'archived' ")
-                .append(" AND academic_year.status <> 'archived' ");
+                .append(" AND academic_year.archived_at IS NULL ");
         List<Object> parameters = new java.util.ArrayList<>();
         parameters.add(schoolId);
         if (academicYearId != null) {
@@ -653,8 +653,8 @@ public class V3SchoolSetupRepository {
                  WHERE section_row.school_id = ?
                    AND class_row.status <> 'archived'
                 """ + (archived
-                ? " AND (assignment.status = 'archived' OR academic_year.status = 'archived') "
-                : " AND assignment.status <> 'archived' AND academic_year.status <> 'archived' ")
+                ? " AND (assignment.status = 'archived' OR academic_year.archived_at IS NOT NULL) "
+                : " AND assignment.status <> 'archived' AND academic_year.archived_at IS NULL ")
                 + (academicYearId == null ? "" : " AND class_row.academic_year_id = ? ") + """
                  ORDER BY academic_year.start_date DESC, grade_level.grade_level_name,
                           section_row.section_name, subject.subject_name, teacher.last_name,

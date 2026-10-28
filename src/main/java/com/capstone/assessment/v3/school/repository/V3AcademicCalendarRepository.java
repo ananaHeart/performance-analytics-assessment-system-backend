@@ -30,7 +30,7 @@ public class V3AcademicCalendarRepository {
                    ay.year_name,
                    ay.start_date,
                    ay.end_date,
-                   ay.status,
+                   CASE WHEN ay.archived_at IS NOT NULL THEN 'archived' ELSE ay.status END AS status,
                    ay.created_at,
                    ay.updated_at
             FROM academic_years ay
@@ -58,7 +58,7 @@ public class V3AcademicCalendarRepository {
     /** SET-5: archived years appear only in the Archived view. */
     public List<AcademicYearRow> listAcademicYears(String schoolId, boolean archived) {
         return jdbcTemplate.query(
-                YEAR_SELECT + " WHERE ay.school_id = ? AND " + (archived ? "ay.status = 'archived'" : "ay.status <> 'archived'")
+                YEAR_SELECT + " WHERE ay.school_id = ? AND " + (archived ? "ay.archived_at IS NOT NULL" : "ay.archived_at IS NULL")
                         + " ORDER BY ay.start_date DESC, ay.academic_year_id DESC",
                 this::mapAcademicYear,
                 schoolId
@@ -68,7 +68,7 @@ public class V3AcademicCalendarRepository {
     /** SET-5: every school's years in one status, for the nightly lifecycle job. */
     public List<AcademicYearRow> listAcademicYearsInStatus(String status) {
         return jdbcTemplate.query(
-                YEAR_SELECT + " WHERE ay.status = ? ORDER BY ay.school_id, ay.academic_year_id",
+                YEAR_SELECT + " WHERE ay.status = ? AND ay.archived_at IS NULL ORDER BY ay.school_id, ay.academic_year_id",
                 this::mapAcademicYear,
                 status
         );
@@ -131,7 +131,8 @@ public class V3AcademicCalendarRepository {
 
     public int archiveAcademicYear(int academicYearId) {
         return jdbcTemplate.update(
-                "UPDATE academic_years SET status = 'archived' WHERE academic_year_id = ? AND status = 'completed'",
+                "UPDATE academic_years SET archived_at = CURRENT_TIMESTAMP "
+                        + "WHERE academic_year_id = ? AND status = 'completed' AND archived_at IS NULL",
                 academicYearId);
     }
 

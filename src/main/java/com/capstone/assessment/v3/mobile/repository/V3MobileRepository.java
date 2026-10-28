@@ -187,7 +187,7 @@ public class V3MobileRepository {
                   JOIN subjects subject ON subject.subject_id = assignment.subject_id
                  WHERE assignment.user_id = ?
                    AND teacher.school_id = ?
-                   AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                   AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                    AND cohort.status = 'active'
                  ORDER BY academic_year.start_date DESC, grade.grade_level_name,
                           section.section_name, subject.subject_name
@@ -231,7 +231,7 @@ public class V3MobileRepository {
                   JOIN classes cohort ON cohort.class_id = assignment.class_id
                  WHERE assignment.user_id = ?
                    AND teacher.school_id = ?
-                   AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                   AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                    AND cohort.status = 'active'
                  ORDER BY schedule.class_assignment_id, schedule.day_of_week,
                           schedule.start_time, schedule.class_assignment_schedule_id
@@ -277,7 +277,7 @@ public class V3MobileRepository {
                         WHERE assignment.class_id = membership.class_id
                           AND assignment.user_id = ?
                           AND teacher.school_id = ?
-                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                    )
                  ORDER BY membership.class_id, membership.class_list_id
                 """,
@@ -315,7 +315,7 @@ public class V3MobileRepository {
                         WHERE assignment.class_id = membership.class_id
                           AND assignment.user_id = ?
                           AND teacher.school_id = ?
-                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                    )
                  ORDER BY student.last_name, student.first_name, student.student_id
                 """,
@@ -391,7 +391,7 @@ public class V3MobileRepository {
                  WHERE assignment.user_id = ?
                    AND teacher.school_id = ?
                    AND assessment.school_id = ?
-                   AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                   AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                    AND delivery.assignment_status <> 'archived'
                    AND assessment.status IN ('active', 'completed')
                  ORDER BY delivery.assigned_at DESC, delivery.test_assignment_id
@@ -430,7 +430,7 @@ public class V3MobileRepository {
                         WHERE delivery.test_id = assessment.test_id
                           AND assignment.user_id = ?
                           AND teacher.school_id = ?
-                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                           AND delivery.assignment_status <> 'archived'
                    )
                  ORDER BY assessment.test_id
@@ -474,7 +474,7 @@ public class V3MobileRepository {
                         WHERE delivery.test_id = part.test_id
                           AND assignment.user_id = ?
                           AND teacher.school_id = ?
-                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                           AND delivery.assignment_status <> 'archived'
                    )
                  ORDER BY part.test_id, part.part_order
@@ -529,7 +529,7 @@ public class V3MobileRepository {
                         WHERE delivery.test_id = part.test_id
                           AND assignment.user_id = ?
                           AND teacher.school_id = ?
-                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                           AND delivery.assignment_status <> 'archived'
                    )
                  ORDER BY part.test_id, part.part_order, question.item_number
@@ -581,7 +581,7 @@ public class V3MobileRepository {
                         WHERE delivery.test_id = part.test_id
                           AND assignment.user_id = ?
                           AND teacher.school_id = ?
-                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                           AND delivery.assignment_status <> 'archived'
                    )
                  ORDER BY question_option.question_id, question_option.option_order
@@ -622,7 +622,7 @@ public class V3MobileRepository {
                         WHERE delivery.test_id = part.test_id
                           AND assignment.user_id = ?
                           AND teacher.school_id = ?
-                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                           AND delivery.assignment_status <> 'archived'
                    )
                  ORDER BY mapping.test_part_id, mapping.start_item_number,
@@ -667,7 +667,7 @@ public class V3MobileRepository {
                         WHERE delivery.test_id = part.test_id
                           AND assignment.user_id = ?
                           AND teacher.school_id = ?
-                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                          AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                           AND delivery.assignment_status <> 'archived'
                    )
                  ORDER BY skill.skill_id
@@ -727,7 +727,7 @@ public class V3MobileRepository {
                    AND assignment.user_id = ?
                    AND teacher.school_id = ?
                    AND assessment.school_id = ?
-                   AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.status = 'archived')
+                   AND assignment.status = 'active' AND assignment.class_id NOT IN (SELECT archived_class.class_id FROM classes archived_class JOIN academic_years archived_year ON archived_year.academic_year_id = archived_class.academic_year_id WHERE archived_year.archived_at IS NOT NULL)
                    AND delivery.assignment_status <> 'archived'
                  ORDER BY sheet.test_assignment_id, sheet.generation_number DESC
                 """,

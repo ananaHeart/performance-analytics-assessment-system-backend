@@ -127,7 +127,7 @@ public class V3AssessmentRepository {
                           AND u.school_id = ?
                           AND ca.status = 'active'
                           AND c.status = 'active'
-                          AND ay.status <> 'archived'
+                          AND ay.archived_at IS NULL
                         ORDER BY ay.start_date DESC,
                                  gl.grade_level_name,
                                  sec.section_name,

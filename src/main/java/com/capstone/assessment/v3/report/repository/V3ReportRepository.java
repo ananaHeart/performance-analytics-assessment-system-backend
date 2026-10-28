@@ -85,7 +85,8 @@ public class V3ReportRepository {
                        academic_year.year_name,
                        academic_year.start_date,
                        academic_year.end_date,
-                       academic_year.status
+                       CASE WHEN academic_year.archived_at IS NOT NULL THEN 'archived'
+                            ELSE academic_year.status END AS status
                   FROM academic_years academic_year
                  WHERE academic_year.school_id = ?
                 """ + teacherFilter + " ORDER BY academic_year.start_date DESC, academic_year.academic_year_id DESC";
