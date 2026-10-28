@@ -169,6 +169,21 @@ public class V3NotificationService {
         );
     }
 
+    /** SET-5: the grace month is over; the principal can now review and archive the school year. */
+    public void notifyPrincipalsYearReadyToArchive(String schoolId, int academicYearId, String yearName,
+                                                   Instant createdAt) {
+        notificationRepository.insertForSchoolPrincipals(
+                schoolId,
+                "academic_year_ready_to_archive",
+                "School year ready to archive",
+                "School year " + yearName + " ended over a month ago. Review it and archive it when ready.",
+                "academic_years",
+                Integer.toString(academicYearId),
+                "academic-year:" + academicYearId + ":ready-to-archive",
+                createdAt
+        );
+    }
+
     /** CLS-6: tells the principals of the teacher's school that an old assignment was archived. */
     public void notifyPrincipalsAssignmentAutoArchived(
             long teacherUserId,

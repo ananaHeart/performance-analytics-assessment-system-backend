@@ -12,6 +12,7 @@ import com.capstone.assessment.v3.school.model.V3AcademicCalendarModels.TermPeri
 import com.capstone.assessment.v3.school.repository.V3AcademicCalendarRepository;
 import org.junit.jupiter.api.BeforeEach;
 import com.capstone.assessment.v3.school.dto.V3TermDatesRequest;
+import com.capstone.assessment.v3.notification.service.V3NotificationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -49,6 +50,7 @@ class V3AcademicCalendarServiceTest {
 
     private final V3AcademicCalendarRepository repository = mock(V3AcademicCalendarRepository.class);
     private final V3AuditService auditService = mock(V3AuditService.class);
+    private final V3NotificationService notificationService = mock(V3NotificationService.class);
     private V3AcademicCalendarService service;
 
     @BeforeEach
@@ -56,6 +58,7 @@ class V3AcademicCalendarServiceTest {
         service = new V3AcademicCalendarService(
                 repository,
                 auditService,
+                notificationService,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -321,7 +324,7 @@ class V3AcademicCalendarServiceTest {
     }
 
     @Test
-    void set5AYearIsNotArchivedBeforeItsEndDateOrWithOpenAssessments() {
+    void set5AYearIsCompletedOnlyAfterItsEndDateButOpenAssessmentsDoNotBlockIt() {
         when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("active")));
         when(repository.listTermPeriods(100)).thenReturn(threeTermRows("completed", "automatic"));
         assertEquals("ACADEMIC_YEAR_NOT_ENDED", assertThrows(V3AuthException.class,
@@ -329,11 +332,40 @@ class V3AcademicCalendarServiceTest {
 
         when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(endedYear("active")));
         when(repository.countOpenAssessments(100, NOW)).thenReturn(2);
-        V3AuthException open = assertThrows(V3AuthException.class,
-                () -> service.completeAcademicYear(PRINCIPAL, 100, reason(), null));
-        assertEquals("ACADEMIC_YEAR_HAS_OPEN_ASSESSMENTS", open.getCode());
-        assertEquals(2, open.getDetails().get("openAssessmentCount"));
-        verify(repository, never()).completeAcademicYear(anyInt());
+        when(repository.completeAcademicYear(100)).thenReturn(1);
+        service.completeAcademicYear(PRINCIPAL, 100, reason(), null);
+
+        verify(repository).completeAcademicYear(100);
+    }
+
+    @Test
+    void set5ArchivingWaitsForCompletionTheGraceMonthAndCleanData() {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(endedYear("active")));
+        assertEquals("ACADEMIC_YEAR_NOT_COMPLETED", assertThrows(V3AuthException.class,
+                () -> service.archiveAcademicYear(PRINCIPAL, 100, reason(), null)).getCode());
+
+        // Ended 2026-03-31, but the last term was extended to the end of August: ready on 2026-09-30.
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(endedYear("completed")));
+        when(repository.findLatestTermEnd(100)).thenReturn(Optional.of(Instant.parse("2026-08-31T16:00:00Z")));
+        V3AuthException grace = assertThrows(V3AuthException.class,
+                () -> service.archiveAcademicYear(PRINCIPAL, 100, reason(), null));
+        assertEquals("ARCHIVE_GRACE_PERIOD_ACTIVE", grace.getCode());
+        assertEquals("2026-09-30", grace.getDetails().get("readyToArchiveOn"));
+
+        when(repository.findLatestTermEnd(100)).thenReturn(Optional.empty());
+        when(repository.countPendingSyncs(100)).thenReturn(3);
+        assertEquals("ACADEMIC_YEAR_HAS_PENDING_SYNCS", assertThrows(V3AuthException.class,
+                () -> service.archiveAcademicYear(PRINCIPAL, 100, reason(), null)).getCode());
+        when(repository.countPendingSyncs(100)).thenReturn(0);
+        when(repository.countUnfinalizedResults(100)).thenReturn(4);
+        assertEquals("ACADEMIC_YEAR_HAS_UNFINALIZED_RESULTS", assertThrows(V3AuthException.class,
+                () -> service.archiveAcademicYear(PRINCIPAL, 100, reason(), null)).getCode());
+        verify(repository, never()).archiveAcademicYear(anyInt());
+
+        when(repository.countUnfinalizedResults(100)).thenReturn(0);
+        when(repository.archiveAcademicYear(100)).thenReturn(1);
+        service.archiveAcademicYear(PRINCIPAL, 100, reason(), null);
+        verify(repository).archiveAcademicYear(100);
     }
 
     @Test
@@ -345,10 +377,33 @@ class V3AcademicCalendarServiceTest {
         var eligibility = service.getArchiveEligibility(PRINCIPAL, 100);
 
         assertEquals(false, eligibility.canArchive());
-        assertEquals(false, eligibility.endDateReached());
-        assertEquals(3, eligibility.incompleteTermCount());
-        assertEquals(List.of("The school year ends on 2027-03-31.", "3 term(s) are not completed yet.",
+        assertEquals(false, eligibility.readyToArchive());
+        assertEquals(LocalDate.of(2027, 4, 30), eligibility.readyToArchiveOn());
+        assertEquals(List.of("The school year is not completed yet; it is completed after 2027-03-31.",
+                "Late uploads and corrections are allowed until 2027-04-30.",
                 "1 assessment(s) are still open."), eligibility.reasons());
+    }
+
+    @Test
+    void set5TheNightlyJobCompletesEndedYearsAndTellsThePrincipalWhenReady() {
+        when(repository.listAcademicYearsInStatus("active")).thenReturn(List.of(endedYear("active")));
+        when(repository.completeAcademicYearAutomatically(100)).thenReturn(1);
+        when(repository.listAcademicYearsInStatus("completed")).thenReturn(List.of(endedYear("completed")));
+
+        assertEquals(1, service.runYearLifecycle());
+
+        verify(repository).completeRemainingTerms(100, NOW);
+        verify(notificationService).notifyPrincipalsYearReadyToArchive("SCHOOL-001", 100, "2025-2026", NOW);
+    }
+
+    @Test
+    void set5ArchivedYearsAreListedOnlyInTheArchivedView() {
+        service.listAcademicYears(PRINCIPAL, null);
+        service.listAcademicYears(PRINCIPAL, "archived");
+
+        verify(repository).listAcademicYears("SCHOOL-001", false);
+        verify(repository).listAcademicYears("SCHOOL-001", true);
+        assertThrows(V3FieldValidationException.class, () -> service.listAcademicYears(PRINCIPAL, "all"));
     }
 
     @Test

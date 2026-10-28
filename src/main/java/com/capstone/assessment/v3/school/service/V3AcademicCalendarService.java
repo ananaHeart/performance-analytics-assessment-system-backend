@@ -4,6 +4,7 @@ import com.capstone.assessment.v3.auth.exception.V3AuthException;
 import com.capstone.assessment.v3.auth.exception.V3FieldValidationException;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3AuditService;
+import com.capstone.assessment.v3.notification.service.V3NotificationService;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearRequest;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearResponse;
@@ -43,33 +44,49 @@ public class V3AcademicCalendarService {
     private static final Set<String> ACTIVATION_MODES = Set.of("automatic", "manual");
     /** SET-4 (D8): the panel's limit of changes per term. */
     static final int MAX_TERM_DATE_EDITS = 3;
+    /** SET-5: late uploads, verification and corrections stay possible this long after the year ends. */
+    static final int ARCHIVE_GRACE_MONTHS = 1;
 
     private final V3AcademicCalendarRepository repository;
     private final V3AuditService auditService;
+    private final V3NotificationService notificationService;
     private final Clock clock;
 
     @Autowired
     public V3AcademicCalendarService(
             V3AcademicCalendarRepository repository,
-            V3AuditService auditService
+            V3AuditService auditService,
+            V3NotificationService notificationService
     ) {
-        this(repository, auditService, Clock.systemUTC());
+        this(repository, auditService, notificationService, Clock.systemUTC());
     }
 
     V3AcademicCalendarService(
             V3AcademicCalendarRepository repository,
             V3AuditService auditService,
+            V3NotificationService notificationService,
             Clock clock
     ) {
         this.repository = repository;
         this.auditService = auditService;
+        this.notificationService = notificationService;
         this.clock = clock;
     }
 
     @Transactional(readOnly = true)
     public List<V3AcademicYearResponse> listAcademicYears(V3AuthenticatedUser principal) {
+        return listAcademicYears(principal, null);
+    }
+
+    /** SET-5: {@code view} is "current" (default) or "archived". */
+    @Transactional(readOnly = true)
+    public List<V3AcademicYearResponse> listAcademicYears(V3AuthenticatedUser principal, String view) {
         requirePrincipal(principal);
-        return repository.listAcademicYears(principal.schoolId()).stream()
+        String normalized = view == null || view.isBlank() ? "current" : view.trim().toLowerCase(Locale.ROOT);
+        if (!"current".equals(normalized) && !"archived".equals(normalized)) {
+            throw invalid("view", "Use current or archived.");
+        }
+        return repository.listAcademicYears(principal.schoolId(), "archived".equals(normalized)).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -244,17 +261,11 @@ public class V3AcademicCalendarService {
             throw conflict("TERM_PERIODS_NOT_COMPLETED",
                     "Complete all term periods before completing the academic year.");
         }
-        // SET-5: not before the year's end date, and not while assessments are still open.
+        // SET-5: a year is completed only after its end date; archiving is a separate, later step.
         if (LocalDate.ofInstant(clock.instant(), SCHOOL_ZONE).isBefore(year.endDate())) {
             throw new V3AuthException("ACADEMIC_YEAR_NOT_ENDED",
-                    "The school year ends on " + year.endDate() + ". It can be archived from that day.",
+                    "The school year ends on " + year.endDate() + ". It can be completed from that day.",
                     HttpStatus.CONFLICT, Map.of("endDate", year.endDate().toString()));
-        }
-        int openAssessments = repository.countOpenAssessments(academicYearId, clock.instant());
-        if (openAssessments > 0) {
-            throw new V3AuthException("ACADEMIC_YEAR_HAS_OPEN_ASSESSMENTS",
-                    openAssessments + " assessment(s) are still open. Close or archive them first.",
-                    HttpStatus.CONFLICT, Map.of("openAssessmentCount", openAssessments));
         }
         if (repository.completeAcademicYear(academicYearId) != 1) {
             throw conflict("ACADEMIC_YEAR_COMPLETION_CONFLICT",
@@ -510,36 +521,144 @@ public class V3AcademicCalendarService {
         );
     }
 
-    /** SET-5: whether the school year can be archived (completed) now, with every reason it cannot. */
+    /** SET-5: whether the school year can be archived now, with every reason it cannot. */
     @Transactional(readOnly = true)
     public V3AcademicYearArchiveEligibilityResponse getArchiveEligibility(
             V3AuthenticatedUser principal,
             int academicYearId
     ) {
         requirePrincipal(principal);
+        return evaluateArchive(requireAcademicYear(principal.schoolId(), academicYearId));
+    }
+
+    /**
+     * SET-5: the principal confirms the archive after the one-month grace period. Archived years
+     * are hidden from normal lists, dropdowns and the phone download; nothing is deleted.
+     */
+    @Transactional
+    public V3AcademicYearResponse archiveAcademicYear(
+            V3AuthenticatedUser principal,
+            int academicYearId,
+            V3LifecycleReasonRequest request,
+            V3RequestMetadata metadata
+    ) {
+        requirePrincipal(principal);
+        String reason = requireReason(request);
+        repository.lockAcademicYear(principal.schoolId(), academicYearId);
         AcademicYearRow year = requireAcademicYear(principal.schoolId(), academicYearId);
-        boolean endDateReached = !LocalDate.ofInstant(clock.instant(), SCHOOL_ZONE).isBefore(year.endDate());
-        int incompleteTerms = (int) repository.listTermPeriods(academicYearId).stream()
+        if ("archived".equals(year.status())) {
+            return toResponse(year);
+        }
+        V3AcademicYearArchiveEligibilityResponse check = evaluateArchive(year);
+        if (!"completed".equals(year.status())) {
+            throw conflict("ACADEMIC_YEAR_NOT_COMPLETED",
+                    "Only a completed school year can be archived. It is completed after its end date.");
+        }
+        if (!check.readyToArchive()) {
+            throw new V3AuthException("ARCHIVE_GRACE_PERIOD_ACTIVE",
+                    "Late uploads and corrections are still allowed until " + check.readyToArchiveOn()
+                            + ". The school year can be archived from that day.",
+                    HttpStatus.CONFLICT, Map.of("readyToArchiveOn", check.readyToArchiveOn().toString()));
+        }
+        if (check.openAssessmentCount() > 0) {
+            throw new V3AuthException("ACADEMIC_YEAR_HAS_OPEN_ASSESSMENTS",
+                    check.openAssessmentCount() + " assessment(s) are still open. Close or archive them first.",
+                    HttpStatus.CONFLICT, Map.of("openAssessmentCount", check.openAssessmentCount()));
+        }
+        if (check.pendingSyncCount() > 0) {
+            throw new V3AuthException("ACADEMIC_YEAR_HAS_PENDING_SYNCS",
+                    check.pendingSyncCount() + " phone upload(s) have not finished syncing.",
+                    HttpStatus.CONFLICT, Map.of("pendingSyncCount", check.pendingSyncCount()));
+        }
+        if (check.unfinalizedResultCount() > 0) {
+            throw new V3AuthException("ACADEMIC_YEAR_HAS_UNFINALIZED_RESULTS",
+                    check.unfinalizedResultCount() + " result(s) or scan(s) still need verification or finalizing.",
+                    HttpStatus.CONFLICT, Map.of("unfinalizedResultCount", check.unfinalizedResultCount()));
+        }
+        if (repository.archiveAcademicYear(academicYearId) != 1) {
+            throw conflict("ACADEMIC_YEAR_ARCHIVE_CONFLICT", "The school year changed before it could be archived.");
+        }
+        recordLifecycle(principal, academicYearId, "academic_year.archive", reason, metadata);
+        return toResponse(requireAcademicYear(principal.schoolId(), academicYearId));
+    }
+
+    /**
+     * SET-5: runs nightly. A year past its latest end becomes Completed (with its remaining
+     * terms); when the grace month is over, the principals get one "ready to archive" notice.
+     */
+    @Transactional
+    public int runYearLifecycle() {
+        Instant now = clock.instant();
+        LocalDate today = LocalDate.ofInstant(now, SCHOOL_ZONE);
+        int changed = 0;
+        for (AcademicYearRow year : repository.listAcademicYearsInStatus("active")) {
+            if (latestEndDate(year).isBefore(today)) {
+                repository.completeRemainingTerms(year.academicYearId(), now);
+                if (repository.completeAcademicYearAutomatically(year.academicYearId()) == 1) {
+                    auditService.record(null, "academic_year.complete_automatic", "academic_years",
+                            Integer.toString(year.academicYearId()), "success", null,
+                            Map.of("latestEndDate", latestEndDate(year).toString()), now);
+                    changed++;
+                }
+            }
+        }
+        for (AcademicYearRow year : repository.listAcademicYearsInStatus("completed")) {
+            LocalDate readyOn = latestEndDate(year).plusMonths(ARCHIVE_GRACE_MONTHS);
+            if (!today.isBefore(readyOn)) {
+                notificationService.notifyPrincipalsYearReadyToArchive(year.schoolId(), year.academicYearId(),
+                        year.yearName(), now);
+            }
+        }
+        return changed;
+    }
+
+    private V3AcademicYearArchiveEligibilityResponse evaluateArchive(AcademicYearRow year) {
+        LocalDate today = LocalDate.ofInstant(clock.instant(), SCHOOL_ZONE);
+        LocalDate latestEnd = latestEndDate(year);
+        LocalDate readyOn = latestEnd.plusMonths(ARCHIVE_GRACE_MONTHS);
+        boolean endDateReached = !today.isBefore(year.endDate());
+        boolean ready = !today.isBefore(readyOn);
+        int incompleteTerms = (int) repository.listTermPeriods(year.academicYearId()).stream()
                 .filter(term -> !"completed".equals(term.status()))
                 .count();
-        int openAssessments = repository.countOpenAssessments(academicYearId, clock.instant());
+        int openAssessments = repository.countOpenAssessments(year.academicYearId(), clock.instant());
+        int pendingSyncs = repository.countPendingSyncs(year.academicYearId());
+        int unfinalized = repository.countUnfinalizedResults(year.academicYearId());
         List<String> reasons = new java.util.ArrayList<>();
-        if ("completed".equals(year.status())) {
+        if ("archived".equals(year.status())) {
             reasons.add("The school year is already archived.");
-        } else if (!"active".equals(year.status())) {
-            reasons.add("Only an active school year can be archived.");
+        } else if (!"completed".equals(year.status())) {
+            reasons.add("The school year is not completed yet; it is completed after " + latestEnd + ".");
         }
-        if (!endDateReached) {
-            reasons.add("The school year ends on " + year.endDate() + ".");
-        }
-        if (incompleteTerms > 0) {
-            reasons.add(incompleteTerms + " term(s) are not completed yet.");
+        if (!"archived".equals(year.status()) && !ready) {
+            reasons.add("Late uploads and corrections are allowed until " + readyOn + ".");
         }
         if (openAssessments > 0) {
             reasons.add(openAssessments + " assessment(s) are still open.");
         }
-        return new V3AcademicYearArchiveEligibilityResponse(academicYearId, year.status(), reasons.isEmpty(),
-                year.endDate(), endDateReached, incompleteTerms, openAssessments, reasons);
+        if (pendingSyncs > 0) {
+            reasons.add(pendingSyncs + " phone upload(s) have not finished syncing.");
+        }
+        if (unfinalized > 0) {
+            reasons.add(unfinalized + " result(s) or scan(s) still need verification or finalizing.");
+        }
+        return new V3AcademicYearArchiveEligibilityResponse(year.academicYearId(), year.status(), reasons.isEmpty(),
+                year.endDate(), endDateReached, incompleteTerms, openAssessments, reasons, latestEnd, readyOn, ready,
+                pendingSyncs, unfinalized);
+    }
+
+    /** The later of the year's end date and its latest term end (an extension moves it). */
+    private LocalDate latestEndDate(AcademicYearRow year) {
+        LocalDate latest = year.endDate();
+        java.util.Optional<Instant> termEnd = repository.findLatestTermEnd(year.academicYearId());
+        if (termEnd.isPresent()) {
+            // A term ending exactly at midnight belongs to the previous day.
+            LocalDate termDay = termEnd.get().minusSeconds(1).atZone(SCHOOL_ZONE).toLocalDate();
+            if (termDay.isAfter(latest)) {
+                latest = termDay;
+            }
+        }
+        return latest;
     }
 
     /**

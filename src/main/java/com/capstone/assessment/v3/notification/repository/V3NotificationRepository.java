@@ -103,6 +103,34 @@ public class V3NotificationRepository {
         );
     }
 
+    /** SET-5: one notice to every active principal of the school (repeat event keys are ignored). */
+    public void insertForSchoolPrincipals(
+            String schoolId,
+            String notificationType,
+            String title,
+            String message,
+            String referenceType,
+            String referenceId,
+            String eventKey,
+            Instant createdAt
+    ) {
+        jdbcTemplate.update("""
+                INSERT INTO notifications (
+                    notification_uuid, recipient_user_id, notification_type, title, message,
+                    reference_type, reference_id, event_key, created_at
+                )
+                SELECT UUID(), principal.user_id, ?, ?, ?, ?, ?, ?, ?
+                  FROM users principal
+                  JOIN roles role_ref ON role_ref.role_id = principal.role_id
+                  JOIN statuses status_ref ON status_ref.status_id = principal.status_id
+                 WHERE principal.school_id = ?
+                   AND role_ref.role_name = 'principal'
+                   AND status_ref.status_name = 'active'
+                ON DUPLICATE KEY UPDATE notification_id = notification_id
+                """, notificationType, title, message, referenceType, referenceId, eventKey,
+                java.sql.Timestamp.from(createdAt), schoolId);
+    }
+
     public List<V3NotificationResponse> findForUser(long userId, boolean unreadOnly, int limit) {
         String unreadFilter = unreadOnly ? " AND n.read_at IS NULL" : "";
         return jdbcTemplate.query(

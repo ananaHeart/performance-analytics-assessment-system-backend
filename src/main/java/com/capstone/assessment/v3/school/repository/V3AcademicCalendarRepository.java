@@ -52,11 +52,87 @@ public class V3AcademicCalendarRepository {
     }
 
     public List<AcademicYearRow> listAcademicYears(String schoolId) {
+        return listAcademicYears(schoolId, false);
+    }
+
+    /** SET-5: archived years appear only in the Archived view. */
+    public List<AcademicYearRow> listAcademicYears(String schoolId, boolean archived) {
         return jdbcTemplate.query(
-                YEAR_SELECT + " WHERE ay.school_id = ? ORDER BY ay.start_date DESC, ay.academic_year_id DESC",
+                YEAR_SELECT + " WHERE ay.school_id = ? AND " + (archived ? "ay.status = 'archived'" : "ay.status <> 'archived'")
+                        + " ORDER BY ay.start_date DESC, ay.academic_year_id DESC",
                 this::mapAcademicYear,
                 schoolId
         );
+    }
+
+    /** SET-5: every school's years in one status, for the nightly lifecycle job. */
+    public List<AcademicYearRow> listAcademicYearsInStatus(String status) {
+        return jdbcTemplate.query(
+                YEAR_SELECT + " WHERE ay.status = ? ORDER BY ay.school_id, ay.academic_year_id",
+                this::mapAcademicYear,
+                status
+        );
+    }
+
+    /** SET-5: the last moment of the latest term, so an extended term pushes the dates later. */
+    public Optional<Instant> findLatestTermEnd(int academicYearId) {
+        Timestamp latest = jdbcTemplate.queryForObject(
+                "SELECT MAX(end_at) FROM term_periods WHERE academic_year_id = ?", Timestamp.class, academicYearId);
+        return Optional.ofNullable(latest).map(Timestamp::toInstant);
+    }
+
+    /** SET-5: phone uploads of this year that have not finished syncing. */
+    public int countPendingSyncs(int academicYearId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                  FROM syncs sync_row
+                  JOIN test_assignments delivery ON delivery.test_assignment_id = sync_row.test_assignment_id
+                  JOIN tests test ON test.test_id = delivery.test_id
+                  JOIN term_periods term ON term.term_period_id = test.term_period_id
+                 WHERE term.academic_year_id = ?
+                   AND sync_row.sync_status IN ('pending', 'in_progress')
+                """, Integer.class, academicYearId);
+        return count == null ? 0 : count;
+    }
+
+    /** SET-5: results not finalized yet, and scans still being processed or waiting for verification. */
+    public int countUnfinalizedResults(int academicYearId) {
+        Integer results = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                  FROM test_results result
+                  JOIN test_assignments delivery ON delivery.test_assignment_id = result.test_assignment_id
+                  JOIN tests test ON test.test_id = delivery.test_id
+                  JOIN term_periods term ON term.term_period_id = test.term_period_id
+                 WHERE term.academic_year_id = ?
+                   AND test.status <> 'archived'
+                   AND result.result_status IN ('draft', 'pending_verification')
+                """, Integer.class, academicYearId);
+        Integer scans = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                  FROM scan_sessions scan
+                  JOIN test_assignments delivery ON delivery.test_assignment_id = scan.test_assignment_id
+                  JOIN tests test ON test.test_id = delivery.test_id
+                  JOIN term_periods term ON term.term_period_id = test.term_period_id
+                 WHERE term.academic_year_id = ?
+                   AND test.status <> 'archived'
+                   AND scan.scan_status IN ('captured', 'processing', 'needs_verification')
+                """, Integer.class, academicYearId);
+        return (results == null ? 0 : results) + (scans == null ? 0 : scans);
+    }
+
+    /** SET-5: the year ended, so every term that is still planned or active is completed with it. */
+    public int completeRemainingTerms(int academicYearId, Instant now) {
+        return jdbcTemplate.update("""
+                UPDATE term_periods
+                   SET status = 'completed', completed_at = ?
+                 WHERE academic_year_id = ? AND status IN ('planned', 'active')
+                """, Timestamp.from(now), academicYearId);
+    }
+
+    public int archiveAcademicYear(int academicYearId) {
+        return jdbcTemplate.update(
+                "UPDATE academic_years SET status = 'archived' WHERE academic_year_id = ? AND status = 'completed'",
+                academicYearId);
     }
 
     public List<AcademicYearRow> listAutomaticTransitionCandidates(LocalDate schoolDate) {

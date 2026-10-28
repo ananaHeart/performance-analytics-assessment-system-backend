@@ -39,11 +39,26 @@ public class V3AcademicCalendarController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<V3AcademicYearResponse>>> list(
-            @AuthenticationPrincipal V3AuthenticatedUser principal
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String view
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 "V3 academic years retrieved successfully.",
-                service.listAcademicYears(principal)
+                service.listAcademicYears(principal, view)
+        ));
+    }
+
+    /** SET-5: the principal confirms archiving a completed year after the grace month. */
+    @PostMapping("/{academicYearId}/archive")
+    public ResponseEntity<ApiResponse<V3AcademicYearResponse>> archiveYear(
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @PathVariable int academicYearId,
+            @Valid @RequestBody V3LifecycleReasonRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "School year archived successfully.",
+                service.archiveAcademicYear(principal, academicYearId, request, metadata(httpRequest))
         ));
     }
 
