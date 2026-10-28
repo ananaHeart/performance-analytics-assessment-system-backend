@@ -11,8 +11,10 @@
 ALTER TABLE users ADD COLUMN contract_end_date DATE NULL AFTER contact_verified_at;
 ALTER TABLE users ADD COLUMN archived_at TIMESTAMP NULL DEFAULT NULL AFTER contract_end_date;
 
-INSERT INTO statuses (status_name, is_active)
-SELECT 'archived', TRUE
+-- TiDB hands out AUTO_INCREMENT ids in large blocks (e.g. 30002), which overflows the
+-- TINYINT status_id, so the next id is given explicitly.
+INSERT INTO statuses (status_id, status_name, is_active)
+SELECT (SELECT MAX(status_id) FROM statuses) + 1, 'archived', TRUE
   FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM statuses WHERE status_name = 'archived');
 
