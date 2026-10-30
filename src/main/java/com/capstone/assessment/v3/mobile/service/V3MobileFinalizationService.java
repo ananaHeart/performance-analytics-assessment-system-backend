@@ -119,6 +119,13 @@ public class V3MobileFinalizationService {
             else repository.save(response.testResultId(),prepared.revision(),response.scoreVersion(),mapper.writeValueAsString(response));
         } catch(JsonProcessingException e) { throw new IllegalStateException("Cannot store finalization receipt.",e); }
     }
+    /** ASM-7: a rescored result moves its official receipt to the new score (the one row is updated in place). */
+    public void recordRescore(V3ScoredResultResponse response) {
+        if(repository.receipt(response.testResultId()).isEmpty()) return; // finalized without a phone receipt
+        long revision=repository.revision(response.testResultId());
+        try { repository.saveCorrection(response,revision,mapper.writeValueAsString(response)); }
+        catch(JsonProcessingException e) { throw new IllegalStateException("Cannot store the rescored receipt.",e); }
+    }
     private V3ScoredResultResponse replayed(V3ScoredResultResponse r) {
         return new V3ScoredResultResponse(r.testResultId(),r.resultUuid(),r.testAssignmentId(),r.testId(),r.classListId(),
                 r.studentId(),r.studentName(),r.attemptNumber(),r.totalScore(),r.maxScore(),r.percentage(),r.performanceStatus(),

@@ -33,6 +33,8 @@ import com.capstone.assessment.v3.auth.exception.V3FieldValidationException;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3AuditService;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
+import com.capstone.assessment.v3.answersheet.service.V3AnswerSheetFileStorage;
+import com.capstone.assessment.v3.scoring.service.V3ScoringService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -91,6 +93,7 @@ public class V3AssessmentService {
             "none", "short", "medium", "long", "full_page"
     );
     private static final Set<String> TEXT_MATCHING_MODES = Set.of("exact", "normalized");
+    private static final Set<String> OBJECTIVE_TYPES = Set.of("multiple_choice", "true_false");
     private static final List<String> MC_KEYS = List.of("A", "B", "C", "D");
     private static final List<String> TF_KEYS = List.of("A", "B");
     private static final int MAX_TOTAL_ITEMS = 500;
@@ -101,26 +104,34 @@ public class V3AssessmentService {
     private final V3AssessmentRepository repository;
     private final V3AuditService auditService;
     private final ObjectMapper objectMapper;
+    private final V3ScoringService scoringService;
+    private final V3AnswerSheetFileStorage answerSheetFileStorage;
     private final Clock clock;
 
     @Autowired
     public V3AssessmentService(
             V3AssessmentRepository repository,
             V3AuditService auditService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            V3ScoringService scoringService,
+            V3AnswerSheetFileStorage answerSheetFileStorage
     ) {
-        this(repository, auditService, objectMapper, Clock.systemUTC());
+        this(repository, auditService, objectMapper, scoringService, answerSheetFileStorage, Clock.systemUTC());
     }
 
     V3AssessmentService(
             V3AssessmentRepository repository,
             V3AuditService auditService,
             ObjectMapper objectMapper,
+            V3ScoringService scoringService,
+            V3AnswerSheetFileStorage answerSheetFileStorage,
             Clock clock
     ) {
         this.repository = repository;
         this.auditService = auditService;
         this.objectMapper = objectMapper;
+        this.scoringService = scoringService;
+        this.answerSheetFileStorage = answerSheetFileStorage;
         this.clock = clock;
     }
 
@@ -256,9 +267,11 @@ public class V3AssessmentService {
         requireTeacher(user);
         repository.lockTest(testId);
         AssessmentHeader header = requireOwnedHeader(user, testId);
+        if ("archived".equals(header.status())) {
+            throw conflict("ASSESSMENT_ARCHIVED", "Restore the assessment before changing it.");
+        }
         if (!"draft".equals(header.status())) {
-            throw conflict("ASSESSMENT_CONTENT_LOCKED",
-                    "Only draft assessments may be edited. Create a new version for active content.");
+            return updateActiveAssessment(user, header, request, metadata);
         }
         if (repository.countResults(header.testAssignmentId()) > 0) {
             throw conflict("ASSESSMENT_HAS_RESULTS",
@@ -332,6 +345,342 @@ public class V3AssessmentService {
         } catch (DataIntegrityViolationException exception) {
             throw conflict("ASSESSMENT_CONFLICT",
                     "The assessment conflicts with existing assessment or rubric data.");
+        }
+    }
+
+    /**
+     * ASM-7 (October 2026): an active assessment stays editable.
+     * Nothing scanned yet: everything may change; answer sheets already generated are removed and
+     * the content version goes up, so the teacher prints the new sheet.
+     * Scanned or with results: the bubble layout stays (parts, item counts, question types, choice
+     * letters, answer boxes, page breaks). Text, skill mappings and the schedule may change; the
+     * answer key and objective points may change when nothing is still in progress, and finalized
+     * results are then rescored from the stored answers (which never change).
+     */
+    private V3AssessmentResponse updateActiveAssessment(
+            V3AuthenticatedUser user,
+            AssessmentHeader header,
+            V3AssessmentRequest request,
+            V3RequestMetadata metadata
+    ) {
+        if (request != null && header.classAssignmentId() != request.classAssignmentId()) {
+            throw invalid("classAssignmentId",
+                    "An existing assessment cannot be moved to a different class assignment.");
+        }
+        Instant now = clock.instant();
+        PreparedAssessment prepared = prepareAssessment(user, request, header, now);
+        long assignmentId = header.testAssignmentId();
+        boolean captured = repository.countResults(assignmentId) > 0 || repository.hasCapture(assignmentId);
+        try {
+            return captured
+                    ? editActiveInPlace(user, header, prepared, metadata, now)
+                    : rebuildActiveAssessment(user, header, prepared, metadata, now);
+        } catch (DataIntegrityViolationException exception) {
+            throw conflict("ASSESSMENT_CONFLICT",
+                    "The assessment conflicts with existing assessment or rubric data.");
+        }
+    }
+
+    private V3AssessmentResponse rebuildActiveAssessment(
+            V3AuthenticatedUser user,
+            AssessmentHeader header,
+            PreparedAssessment prepared,
+            V3RequestMetadata metadata,
+            Instant now
+    ) {
+        long testId = header.testId();
+        List<String> pdfKeys = repository.listAnswerSheetPdfKeys(header.testAssignmentId());
+        int removedSheets = repository.deleteUnscannedAnswerSheets(header.testAssignmentId());
+        updateActiveHeader(header, prepared);
+        applyActiveSchedule(header, prepared, false, now);
+        repository.deleteParts(testId);
+        insertAssessmentGraph(user, testId, prepared);
+        repository.activateDraftRubricsForTest(testId, user.userId());
+        repository.incrementTestVersion(testId);
+        validateActivationReadiness(requireAssessment(user, testId));
+        deleteAnswerSheetFilesAfterCommit(pdfKeys);
+        auditService.record(user.userId(), "assessment.update_active", "tests", Long.toString(testId), "success",
+                metadata, Map.of("mode", "full", "removedAnswerSheets", removedSheets,
+                        "totalItems", prepared.totalItems()), now);
+        return requireAssessment(user, testId);
+    }
+
+    private V3AssessmentResponse editActiveInPlace(
+            V3AuthenticatedUser user,
+            AssessmentHeader header,
+            PreparedAssessment prepared,
+            V3RequestMetadata metadata,
+            Instant now
+    ) {
+        long testId = header.testId();
+        V3AssessmentResponse current = requireAssessment(user, testId);
+        requireSameLayout(current, prepared);
+        List<V3AssessmentResponse.Part> currentParts = sortedParts(current);
+        boolean scoringChanged = false;
+        for (int index = 0; index < currentParts.size(); index++) {
+            List<V3AssessmentResponse.Question> questions = sortedQuestions(currentParts.get(index));
+            List<PreparedQuestion> next = sortedPrepared(prepared.parts().get(index));
+            for (int item = 0; item < questions.size(); item++) {
+                scoringChanged |= scoringChanged(questions.get(item), next.get(item));
+            }
+        }
+        int pending = repository.countPendingResultWork(header.testAssignmentId());
+        if (scoringChanged && pending > 0) {
+            throw new V3AuthException("ASSESSMENT_RESULTS_PENDING",
+                    pending + " result(s), scan(s) or upload(s) are still in progress. Finish them before changing "
+                            + "the answer key or points; text, skill mappings and the schedule can change now.",
+                    HttpStatus.CONFLICT, Map.of("pendingCount", pending));
+        }
+
+        updateActiveHeader(header, prepared);
+        applyActiveSchedule(header, prepared, true, now);
+        for (int index = 0; index < currentParts.size(); index++) {
+            V3AssessmentResponse.Part part = currentParts.get(index);
+            PreparedPart nextPart = prepared.parts().get(index);
+            repository.updateTestPartText(part.testPartId(), nextPart.partName(), nextPart.pointsPerItem(),
+                    nextPart.partInstructions());
+            repository.deletePartSkillMappings(part.testPartId());
+            for (PreparedMapping mapping : nextPart.mappings()) {
+                for (Long skillId : mapping.skillIds()) {
+                    repository.insertPartSkillMapping(part.testPartId(), skillId,
+                            mapping.startItemNumber(), mapping.endItemNumber());
+                }
+            }
+            List<V3AssessmentResponse.Question> questions = sortedQuestions(part);
+            List<PreparedQuestion> nextQuestions = sortedPrepared(nextPart);
+            for (int item = 0; item < questions.size(); item++) {
+                updateQuestionInPlace(questions.get(item), nextQuestions.get(item));
+            }
+        }
+        int rescored = scoringChanged
+                ? scoringService.rescoreAssignment(user, header.testAssignmentId(), metadata)
+                : 0;
+        auditService.record(user.userId(), "assessment.update_active", "tests", Long.toString(testId), "success",
+                metadata, Map.of("mode", "same_layout", "answerKeyChanged", scoringChanged,
+                        "rescoredResults", rescored), now);
+        return requireAssessment(user, testId);
+    }
+
+    private void updateActiveHeader(AssessmentHeader header, PreparedAssessment prepared) {
+        if (repository.updateActiveTestHeader(header.testId(), prepared.termPeriodId(), prepared.testName(),
+                prepared.testType(), prepared.instructions(), prepared.totalItems()) != 1) {
+            throw conflict("ASSESSMENT_UPDATE_CONFLICT", "The assessment changed. Refresh before trying again.");
+        }
+    }
+
+    /**
+     * The schedule may change while the assessment is active. Once sheets were scanned, an opening
+     * that already passed stays (reports print it as the date it was given). A new close time must
+     * be in the future; the assignment is planned, open or closed according to the new times.
+     */
+    private void applyActiveSchedule(AssessmentHeader header, PreparedAssessment prepared, boolean captured, Instant now) {
+        if (captured && !sameSecond(header.openAt(), prepared.openAt())
+                && header.openAt() != null && !header.openAt().isAfter(now)) {
+            throw invalid("openAt",
+                    "Answer sheets of this assessment were already scanned, so the opening time that passed cannot change.");
+        }
+        if (!sameSecond(header.closeAt(), prepared.closeAt())
+                && prepared.closeAt() != null && !prepared.closeAt().isAfter(now)) {
+            throw invalid("closeAt", "The new close time must be in the future.");
+        }
+        String assignmentStatus = prepared.openAt().isAfter(now)
+                ? "planned"
+                : prepared.closeAt() != null && !prepared.closeAt().isAfter(now) ? "closed" : "open";
+        if (repository.updateActiveSchedule(
+                header.testAssignmentId(),
+                prepared.openAt(),
+                prepared.closeAt(),
+                prepared.allowLateCapture(),
+                prepared.outsideScheduleConfirmed(),
+                prepared.outsideScheduleReason(),
+                prepared.outsideScheduleConfirmedByUserId(),
+                prepared.outsideScheduleConfirmedAt(),
+                assignmentStatus
+        ) != 1) {
+            throw conflict("ASSESSMENT_SCHEDULE_LOCKED", "The assessment schedule is no longer editable.");
+        }
+    }
+
+    private static boolean sameSecond(Instant first, Instant second) {
+        return Objects.equals(
+                first == null ? null : first.truncatedTo(java.time.temporal.ChronoUnit.SECONDS),
+                second == null ? null : second.truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
+    }
+
+    /** Scanned sheets stay valid only while every bubble and answer box stays where it was printed. */
+    private void requireSameLayout(V3AssessmentResponse current, PreparedAssessment next) {
+        if (current.termPeriodId() != next.termPeriodId()) {
+            throw layoutLocked("termPeriodId", "its term");
+        }
+        List<V3AssessmentResponse.Part> parts = sortedParts(current);
+        if (parts.size() != next.parts().size()) {
+            throw layoutLocked("parts", "the number of parts");
+        }
+        for (int index = 0; index < parts.size(); index++) {
+            V3AssessmentResponse.Part part = parts.get(index);
+            PreparedPart nextPart = next.parts().get(index);
+            if (part.partOrder() != nextPart.partOrder()
+                    || !part.questionTypeCode().equals(nextPart.questionType().code())
+                    || part.questions().size() != nextPart.questions().size()) {
+                throw layoutLocked("parts", "a part's question type or number of items");
+            }
+            boolean objective = OBJECTIVE_TYPES.contains(part.questionTypeCode());
+            if (!objective && !samePoints(part.pointsPerItem(), nextPart.pointsPerItem())) {
+                throw layoutLocked("parts.pointsPerItem", "the points of a written part (its answers were checked)");
+            }
+            List<V3AssessmentResponse.Question> questions = sortedQuestions(part);
+            List<PreparedQuestion> nextQuestions = sortedPrepared(nextPart);
+            for (int item = 0; item < questions.size(); item++) {
+                V3AssessmentResponse.Question question = questions.get(item);
+                PreparedQuestion nextQuestion = nextQuestions.get(item);
+                if (question.itemNumber() != nextQuestion.itemNumber()
+                        || !Objects.equals(question.responseRegionSize(), nextQuestion.responseRegionSize())
+                        || !Objects.equals(question.expectedResponseCount(), nextQuestion.expectedResponseCount())
+                        || question.forcePageBreakBefore() != nextQuestion.forcePageBreakBefore()) {
+                    throw layoutLocked("parts.questions", "an item number, answer box or page break");
+                }
+                List<String> keys = question.options().stream()
+                        .sorted(Comparator.comparingInt(V3AssessmentResponse.Option::optionOrder))
+                        .map(V3AssessmentResponse.Option::optionKey)
+                        .toList();
+                List<String> nextKeys = nextQuestion.options().stream()
+                        .sorted(Comparator.comparingInt(PreparedOption::optionOrder))
+                        .map(PreparedOption::optionKey)
+                        .toList();
+                if (!keys.equals(nextKeys)) {
+                    throw layoutLocked("parts.questions.options", "the choices of a question");
+                }
+                if (!objective && !samePoints(question.maximumPoints(), nextQuestion.maximumPoints())) {
+                    throw layoutLocked("parts.questions.maximumPoints", "the points of a written item (its answers were checked)");
+                }
+                if ("essay".equals(part.questionTypeCode())) {
+                    Long rubricId = question.rubric() == null ? null : question.rubric().rubricId();
+                    Long nextRubricId = nextQuestion.rubric() == null ? null : nextQuestion.rubric().existingRubricId();
+                    if (!Objects.equals(rubricId, nextRubricId)) {
+                        throw layoutLocked("parts.questions.rubric", "an essay's rubric");
+                    }
+                }
+            }
+        }
+    }
+
+    private V3AuthException layoutLocked(String field, String what) {
+        return new V3AuthException("ASSESSMENT_STRUCTURE_LOCKED",
+                "Answer sheets of this assessment were already scanned, so " + what + " can no longer change. "
+                        + "Question and choice text, the answer key, points of multiple-choice and true/false items, "
+                        + "skill mappings and the schedule can still change. To change the rest, archive this "
+                        + "assessment and create a new one.",
+                HttpStatus.CONFLICT, Map.of("field", field));
+    }
+
+    /** True when the change can alter a score: the objective key or points, or accepted answers. */
+    private boolean scoringChanged(V3AssessmentResponse.Question question, PreparedQuestion next) {
+        V3AssessmentResponse.AnswerKey key = question.answerKey();
+        PreparedAnswerKey nextKey = next.answerKey();
+        if (key == null
+                || !Objects.equals(key.answerKeyType(), nextKey.answerKeyType())
+                || !Objects.equals(key.correctOptionKey(), nextKey.correctOptionKey())
+                || !Objects.equals(key.scoringMethod(), nextKey.scoringMethod())
+                || !samePoints(question.maximumPoints(), next.maximumPoints())) {
+            return true;
+        }
+        return !acceptedAnswersEqual(question.acceptedAnswers(), next.acceptedAnswers());
+    }
+
+    private boolean acceptedAnswersEqual(List<V3AssessmentResponse.AcceptedAnswer> current,
+                                         List<PreparedAcceptedAnswer> next) {
+        if (current.size() != next.size()) {
+            return false;
+        }
+        for (int index = 0; index < current.size(); index++) {
+            V3AssessmentResponse.AcceptedAnswer answer = current.get(index);
+            PreparedAcceptedAnswer nextAnswer = next.get(index);
+            if (!Objects.equals(answer.answerOrder(), nextAnswer.answerOrder())
+                    || !Objects.equals(answer.acceptedText(), nextAnswer.acceptedText())
+                    || !Objects.equals(answer.matchingMode(), nextAnswer.matchingMode())
+                    || answer.caseSensitive() != nextAnswer.caseSensitive()
+                    || !samePoints(answer.points(), nextAnswer.points())
+                    || answer.primary() != nextAnswer.primary()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void updateQuestionInPlace(V3AssessmentResponse.Question question, PreparedQuestion next) {
+        repository.updateQuestionContent(question.questionId(), next.questionText(), next.maximumPoints(),
+                next.responseInstructions(), next.answerOrderRequired(), next.maximumResponseLength());
+        Map<String, V3AssessmentResponse.Option> options = new HashMap<>();
+        for (V3AssessmentResponse.Option option : question.options()) {
+            options.put(option.optionKey(), option);
+        }
+        for (PreparedOption option : next.options()) {
+            V3AssessmentResponse.Option existing = options.get(option.optionKey());
+            if (!Objects.equals(existing.optionText(), option.optionText())) {
+                repository.updateQuestionOptionText(existing.questionOptionId(), option.optionText());
+            }
+        }
+        PreparedAnswerKey key = next.answerKey();
+        Long correctOptionId = key.correctOptionKey() == null
+                ? null
+                : options.get(key.correctOptionKey()).questionOptionId();
+        repository.updateAnswerKey(question.questionId(), key.answerKeyType(), correctOptionId,
+                key.scoringMethod(), key.answerExplanation());
+        if (!acceptedAnswersEqual(question.acceptedAnswers(), next.acceptedAnswers())) {
+            repository.deleteAcceptedAnswers(question.questionId());
+            for (PreparedAcceptedAnswer accepted : next.acceptedAnswers()) {
+                repository.insertAcceptedAnswer(
+                        question.questionId(),
+                        accepted.answerOrder(),
+                        accepted.acceptedText(),
+                        accepted.normalizedText(),
+                        accepted.matchingMode(),
+                        accepted.caseSensitive(),
+                        accepted.points(),
+                        accepted.primary()
+                );
+            }
+        }
+    }
+
+    private static List<V3AssessmentResponse.Part> sortedParts(V3AssessmentResponse assessment) {
+        return assessment.parts().stream()
+                .sorted(Comparator.comparingInt(V3AssessmentResponse.Part::partOrder))
+                .toList();
+    }
+
+    private static List<V3AssessmentResponse.Question> sortedQuestions(V3AssessmentResponse.Part part) {
+        return part.questions().stream()
+                .sorted(Comparator.comparingInt(V3AssessmentResponse.Question::itemNumber))
+                .toList();
+    }
+
+    private static List<PreparedQuestion> sortedPrepared(PreparedPart part) {
+        return part.questions().stream()
+                .sorted(Comparator.comparingInt(PreparedQuestion::itemNumber))
+                .toList();
+    }
+
+    private static boolean samePoints(BigDecimal first, BigDecimal second) {
+        return first == null ? second == null : second != null && first.compareTo(second) == 0;
+    }
+
+    /** Removed answer-sheet PDFs leave storage only once the edit is committed. */
+    private void deleteAnswerSheetFilesAfterCommit(List<String> storageKeys) {
+        if (storageKeys.isEmpty()) {
+            return;
+        }
+        Runnable delete = () -> storageKeys.forEach(answerSheetFileStorage::deleteQuietly);
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            delete.run();
+                        }
+                    });
+        } else {
+            delete.run();
         }
     }
 
@@ -478,18 +827,22 @@ public class V3AssessmentService {
         String status = header.status();
         boolean archived = "archived".equals(status);
         boolean canHardDelete = resultCount == 0 && !hasScans;
+        boolean captured = resultCount > 0 || repository.hasCapture(header.testAssignmentId());
+        int pending = captured ? repository.countPendingResultWork(header.testAssignmentId()) : 0;
+        String mode = archived ? "none" : captured ? "same_layout" : "full";
         String reason;
-        if (resultCount > 0) {
-            reason = "This assessment already has results. Only the title and instructions can change; "
-                    + "archive it instead of deleting.";
-        } else if (hasScans) {
-            reason = "Answer sheets for this assessment were already scanned. Only the title and instructions "
-                    + "can change; archive it instead of deleting.";
-        } else if (archived) {
+        if (archived) {
             reason = "Restore the assessment before changing it.";
+        } else if (pending > 0) {
+            reason = pending + " result(s), scan(s) or upload(s) are still in progress. The answer key and points "
+                    + "can change once they are finished; text, skill mappings and the schedule can change now.";
+        } else if (captured) {
+            reason = "Answer sheets were already scanned. Question and choice text, the answer key, points of "
+                    + "multiple-choice and true/false items, skill mappings and the schedule can change; finalized "
+                    + "results are rescored automatically. The number of items, question types and choices stay.";
         } else if (!"draft".equals(status)) {
-            reason = "This assessment is active. Only the title and instructions can change; delete it if it "
-                    + "was a mistake.";
+            reason = "This assessment is active. Everything can still change; answer sheets already generated "
+                    + "are removed and must be printed again.";
         } else {
             reason = null;
         }
@@ -499,14 +852,16 @@ public class V3AssessmentService {
                 resultCount > 0,
                 resultCount,
                 hasScans,
-                "draft".equals(status) && resultCount == 0,
                 !archived,
-                // Answer-key correction with rescoring is postponed (Heart, October 2026).
-                false,
+                !archived,
+                !archived && pending == 0,
                 canHardDelete,
                 !archived,
                 archived,
-                reason
+                reason,
+                mode,
+                !archived,
+                pending
         );
     }
 

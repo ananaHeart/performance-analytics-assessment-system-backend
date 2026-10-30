@@ -862,6 +862,166 @@ public class V3AssessmentRepository {
         );
     }
 
+    /** ASM-7: scans or phone uploads already tie printed sheets to this assessment. */
+    public boolean hasCapture(long testAssignmentId) {
+        Boolean used = jdbcTemplate.queryForObject("""
+                SELECT EXISTS (SELECT 1 FROM scan_sessions WHERE test_assignment_id = ?)
+                    OR EXISTS (SELECT 1 FROM syncs WHERE test_assignment_id = ?)
+                    OR EXISTS (SELECT 1
+                                 FROM scan_pages scan_page
+                                 JOIN answer_sheet_pages page
+                                   ON page.answer_sheet_page_id = scan_page.answer_sheet_page_id
+                                 JOIN answer_sheet_versions version
+                                   ON version.answer_sheet_version_id = page.answer_sheet_version_id
+                                WHERE version.test_assignment_id = ?)
+                """, Boolean.class, testAssignmentId, testAssignmentId, testAssignmentId);
+        return Boolean.TRUE.equals(used);
+    }
+
+    /** ASM-7: results, scans and phone uploads of this assessment that are still in progress. */
+    public int countPendingResultWork(long testAssignmentId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT (SELECT COUNT(*) FROM test_results
+                         WHERE test_assignment_id = ? AND result_status IN ('draft', 'pending_verification'))
+                     + (SELECT COUNT(*) FROM scan_sessions
+                         WHERE test_assignment_id = ? AND scan_status IN ('captured', 'processing', 'needs_verification'))
+                     + (SELECT COUNT(*) FROM syncs
+                         WHERE test_assignment_id = ? AND sync_status IN ('pending', 'in_progress'))
+                """, Integer.class, testAssignmentId, testAssignmentId, testAssignmentId);
+        return count == null ? 0 : count;
+    }
+
+    public List<String> listAnswerSheetPdfKeys(long testAssignmentId) {
+        return jdbcTemplate.queryForList("""
+                SELECT pdf_storage_key
+                  FROM answer_sheet_versions
+                 WHERE test_assignment_id = ? AND pdf_storage_key IS NOT NULL
+                """, String.class, testAssignmentId);
+    }
+
+    /** ASM-7: removes answer sheets that were never scanned, so an edited assessment is printed again. */
+    public int deleteUnscannedAnswerSheets(long testAssignmentId) {
+        jdbcTemplate.update("""
+                DELETE FROM answer_sheet_regions
+                 WHERE answer_sheet_version_id IN (
+                       SELECT answer_sheet_version_id FROM answer_sheet_versions WHERE test_assignment_id = ?)
+                """, testAssignmentId);
+        jdbcTemplate.update("""
+                DELETE FROM answer_sheet_pages
+                 WHERE answer_sheet_version_id IN (
+                       SELECT answer_sheet_version_id FROM answer_sheet_versions WHERE test_assignment_id = ?)
+                """, testAssignmentId);
+        jdbcTemplate.update(
+                "UPDATE answer_sheet_versions SET source_answer_sheet_version_id = NULL WHERE test_assignment_id = ?",
+                testAssignmentId);
+        return jdbcTemplate.update("DELETE FROM answer_sheet_versions WHERE test_assignment_id = ?", testAssignmentId);
+    }
+
+    /** ASM-7: a new content version; answer sheets are generated for it again. */
+    public int incrementTestVersion(long testId) {
+        return jdbcTemplate.update("UPDATE tests SET version_number = version_number + 1 WHERE test_id = ?", testId);
+    }
+
+    public int updateActiveTestHeader(
+            long testId,
+            int termPeriodId,
+            String testName,
+            String testType,
+            String instructions,
+            int totalItems
+    ) {
+        return jdbcTemplate.update("""
+                UPDATE tests
+                   SET term_period_id = ?, test_name = ?, test_type = ?, instructions = ?, total_items = ?
+                 WHERE test_id = ? AND status IN ('active', 'completed')
+                """, termPeriodId, testName, testType, instructions, totalItems, testId);
+    }
+
+    /** ASM-7: the schedule of an active assessment; the status follows the new times. */
+    public int updateActiveSchedule(
+            long testAssignmentId,
+            Instant openAt,
+            Instant closeAt,
+            boolean allowLateCapture,
+            boolean outsideScheduleConfirmed,
+            String outsideScheduleReason,
+            Long outsideScheduleConfirmedByUserId,
+            Instant outsideScheduleConfirmedAt,
+            String assignmentStatus
+    ) {
+        return jdbcTemplate.update("""
+                UPDATE test_assignments
+                   SET open_at = ?,
+                       close_at = ?,
+                       allow_late_capture = ?,
+                       outside_schedule_confirmed = ?,
+                       outside_schedule_reason = ?,
+                       outside_schedule_confirmed_by_user_id = ?,
+                       outside_schedule_confirmed_at = ?,
+                       assignment_status = ?
+                 WHERE test_assignment_id = ? AND assignment_status <> 'archived'
+                """,
+                toTimestamp(openAt),
+                toTimestamp(closeAt),
+                allowLateCapture,
+                outsideScheduleConfirmed,
+                outsideScheduleReason,
+                outsideScheduleConfirmedByUserId,
+                toTimestamp(outsideScheduleConfirmedAt),
+                assignmentStatus,
+                testAssignmentId);
+    }
+
+    public int updateTestPartText(long testPartId, String partName, BigDecimal pointsPerItem, String partInstructions) {
+        return jdbcTemplate.update(
+                "UPDATE test_parts SET part_name = ?, points_per_item = ?, part_instructions = ? WHERE test_part_id = ?",
+                partName, pointsPerItem, partInstructions, testPartId);
+    }
+
+    public int updateQuestionContent(
+            long questionId,
+            String questionText,
+            BigDecimal maximumPoints,
+            String responseInstructions,
+            boolean answerOrderRequired,
+            Integer maximumResponseLength
+    ) {
+        return jdbcTemplate.update("""
+                UPDATE questions
+                   SET question_text = ?, maximum_points = ?, response_instructions = ?,
+                       answer_order_required = ?, maximum_response_length = ?
+                 WHERE question_id = ?
+                """, questionText, maximumPoints, responseInstructions, answerOrderRequired,
+                maximumResponseLength, questionId);
+    }
+
+    public int updateQuestionOptionText(long questionOptionId, String optionText) {
+        return jdbcTemplate.update(
+                "UPDATE question_options SET option_text = ? WHERE question_option_id = ?", optionText, questionOptionId);
+    }
+
+    public int updateAnswerKey(
+            long questionId,
+            String answerKeyType,
+            Long correctQuestionOptionId,
+            String scoringMethod,
+            String answerExplanation
+    ) {
+        return jdbcTemplate.update("""
+                UPDATE answer_keys
+                   SET answer_key_type = ?, correct_question_option_id = ?, scoring_method = ?, answer_explanation = ?
+                 WHERE question_id = ?
+                """, answerKeyType, correctQuestionOptionId, scoringMethod, answerExplanation, questionId);
+    }
+
+    public void deleteAcceptedAnswers(long questionId) {
+        jdbcTemplate.update("DELETE FROM accepted_answers WHERE question_id = ?", questionId);
+    }
+
+    public void deletePartSkillMappings(long testPartId) {
+        jdbcTemplate.update("DELETE FROM part_skill_mappings WHERE test_part_id = ?", testPartId);
+    }
+
     public void deleteParts(long testId) {
         jdbcTemplate.update("DELETE FROM test_parts WHERE test_id = ?", testId);
     }

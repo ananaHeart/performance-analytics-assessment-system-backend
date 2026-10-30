@@ -51,6 +51,8 @@ class V3ScoringServiceTest {
 
     private final V3ScoringRepository repository = mock(V3ScoringRepository.class);
     private final V3AuditService auditService = mock(V3AuditService.class);
+    private final com.capstone.assessment.v3.mobile.service.V3MobileFinalizationService mobileFinalization =
+            mock(com.capstone.assessment.v3.mobile.service.V3MobileFinalizationService.class);
     private V3ScoringService service;
 
     @BeforeEach
@@ -60,7 +62,7 @@ class V3ScoringServiceTest {
                 auditService,
                 new ObjectMapper(),
                 Clock.fixed(NOW, ZoneOffset.UTC),
-                mock(com.capstone.assessment.v3.mobile.service.V3MobileFinalizationService.class)
+                mobileFinalization
         );
     }
 
@@ -299,6 +301,43 @@ class V3ScoringServiceTest {
                 anyLong(), anyInt(), any(), any(), anyInt(), any(), anyString(),
                 anyLong(), anyInt(), any()
         );
+    }
+
+    @Test
+    void asm7ACorrectedKeyRescoresAFinalizedResultFromItsStoredAnswer() {
+        // The learner chose option 1001; the key was corrected from 1001 to 1002.
+        ResultContext context = finalizedContext(NOW.minusSeconds(3600));
+        stubReadyResult(context, List.of(
+                objectiveRow(11L, 1, "Part I", 101L, 1, "multiple_choice", "2.00", 1001L, 1002L)));
+        when(repository.listFinalizedResultIds(200L)).thenReturn(List.of(100L));
+        when(repository.updateObjectiveScore(anyLong(), anyBoolean(), any(BigDecimal.class))).thenReturn(1);
+        when(repository.updateResultScore(
+                eq(100L), eq(3), eq(new BigDecimal("0.00")), eq(new BigDecimal("2.00")), eq(1),
+                eq(new BigDecimal("0.00")), eq("priority_intervention"), eq(501L), eq(4), eq(NOW)
+        )).thenReturn(1);
+
+        assertEquals(1, service.rescoreAssignment(TEACHER, 200L, METADATA));
+
+        verify(repository).updateObjectiveScore(2001L, false, new BigDecimal("0.00"));
+        verify(mobileFinalization).recordRescore(org.mockito.ArgumentMatchers.argThat(response ->
+                response.scoreVersion() == 4 && response.totalScore().compareTo(BigDecimal.ZERO) == 0));
+        verify(auditService).record(
+                eq(42L), eq("result.score.rescore"), eq("test_results"), eq("100"),
+                eq("success"), eq(METADATA), any(), eq(NOW)
+        );
+    }
+
+    @Test
+    void asm7AnUnchangedResultIsNotRescored() {
+        stubReadyResult(finalizedContext(NOW.minusSeconds(3600)), List.of(
+                objectiveRow(11L, 1, "Part I", 101L, 1, "multiple_choice", "2.00", 1001L, 1001L)));
+        when(repository.listFinalizedResultIds(200L)).thenReturn(List.of(100L));
+
+        assertEquals(0, service.rescoreAssignment(TEACHER, 200L, METADATA));
+
+        verify(repository, never()).updateResultScore(
+                anyLong(), anyInt(), any(), any(), anyInt(), any(), any(), anyLong(), anyInt(), any());
+        verify(mobileFinalization, never()).recordRescore(any());
     }
 
     private void stubReadyResult(ResultContext context, List<ScoringRow> rows) {

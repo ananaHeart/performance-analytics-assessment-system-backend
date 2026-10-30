@@ -120,6 +120,21 @@ public class V3ScoringRepository {
         );
     }
 
+    /** ASM-7: the finalized results of one assessment delivery, for rescoring. */
+    public List<Long> listFinalizedResultIds(long testAssignmentId) {
+        return jdbcTemplate.queryForList(
+                """
+                SELECT test_result_id
+                  FROM test_results
+                 WHERE test_assignment_id = ?
+                   AND result_status = 'finalized'
+                 ORDER BY test_result_id
+                """,
+                Long.class,
+                testAssignmentId
+        );
+    }
+
     public long countAnswersOutsideTest(long testResultId, long testId) {
         Long count = jdbcTemplate.queryForObject(
                 """

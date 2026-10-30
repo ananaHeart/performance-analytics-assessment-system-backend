@@ -100,6 +100,94 @@ public class V3ScoringService {
         var mobile = correction==null?mobileFinalization.prepare(context):java.util.Optional.of(mobileFinalization.prepareCorrection(context,correction));
         if (mobile.isPresent() && mobile.get().replay() != null) return mobile.get().replay();
 
+        Instant now = clock.instant();
+        Computation computed = compute(context, user.userId(), now);
+        Map<Long, PartAccumulator> partScores = computed.partScores();
+        BigDecimal totalScore = computed.totalScore();
+        BigDecimal maxScore = computed.maxScore();
+        int objectiveUpdates = computed.objectiveUpdates();
+        RuleDecision decision = computed.decision();
+        int itemsEvaluated = computed.itemsEvaluated();
+        long ruleSetId = computed.performanceRuleSetId();
+        int roundingScale = computed.roundingScale();
+        boolean snapshotChanged = resultSnapshotChanged(
+                context,
+                totalScore,
+                maxScore,
+                itemsEvaluated,
+                decision,
+                ruleSetId
+        );
+        boolean scoreChanged = objectiveUpdates > 0 || snapshotChanged;
+
+        int scoreVersion = context.scoreVersion();
+        Instant scoredAt = context.scoredAt();
+        if (scoreChanged) {
+            scoreVersion = mobile.isPresent() && mobile.get().targetScoreVersion()>0 ? mobile.get().targetScoreVersion() : "finalized".equals(context.resultStatus())
+                    ? Math.addExact(context.scoreVersion(), 1)
+                    : Math.max(context.scoreVersion(), 1);
+            int updated = repository.updateResultScore(
+                    context.testResultId(),
+                    context.scoreVersion(),
+                    totalScore,
+                    maxScore,
+                    itemsEvaluated,
+                    decision.percentage(),
+                    decision.status(),
+                    ruleSetId,
+                    scoreVersion,
+                    now
+            );
+            if (updated != 1) {
+                throw conflict(
+                        "SCORE_UPDATE_CONFLICT",
+                        "The result changed while it was being scored. Reload it and try again."
+                );
+            }
+            scoredAt = now;
+            auditService.record(
+                    user.userId(),
+                    "result.score.finalize",
+                    "test_results",
+                    Long.toString(context.testResultId()),
+                    "success",
+                    requestMetadata,
+                    Map.of(
+                            "testId", context.testId(),
+                            "classListId", context.classListId(),
+                            "totalScore", totalScore.toPlainString(),
+                            "maxScore", maxScore.toPlainString(),
+                            "itemsEvaluated", itemsEvaluated,
+                            "performanceStatus", decision.status(),
+                            "performanceRuleSetId", ruleSetId,
+                            "scoreVersion", scoreVersion
+                    ),
+                    now
+            );
+        }
+
+        var response = response(
+                context,
+                totalScore,
+                maxScore,
+                decision,
+                ruleSetId,
+                itemsEvaluated,
+                scoreVersion,
+                scoredAt,
+                scoreChanged,
+                partScores,
+                roundingScale
+        );
+        if (mobile.isPresent()) mobileFinalization.complete(mobile.get(), response);
+        return response;
+    }
+
+    /**
+     * Scores every answer of the result against the current answer keys and the active rule.
+     * verifierUserId null keeps each answer's own verifier (rescoring after a key correction).
+     */
+    private Computation compute(ResultContext context, Long verifierUserId, Instant now) {
         List<ScoringRow> rows = repository.findScoringRowsForUpdate(context.testId(), context.testResultId());
         if (rows.isEmpty()) {
             throw conflict("RESULT_NOT_READY", "The assessment has no questions to score.");
@@ -111,8 +199,7 @@ public class V3ScoringService {
             );
         }
 
-        Instant now = clock.instant();
-        PerformanceRuleSet ruleSet = repository.findActiveStudentScoreRuleSet(user.schoolId(), now)
+        PerformanceRuleSet ruleSet = repository.findActiveStudentScoreRuleSet(context.testSchoolId(), now)
                 .orElseThrow(() -> conflict(
                         "SCORING_RULE_NOT_CONFIGURED",
                         "No active student-score performance rule is configured for this school."
@@ -125,7 +212,7 @@ public class V3ScoringService {
         int objectiveUpdates = 0;
 
         for (ScoringRow row : rows) {
-            validateCommonAnswer(row, user.userId());
+            validateCommonAnswer(row, verifierUserId);
             ScoredAnswer scoredAnswer = scoreAnswer(row);
 
             if (OBJECTIVE_TYPES.contains(row.questionTypeCode())) {
@@ -153,77 +240,87 @@ public class V3ScoringService {
 
         RuleDecision decision = parsedRule.decide(percentage(totalScore, maxScore, parsedRule.roundingScale()));
         int itemsEvaluated = rows.size();
-        boolean snapshotChanged = resultSnapshotChanged(
-                context,
-                totalScore,
-                maxScore,
-                itemsEvaluated,
-                decision,
-                ruleSet.performanceRuleSetId()
-        );
-        boolean scoreChanged = objectiveUpdates > 0 || snapshotChanged;
+        return new Computation(partScores, totalScore, maxScore, decision, ruleSet.performanceRuleSetId(),
+                itemsEvaluated, objectiveUpdates, parsedRule.roundingScale());
+    }
 
-        int scoreVersion = context.scoreVersion();
-        Instant scoredAt = context.scoredAt();
-        if (scoreChanged) {
-            scoreVersion = mobile.isPresent() && mobile.get().targetScoreVersion()>0 ? mobile.get().targetScoreVersion() : "finalized".equals(context.resultStatus())
-                    ? Math.addExact(context.scoreVersion(), 1)
-                    : Math.max(context.scoreVersion(), 1);
-            int updated = repository.updateResultScore(
+    private record Computation(
+            Map<Long, PartAccumulator> partScores,
+            BigDecimal totalScore,
+            BigDecimal maxScore,
+            RuleDecision decision,
+            long performanceRuleSetId,
+            int itemsEvaluated,
+            int objectiveUpdates,
+            int roundingScale
+    ) {
+    }
+
+    /**
+     * ASM-7: the teacher corrected an objective answer key or its points after results exist.
+     * Each finalized result is recomputed from the answers already stored (they never change
+     * here). A changed score is updated in place under the next score version, and the phone's
+     * official receipt follows it. Written items keep their teacher-verified points.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public int rescoreAssignment(V3AuthenticatedUser user, long testAssignmentId, V3RequestMetadata requestMetadata) {
+        requireTeacher(user);
+        mobileFinalization.lockOwner(user);
+        int rescored = 0;
+        for (long testResultId : repository.listFinalizedResultIds(testAssignmentId)) {
+            ResultContext context = repository.findResultContextForUpdate(testResultId)
+                    .orElseThrow(() -> conflict("RESCORE_CONFLICT", "A result changed while it was being rescored."));
+            validateOwnership(user, context);
+            Instant now = clock.instant();
+            Computation computed = compute(context, null, now);
+            if (computed.objectiveUpdates() == 0
+                    && sameNumber(context.totalScore(), computed.totalScore())
+                    && sameNumber(context.maxScore(), computed.maxScore())) {
+                continue;
+            }
+            int scoreVersion = Math.addExact(context.scoreVersion(), 1);
+            if (repository.updateResultScore(
                     context.testResultId(),
                     context.scoreVersion(),
-                    totalScore,
-                    maxScore,
-                    itemsEvaluated,
-                    decision.percentage(),
-                    decision.status(),
-                    ruleSet.performanceRuleSetId(),
+                    computed.totalScore(),
+                    computed.maxScore(),
+                    computed.itemsEvaluated(),
+                    computed.decision().percentage(),
+                    computed.decision().status(),
+                    computed.performanceRuleSetId(),
                     scoreVersion,
                     now
-            );
-            if (updated != 1) {
-                throw conflict(
-                        "SCORE_UPDATE_CONFLICT",
-                        "The result changed while it was being scored. Reload it and try again."
-                );
+            ) != 1) {
+                throw conflict("RESCORE_CONFLICT", "A result changed while it was being rescored. Reload and try again.");
             }
-            scoredAt = now;
+            V3ScoredResultResponse response = response(context, computed.totalScore(), computed.maxScore(),
+                    computed.decision(), computed.performanceRuleSetId(), computed.itemsEvaluated(), scoreVersion,
+                    now, true, computed.partScores(), computed.roundingScale());
+            try {
+                mobileFinalization.recordRescore(response);
+            } catch (IllegalStateException exception) {
+                throw conflict("RESCORE_CONFLICT", "A result changed while it was being rescored. Reload and try again.");
+            }
             auditService.record(
                     user.userId(),
-                    "result.score.finalize",
+                    "result.score.rescore",
                     "test_results",
                     Long.toString(context.testResultId()),
                     "success",
                     requestMetadata,
                     Map.of(
                             "testId", context.testId(),
-                            "classListId", context.classListId(),
-                            "totalScore", totalScore.toPlainString(),
-                            "maxScore", maxScore.toPlainString(),
-                            "itemsEvaluated", itemsEvaluated,
-                            "performanceStatus", decision.status(),
-                            "performanceRuleSetId", ruleSet.performanceRuleSetId(),
+                            "previousTotalScore", context.totalScore() == null ? "" : context.totalScore().toPlainString(),
+                            "totalScore", computed.totalScore().toPlainString(),
+                            "maxScore", computed.maxScore().toPlainString(),
+                            "performanceStatus", computed.decision().status(),
                             "scoreVersion", scoreVersion
                     ),
                     now
             );
+            rescored++;
         }
-
-        var response = response(
-                context,
-                totalScore,
-                maxScore,
-                decision,
-                ruleSet.performanceRuleSetId(),
-                itemsEvaluated,
-                scoreVersion,
-                scoredAt,
-                scoreChanged,
-                partScores,
-                parsedRule.roundingScale()
-        );
-        if (mobile.isPresent()) mobileFinalization.complete(mobile.get(), response);
-        return response;
+        return rescored;
     }
 
     private void requireTeacher(V3AuthenticatedUser user) {
@@ -273,7 +370,7 @@ public class V3ScoringService {
         }
     }
 
-    private void validateCommonAnswer(ScoringRow row, long teacherUserId) {
+    private void validateCommonAnswer(ScoringRow row, Long teacherUserId) {
         if (row.answerKeyId() == null) {
             throw conflict(
                     "ANSWER_KEY_MISSING",
@@ -295,7 +392,7 @@ public class V3ScoringService {
                     "Question " + row.questionId() + " is not fully teacher-verified."
             );
         }
-        if (row.verifiedByUserId() != teacherUserId) {
+        if (teacherUserId != null && row.verifiedByUserId().longValue() != teacherUserId) {
             throw error(
                     "ANSWER_VERIFIER_MISMATCH",
                     "Question " + row.questionId() + " was not verified by the assigned teacher.",
