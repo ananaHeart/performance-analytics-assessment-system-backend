@@ -262,13 +262,11 @@ public final class DynamicSheetPdfRenderer {
         float fieldsY = pageHeight - 124;
         float scoreWidth = 92;
         float dateWidth = 92;
-        float lrnWidth = 124;
-        float nameWidth = width - scoreWidth - dateWidth - lrnWidth - 30;
+        // No LRN: learners don't know it; the name line takes its space.
+        float nameWidth = width - scoreWidth - dateWidth - 20;
         float fieldX = left;
         drawField(content, "Name", fieldX, fieldsY, nameWidth);
         fieldX += nameWidth + 10;
-        drawField(content, "LRN", fieldX, fieldsY, lrnWidth);
-        fieldX += lrnWidth + 10;
         drawField(content, "Date", fieldX, fieldsY, dateWidth);
         fieldX += dateWidth + 10;
         drawField(content, "Score", fieldX, fieldsY, scoreWidth - 26);
