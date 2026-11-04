@@ -171,6 +171,84 @@ public class V3VerificationEmailSender {
         );
     }
 
+    /** R2-6: a notice without a code (for example, why a password reset cannot be done). */
+    public String sendAccountNotice(String recipient, String subject, String label, String heading, String message) {
+        String mode = properties.getEmailDeliveryMode().trim().toLowerCase(Locale.ROOT);
+        if ("log".equals(mode)) {
+            LOGGER.warn("LOCAL-ONLY V3 notice for {}: {}", maskEmail(recipient), subject);
+            return "local_log";
+        }
+        String text = "Marka\n\n" + heading + "\n\n" + message + "\n";
+        String html = """
+                <!doctype html>
+                <html lang="en">
+                <body style="margin:0;padding:32px 16px;background:#f3f6f2;font-family:Arial,Helvetica,sans-serif;color:#0b1739;">
+                  <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #dce5da;">
+                    <tr><td style="padding:24px 32px;background:#173f2b;color:#fff;font-size:20px;font-weight:700;">Marka</td></tr>
+                    <tr><td style="padding:32px;">
+                      <div style="font-size:13px;font-weight:700;color:#2d7d24;text-transform:uppercase;">%s</div>
+                      <h1 style="margin:10px 0 12px;font-size:26px;">%s</h1>
+                      <p style="margin:0;font-size:16px;line-height:1.6;color:#4d5d73;">%s</p>
+                    </td></tr>
+                  </table>
+                </body>
+                </html>
+                """.formatted(label, heading, message);
+        if ("brevo-api".equals(mode)) {
+            String apiKey = properties.getBrevoApiKey();
+            if (apiKey == null || apiKey.isBlank()) {
+                throw unavailable("Brevo API email delivery is not configured.");
+            }
+            String body;
+            try {
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("sender", Map.of("name", SENDER_NAME, "email", properties.getEmailFromAddress()));
+                payload.put("to", List.of(Map.of("email", recipient)));
+                payload.put("subject", subject);
+                payload.put("textContent", text);
+                payload.put("htmlContent", html);
+                body = JSON.writeValueAsString(payload);
+            } catch (JsonProcessingException exception) {
+                throw new IllegalStateException("Could not build the notice email.", exception);
+            }
+            int status;
+            try {
+                status = brevoTransport.post(URI.create(properties.getBrevoApiUrl()), apiKey.trim(), body);
+            } catch (IOException | IllegalArgumentException exception) {
+                LOGGER.error("V3 notice email (Brevo API) failed for {}.", maskEmail(recipient), exception);
+                throw deliveryFailed();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw deliveryFailed();
+            }
+            if (status < 200 || status >= 300) {
+                LOGGER.error("V3 notice email (Brevo API) rejected with HTTP {} for {}.", status, maskEmail(recipient));
+                throw deliveryFailed();
+            }
+            return "brevo_api";
+        }
+        if (!"smtp".equals(mode)) {
+            throw unavailable("V3 email delivery mode must be log, smtp or brevo-api.");
+        }
+        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+        if (mailSender == null) {
+            throw unavailable("Email delivery is not configured.");
+        }
+        try {
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, true, "UTF-8");
+            helper.setFrom(properties.getEmailFromAddress(), SENDER_NAME);
+            helper.setTo(recipient);
+            helper.setSubject(subject);
+            helper.setText(text, html);
+            mailSender.send(mime);
+            return "smtp";
+        } catch (MailException | MessagingException | UnsupportedEncodingException exception) {
+            LOGGER.error("V3 notice email delivery failed for {}.", maskEmail(recipient), exception);
+            throw deliveryFailed();
+        }
+    }
+
     private V3AuthException unavailable(String message) {
         return new V3AuthException("EMAIL_DELIVERY_UNAVAILABLE", message, HttpStatus.SERVICE_UNAVAILABLE);
     }

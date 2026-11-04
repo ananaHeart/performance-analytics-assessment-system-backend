@@ -25,7 +25,13 @@ public enum V3EmailCodePurpose {
             "Password reset",
             "Reset your password",
             "Enter this code in Marka to set a new password.",
-            "If you did not ask to reset your password, ignore this email. Your password stays the same.");
+            "If you did not ask to reset your password, ignore this email. Your password stays the same."),
+    PASSWORD_CHANGE(
+            "Your Marka password change code",
+            "Password change",
+            "Confirm your password change",
+            "Enter this code in Marka Settings to change your password.",
+            "If you did not ask to change your password, sign in and change it now, or contact the school principal.");
 
     private final String subject;
     private final String label;

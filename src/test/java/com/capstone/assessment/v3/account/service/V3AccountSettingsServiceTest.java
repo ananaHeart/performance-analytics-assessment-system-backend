@@ -69,17 +69,52 @@ class V3AccountSettingsServiceTest {
     }
 
     @Test
-    void set6ChangingThePasswordEndsTheOtherSessionsOnly() {
+    void set6R2_10ChangingThePasswordNeedsTheEmailedCodeAndEndsTheOtherSessionsOnly() {
+        ArgumentCaptor<String> hash = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> otp = ArgumentCaptor.forClass(String.class);
+        when(repository.insertChallenge(anyString(), eq(42L), eq("sensitive_action"), eq("email"), anyString(),
+                hash.capture(), anyInt(), anyInt(), any(), any(), any())).thenReturn(9L);
+        V3AccountCodeResponse sent = service.startPasswordChange(USER, null);
+        verify(emailSender).sendVerificationCode(eq("ana@example.com"), otp.capture(),
+                eq(V3EmailCodePurpose.PASSWORD_CHANGE));
+        when(repository.lockChallenge(sent.challengeUuid(), 42L)).thenReturn(Optional.of(new ChallengeRow(
+                9L, sent.challengeUuid(), "sensitive_action", "email", hash.getValue(), "pending", "sent",
+                0, 5, 0, NOW, NOW.plusSeconds(600))));
+
+        assertEquals("VERIFICATION_CODE_REQUIRED", assertThrows(V3FieldValidationException.class,
+                () -> service.changePassword(USER, new V3PasswordChangeRequest("Current#Pass1", "New#Passw0rd",
+                        null, null), null)).getErrors().get("code"));
         assertEquals("CURRENT_PASSWORD_INCORRECT", assertThrows(V3FieldValidationException.class,
-                () -> service.changePassword(USER, new V3PasswordChangeRequest("Wrong#Pass1", "New#Passw0rd"), null))
-                .getErrors().get("code"));
-        assertThrows(V3FieldValidationException.class,
-                () -> service.changePassword(USER, new V3PasswordChangeRequest("Current#Pass1", "weakpass"), null));
+                () -> service.changePassword(USER, new V3PasswordChangeRequest("Wrong#Pass1", "New#Passw0rd",
+                        sent.challengeUuid(), otp.getValue()), null)).getErrors().get("code"));
+        assertThrows(V3FieldValidationException.class, () -> service.changePassword(USER,
+                new V3PasswordChangeRequest("Current#Pass1", "weakpass", sent.challengeUuid(), otp.getValue()), null));
+        String wrongCode = "000000".equals(otp.getValue()) ? "111111" : "000000";
+        assertEquals("INVALID_VERIFICATION_CODE", assertThrows(V3AuthException.class, () -> service.changePassword(
+                USER, new V3PasswordChangeRequest("Current#Pass1", "New#Passw0rd", sent.challengeUuid(), wrongCode),
+                null)).getCode());
+        verify(repository, never()).updatePassword(anyLong(), anyString(), any());
 
-        service.changePassword(USER, new V3PasswordChangeRequest("Current#Pass1", "New#Passw0rd"), null);
+        service.changePassword(USER, new V3PasswordChangeRequest("Current#Pass1", "New#Passw0rd",
+                sent.challengeUuid(), otp.getValue()), null);
 
+        verify(registrationRepository).markChallengeVerified(9L, NOW);
         verify(repository).updatePassword(eq(42L), anyString(), eq(NOW));
         verify(authRepository).revokeOtherSessions(42L, "session-1", NOW);
+    }
+
+    @Test
+    void r2_6AnArchivedAccountGetsANoticeInsteadOfAResetCode() {
+        when(repository.findResettableUserId("email", "ana@example.com")).thenReturn(Optional.empty());
+        when(repository.findBlockedResetStatus("ana@example.com")).thenReturn(Optional.of("archived"));
+
+        V3AccountCodeResponse answer = service.requestPasswordReset(
+                new V3PasswordResetRequest("Ana@Example.com", null, null, null), null);
+
+        assertEquals("email", answer.channel());
+        verify(emailSender).sendAccountNotice(eq("ana@example.com"), eq("Your Marka account is archived"),
+                anyString(), anyString(), anyString());
+        verify(emailSender, never()).sendVerificationCode(anyString(), anyString(), any());
     }
 
     @Test

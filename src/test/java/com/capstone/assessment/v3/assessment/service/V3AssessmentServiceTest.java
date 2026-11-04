@@ -1,5 +1,6 @@
 package com.capstone.assessment.v3.assessment.service;
 
+import com.capstone.assessment.v3.assessment.dto.V3AssessmentSummaryResponse;
 import java.util.ArrayList;
 import com.capstone.assessment.v3.assessment.model.V3AssessmentModels.AnswerKeyRow;
 import com.capstone.assessment.v3.answersheet.service.V3AnswerSheetFileStorage;
@@ -398,8 +399,9 @@ class V3AssessmentServiceTest {
 
         assertEquals("full", eligibility.contentEditMode());
         assertEquals(true, eligibility.canCorrectAnswerKey());
-        assertEquals("This assessment is active. Everything can still change; answer sheets already generated "
-                + "are removed and must be printed again.", eligibility.reason());
+        assertEquals("This assessment is active. Everything can still change. Changing items, question types "
+                + "or choices removes the generated answer sheet, which must be printed again; other changes "
+                + "need no reprint.", eligibility.reason());
     }
 
     @Test
@@ -724,19 +726,18 @@ class V3AssessmentServiceTest {
     }
 
     @Test
-    void asm7AnActiveAssessmentWithNothingScannedIsRebuiltAndItsSheetsRemoved() {
+    void asm7R2_9ANewItemBeforeScanningRebuildsTheAssessmentAndRemovesItsSheets() {
         stubValidCreationContext();
         when(repository.findHeader(1000L)).thenReturn(Optional.of(header("active", 5)));
         stubStoredMultipleChoiceGraph("B");
         when(repository.listAnswerSheetPdfKeys(2000L)).thenReturn(List.of("old-sheet.pdf"));
         when(repository.deleteUnscannedAnswerSheets(2000L)).thenReturn(1);
-        when(repository.updateActiveTestHeader(1000L, 9, "Five Type Assessment", "quiz", "Mixed assessment", 5))
+        when(repository.updateActiveTestHeader(1000L, 9, "Five Type Assessment", "quiz", "Mixed assessment", 6))
                 .thenReturn(1);
         when(repository.updateActiveSchedule(eq(2000L), any(), any(), anyBoolean(), anyBoolean(), any(), any(),
                 any(), anyString())).thenReturn(1);
 
-        service.updateAssessment(TEACHER, 1000L, fiveMultipleChoiceRequest("B", "Which state has a fixed "
-                + "volume but no fixed shape?"), null);
+        service.updateAssessment(TEACHER, 1000L, sixMultipleChoiceRequest(), null);
 
         verify(repository).deleteUnscannedAnswerSheets(2000L);
         verify(repository).deleteParts(1000L);
@@ -763,11 +764,74 @@ class V3AssessmentServiceTest {
                 + "volume but no fixed shape?"), null);
 
         // Question 1 keeps its id and options; only its key moves from B to C (option id 4013).
-        verify(repository).updateAnswerKey(4001L, "option", 4013L, "exact", null);
+        verify(repository).updateAnswerKey(4001L, "option", 4013L, "exact", null, null);
         verify(scoringService).rescoreAssignment(TEACHER, 2000L, null);
         verify(repository, never()).deleteParts(anyLong());
         verify(repository, never()).deleteUnscannedAnswerSheets(anyLong());
         verify(repository, never()).incrementTestVersion(anyLong());
+    }
+
+    @Test
+    void r2_9ASameLayoutEditBeforeScanningKeepsThePrintedSheets() {
+        stubValidCreationContext();
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("active", 5)));
+        stubStoredMultipleChoiceGraph("B");
+        when(repository.updateActiveTestHeader(1000L, 9, "Five Type Assessment", "quiz", "Mixed assessment", 5))
+                .thenReturn(1);
+        when(repository.updateActiveSchedule(eq(2000L), any(), any(), anyBoolean(), anyBoolean(), any(), any(),
+                any(), anyString())).thenReturn(1);
+
+        service.updateAssessment(TEACHER, 1000L, fiveMultipleChoiceRequest("C", "Which state has a fixed "
+                + "volume but no fixed shape?"), null);
+
+        verify(repository).updateAnswerKey(4001L, "option", 4013L, "exact", null, null);
+        verify(repository, never()).deleteUnscannedAnswerSheets(anyLong());
+        verify(repository, never()).deleteParts(anyLong());
+        verify(repository, never()).incrementTestVersion(anyLong());
+        verify(scoringService, never()).rescoreAssignment(any(), anyLong(), any());
+    }
+
+    @Test
+    void r2_9TheEditImpactSaysWhetherAReprintIsNeeded() {
+        stubValidCreationContext();
+        when(repository.findHeader(1000L)).thenReturn(Optional.of(header("active", 5)));
+        stubStoredMultipleChoiceGraph("B");
+        when(repository.countAnswerSheetVersions(2000L)).thenReturn(1);
+
+        var sameLayout = service.previewEdit(TEACHER, 1000L, fiveMultipleChoiceRequest("C", "Which state has a "
+                + "fixed volume but no fixed shape?"));
+        assertEquals("same_layout", sameLayout.mode());
+        assertEquals(false, sameLayout.reprintRequired());
+        assertEquals(true, sameLayout.answerKeyChanged());
+        assertEquals(true, sameLayout.canSave());
+
+        var newItem = service.previewEdit(TEACHER, 1000L, sixMultipleChoiceRequest());
+        assertEquals("layout_change", newItem.mode());
+        assertEquals(true, newItem.reprintRequired());
+
+        when(repository.countResults(2000L)).thenReturn(3);
+        when(repository.countFinalizedResults(2000L)).thenReturn(3);
+        var scanned = service.previewEdit(TEACHER, 1000L, sixMultipleChoiceRequest());
+        assertEquals(false, scanned.canSave());
+        assertEquals("ASSESSMENT_STRUCTURE_LOCKED", scanned.blockedCode());
+        var rescored = service.previewEdit(TEACHER, 1000L, fiveMultipleChoiceRequest("C", "Which state has a "
+                + "fixed volume but no fixed shape?"));
+        assertEquals(3, rescored.rescoreResultCount());
+        assertEquals(false, rescored.reprintRequired());
+        verify(repository, never()).updateAnswerKey(anyLong(), any(), any(), any(), any(), any());
+        verify(repository, never()).deleteUnscannedAnswerSheets(anyLong());
+    }
+
+    @Test
+    void r2_8EveryPageGetsTheSameStatus() {
+        Instant now = NOW;
+        assertEquals("draft", V3AssessmentSummaryResponse.displayStatus("draft", "planned", null, now, 30, 0));
+        assertEquals("active", V3AssessmentSummaryResponse.displayStatus("active", "open", now.plusSeconds(60),
+                now, 30, 12));
+        assertEquals("completed", V3AssessmentSummaryResponse.displayStatus("active", "open", null, now, 30, 30));
+        assertEquals("completed", V3AssessmentSummaryResponse.displayStatus("active", "open",
+                now.minusSeconds(60), now, 30, 0));
+        assertEquals("archived", V3AssessmentSummaryResponse.displayStatus("active", "archived", null, now, 30, 30));
     }
 
     @Test
@@ -965,6 +1029,14 @@ class V3AssessmentServiceTest {
         when(repository.findActiveQuestionType("essay"))
                 .thenReturn(Optional.of(questionType(5, "essay", false, true, true)));
         when(repository.findValidSkillIds(Set.of(501L), 9, 8, 2)).thenReturn(Set.of(501L));
+    }
+
+    private V3AssessmentRequest sixMultipleChoiceRequest() {
+        List<V3AssessmentQuestionRequest> six = new ArrayList<>();
+        for (int item = 1; item <= 6; item++) {
+            six.add(mcQuestion(item));
+        }
+        return requestWithParts(List.of(multipleChoicePart(1, six, 6, fullMapping(6))));
     }
 
     private V3AssessmentRequest fiveMultipleChoiceRequest(String firstKey, String text) {

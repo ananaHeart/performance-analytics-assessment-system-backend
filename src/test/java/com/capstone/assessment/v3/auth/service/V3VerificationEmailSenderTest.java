@@ -78,6 +78,24 @@ class V3VerificationEmailSenderTest {
     }
 
     @Test
+    void r2_6AnAccountNoticeGoesThroughTheBrevoApiWithoutACode() throws Exception {
+        AtomicReference<String> body = new AtomicReference<>();
+        V3VerificationEmailSender sender = new V3VerificationEmailSender(mailSender, brevoProperties(), (u, k, b) -> {
+            body.set(b);
+            return 201;
+        });
+
+        assertEquals("brevo_api", sender.sendAccountNotice("teacher@example.invalid",
+                "Your Marka account is archived", "Password reset", "This account is archived",
+                "Please contact the school principal to restore access."));
+
+        JsonNode json = new ObjectMapper().readTree(body.get());
+        assertEquals("Your Marka account is archived", json.get("subject").asText());
+        assertTrue(json.get("textContent").asText().contains("Please contact the school principal"));
+        assertTrue(json.get("htmlContent").asText().contains(">This account is archived</h1>"));
+    }
+
+    @Test
     void aRejectedOrUnreachableBrevoRequestIsReportedAsADeliveryFailure() {
         V3VerificationEmailSender rejected = new V3VerificationEmailSender(mailSender, brevoProperties(), (u, k, b) -> 401);
         V3VerificationEmailSender unreachable = new V3VerificationEmailSender(mailSender, brevoProperties(), (u, k, b) -> {

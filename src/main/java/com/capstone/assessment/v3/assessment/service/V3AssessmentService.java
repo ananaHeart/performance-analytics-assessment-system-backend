@@ -247,7 +247,8 @@ public class V3AssessmentService {
         return repository.listAssessments(
                 user.userId(),
                 user.schoolId(),
-                classAssignmentId
+                classAssignmentId,
+                clock.instant()
         );
     }
 
@@ -369,16 +370,124 @@ public class V3AssessmentService {
         }
         Instant now = clock.instant();
         PreparedAssessment prepared = prepareAssessment(user, request, header, now);
-        long assignmentId = header.testAssignmentId();
-        boolean captured = repository.countResults(assignmentId) > 0 || repository.hasCapture(assignmentId);
+        EditPlan plan = planActiveEdit(user, header, prepared);
+        if (plan.blocked() != null) {
+            throw plan.blocked();
+        }
         try {
-            return captured
-                    ? editActiveInPlace(user, header, prepared, metadata, now)
-                    : rebuildActiveAssessment(user, header, prepared, metadata, now);
+            return plan.layoutChanged()
+                    ? rebuildActiveAssessment(user, header, prepared, metadata, now)
+                    : editActiveInPlace(user, header, prepared, plan, metadata, now);
         } catch (DataIntegrityViolationException exception) {
             throw conflict("ASSESSMENT_CONFLICT",
                     "The assessment conflicts with existing assessment or rubric data.");
         }
+    }
+
+    /**
+     * R2-9: what an edit of an active assessment does; saving and the edit-impact warning use the
+     * same rules. Bubbles that stay in place mean printed sheets keep working (no reprint).
+     */
+    private EditPlan planActiveEdit(V3AuthenticatedUser user, AssessmentHeader header, PreparedAssessment prepared) {
+        long assignmentId = header.testAssignmentId();
+        V3AssessmentResponse current = requireAssessment(user, header.testId());
+        boolean captured = repository.countResults(assignmentId) > 0 || repository.hasCapture(assignmentId);
+        Optional<LayoutChange> layout = layoutChange(current, prepared);
+        boolean answerKeyChanged = layout.isEmpty() && answerKeyChanged(current, prepared);
+        boolean printedTextChanged = layout.isEmpty() && printedTextChanged(current, prepared);
+        V3AuthException blocked = null;
+        if (captured) {
+            Optional<LayoutChange> locked = layout.isPresent() ? layout : checkedAnswerChange(current, prepared);
+            if (locked.isPresent()) {
+                blocked = layoutLocked(locked.get().field(), locked.get().what());
+            } else if (answerKeyChanged) {
+                int pending = repository.countPendingResultWork(assignmentId);
+                if (pending > 0) {
+                    blocked = new V3AuthException("ASSESSMENT_RESULTS_PENDING",
+                            pending + " result(s), scan(s) or upload(s) are still in progress. Finish them before "
+                                    + "changing the answer key or points; text, skill mappings and the schedule can "
+                                    + "change now.",
+                            HttpStatus.CONFLICT, Map.of("pendingCount", pending));
+                }
+            }
+        }
+        int rescore = captured && answerKeyChanged && blocked == null
+                ? repository.countFinalizedResults(assignmentId)
+                : 0;
+        return new EditPlan(current, captured, layout.isPresent(), answerKeyChanged, printedTextChanged,
+                repository.countAnswerSheetVersions(assignmentId), rescore, blocked);
+    }
+
+    private record EditPlan(
+            V3AssessmentResponse current,
+            boolean captured,
+            boolean layoutChanged,
+            boolean answerKeyChanged,
+            boolean printedTextChanged,
+            int answerSheetCount,
+            int rescoreResultCount,
+            V3AuthException blocked
+    ) {
+    }
+
+    private record LayoutChange(String field, String what) {
+    }
+
+    /** R2-9: what saving this edit would do, without saving; the web warns before the teacher saves. */
+    @Transactional(readOnly = true)
+    public com.capstone.assessment.v3.assessment.dto.V3AssessmentEditImpactResponse previewEdit(
+            V3AuthenticatedUser user,
+            long testId,
+            V3AssessmentRequest request
+    ) {
+        requireTeacher(user);
+        AssessmentHeader header = requireOwnedHeader(user, testId);
+        if ("archived".equals(header.status())) {
+            return new com.capstone.assessment.v3.assessment.dto.V3AssessmentEditImpactResponse(testId,
+                    header.status(), "none", false, false, 0, false, false, 0, "ASSESSMENT_ARCHIVED",
+                    "Restore the assessment before changing it.");
+        }
+        if (request != null && header.classAssignmentId() != request.classAssignmentId()) {
+            throw invalid("classAssignmentId",
+                    "An existing assessment cannot be moved to a different class assignment.");
+        }
+        Instant now = clock.instant();
+        PreparedAssessment prepared = prepareAssessment(user, request, header, now);
+        if ("draft".equals(header.status())) {
+            return new com.capstone.assessment.v3.assessment.dto.V3AssessmentEditImpactResponse(testId,
+                    header.status(), "draft", true, false, 0, false, false, 0, null,
+                    "This is a draft; no answer sheet exists yet.");
+        }
+        EditPlan plan = planActiveEdit(user, header, prepared);
+        String mode = plan.layoutChanged() ? "layout_change" : "same_layout";
+        if (plan.blocked() != null) {
+            return new com.capstone.assessment.v3.assessment.dto.V3AssessmentEditImpactResponse(testId,
+                    header.status(), mode, false, false, plan.answerSheetCount(), plan.printedTextChanged(),
+                    plan.answerKeyChanged(), 0, plan.blocked().getCode(), plan.blocked().getMessage());
+        }
+        checkActiveSchedule(header, prepared, plan.captured(), now);
+        boolean reprint = plan.layoutChanged() && plan.answerSheetCount() > 0;
+        String message;
+        if (plan.layoutChanged()) {
+            message = reprint
+                    ? "This change moves bubbles on the answer sheet (items, question types or choices). The "
+                            + "generated answer sheet will be removed; generate and print the new one."
+                    : "This change affects the answer-sheet layout. No answer sheet was generated yet, so nothing "
+                            + "needs reprinting.";
+        } else {
+            message = "The answer-sheet layout stays the same, so printed sheets still scan. No reprint needed.";
+            if (plan.printedTextChanged()) {
+                message += " Old copies show the old title, part names or points; reprint only if you want the "
+                        + "new text on paper.";
+            }
+            if (plan.rescoreResultCount() > 0) {
+                message += " " + plan.rescoreResultCount()
+                        + " finalized result(s) will be rescored with the new answer key.";
+            }
+        }
+        return new com.capstone.assessment.v3.assessment.dto.V3AssessmentEditImpactResponse(testId,
+                header.status(), mode, true, reprint, plan.answerSheetCount(), plan.printedTextChanged(),
+                plan.answerKeyChanged(), plan.rescoreResultCount(), null, message);
     }
 
     private V3AssessmentResponse rebuildActiveAssessment(
@@ -405,35 +514,22 @@ public class V3AssessmentService {
         return requireAssessment(user, testId);
     }
 
+    /** Same bubbles: rows change in place, so generated and printed sheets keep matching (no reprint). */
     private V3AssessmentResponse editActiveInPlace(
             V3AuthenticatedUser user,
             AssessmentHeader header,
             PreparedAssessment prepared,
+            EditPlan plan,
             V3RequestMetadata metadata,
             Instant now
     ) {
         long testId = header.testId();
-        V3AssessmentResponse current = requireAssessment(user, testId);
-        requireSameLayout(current, prepared);
-        List<V3AssessmentResponse.Part> currentParts = sortedParts(current);
-        boolean scoringChanged = false;
-        for (int index = 0; index < currentParts.size(); index++) {
-            List<V3AssessmentResponse.Question> questions = sortedQuestions(currentParts.get(index));
-            List<PreparedQuestion> next = sortedPrepared(prepared.parts().get(index));
-            for (int item = 0; item < questions.size(); item++) {
-                scoringChanged |= scoringChanged(questions.get(item), next.get(item));
-            }
-        }
-        int pending = repository.countPendingResultWork(header.testAssignmentId());
-        if (scoringChanged && pending > 0) {
-            throw new V3AuthException("ASSESSMENT_RESULTS_PENDING",
-                    pending + " result(s), scan(s) or upload(s) are still in progress. Finish them before changing "
-                            + "the answer key or points; text, skill mappings and the schedule can change now.",
-                    HttpStatus.CONFLICT, Map.of("pendingCount", pending));
-        }
+        List<V3AssessmentResponse.Part> currentParts = sortedParts(plan.current());
+        boolean scoringChanged = plan.answerKeyChanged();
+        Set<Long> replacedRubrics = new HashSet<>();
 
         updateActiveHeader(header, prepared);
-        applyActiveSchedule(header, prepared, true, now);
+        applyActiveSchedule(header, prepared, plan.captured(), now);
         for (int index = 0; index < currentParts.size(); index++) {
             V3AssessmentResponse.Part part = currentParts.get(index);
             PreparedPart nextPart = prepared.parts().get(index);
@@ -449,10 +545,16 @@ public class V3AssessmentService {
             List<V3AssessmentResponse.Question> questions = sortedQuestions(part);
             List<PreparedQuestion> nextQuestions = sortedPrepared(nextPart);
             for (int item = 0; item < questions.size(); item++) {
-                updateQuestionInPlace(questions.get(item), nextQuestions.get(item));
+                updateQuestionInPlace(user, questions.get(item), nextQuestions.get(item), replacedRubrics);
             }
         }
-        int rescored = scoringChanged
+        if (!replacedRubrics.isEmpty()) {
+            repository.activateDraftRubricsForTest(testId, user.userId());
+            for (Long rubricId : replacedRubrics) {
+                repository.deleteDraftRubricIfUnused(rubricId, user.userId());
+            }
+        }
+        int rescored = plan.captured() && scoringChanged
                 ? scoringService.rescoreAssignment(user, header.testAssignmentId(), metadata)
                 : 0;
         auditService.record(user.userId(), "assessment.update_active", "tests", Long.toString(testId), "success",
@@ -463,7 +565,8 @@ public class V3AssessmentService {
 
     private void updateActiveHeader(AssessmentHeader header, PreparedAssessment prepared) {
         if (repository.updateActiveTestHeader(header.testId(), prepared.termPeriodId(), prepared.testName(),
-                prepared.testType(), prepared.instructions(), prepared.totalItems()) != 1) {
+                prepared.testType(), prepared.instructions(), prepared.totalItems()) != 1
+                && !repository.isEditableActiveTest(header.testId())) {
             throw conflict("ASSESSMENT_UPDATE_CONFLICT", "The assessment changed. Refresh before trying again.");
         }
     }
@@ -474,15 +577,7 @@ public class V3AssessmentService {
      * be in the future; the assignment is planned, open or closed according to the new times.
      */
     private void applyActiveSchedule(AssessmentHeader header, PreparedAssessment prepared, boolean captured, Instant now) {
-        if (captured && !sameSecond(header.openAt(), prepared.openAt())
-                && header.openAt() != null && !header.openAt().isAfter(now)) {
-            throw invalid("openAt",
-                    "Answer sheets of this assessment were already scanned, so the opening time that passed cannot change.");
-        }
-        if (!sameSecond(header.closeAt(), prepared.closeAt())
-                && prepared.closeAt() != null && !prepared.closeAt().isAfter(now)) {
-            throw invalid("closeAt", "The new close time must be in the future.");
-        }
+        checkActiveSchedule(header, prepared, captured, now);
         String assignmentStatus = prepared.openAt().isAfter(now)
                 ? "planned"
                 : prepared.closeAt() != null && !prepared.closeAt().isAfter(now) ? "closed" : "open";
@@ -496,8 +591,21 @@ public class V3AssessmentService {
                 prepared.outsideScheduleConfirmedByUserId(),
                 prepared.outsideScheduleConfirmedAt(),
                 assignmentStatus
-        ) != 1) {
+        ) != 1 && !repository.isUnarchivedTestAssignment(header.testAssignmentId())) {
             throw conflict("ASSESSMENT_SCHEDULE_LOCKED", "The assessment schedule is no longer editable.");
+        }
+    }
+
+    private void checkActiveSchedule(AssessmentHeader header, PreparedAssessment prepared, boolean captured,
+                                     Instant now) {
+        if (captured && !sameSecond(header.openAt(), prepared.openAt())
+                && header.openAt() != null && !header.openAt().isAfter(now)) {
+            throw invalid("openAt",
+                    "Answer sheets of this assessment were already scanned, so the opening time that passed cannot change.");
+        }
+        if (!sameSecond(header.closeAt(), prepared.closeAt())
+                && prepared.closeAt() != null && !prepared.closeAt().isAfter(now)) {
+            throw invalid("closeAt", "The new close time must be in the future.");
         }
     }
 
@@ -507,14 +615,11 @@ public class V3AssessmentService {
                 second == null ? null : second.truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
     }
 
-    /** Scanned sheets stay valid only while every bubble and answer box stays where it was printed. */
-    private void requireSameLayout(V3AssessmentResponse current, PreparedAssessment next) {
-        if (current.termPeriodId() != next.termPeriodId()) {
-            throw layoutLocked("termPeriodId", "its term");
-        }
+    /** R2-9: a change that moves bubbles or answer boxes, so printed sheets would no longer match. */
+    private Optional<LayoutChange> layoutChange(V3AssessmentResponse current, PreparedAssessment next) {
         List<V3AssessmentResponse.Part> parts = sortedParts(current);
         if (parts.size() != next.parts().size()) {
-            throw layoutLocked("parts", "the number of parts");
+            return Optional.of(new LayoutChange("parts", "the number of parts"));
         }
         for (int index = 0; index < parts.size(); index++) {
             V3AssessmentResponse.Part part = parts.get(index);
@@ -522,11 +627,7 @@ public class V3AssessmentService {
             if (part.partOrder() != nextPart.partOrder()
                     || !part.questionTypeCode().equals(nextPart.questionType().code())
                     || part.questions().size() != nextPart.questions().size()) {
-                throw layoutLocked("parts", "a part's question type or number of items");
-            }
-            boolean objective = OBJECTIVE_TYPES.contains(part.questionTypeCode());
-            if (!objective && !samePoints(part.pointsPerItem(), nextPart.pointsPerItem())) {
-                throw layoutLocked("parts.pointsPerItem", "the points of a written part (its answers were checked)");
+                return Optional.of(new LayoutChange("parts", "a part's question type or number of items"));
             }
             List<V3AssessmentResponse.Question> questions = sortedQuestions(part);
             List<PreparedQuestion> nextQuestions = sortedPrepared(nextPart);
@@ -537,7 +638,7 @@ public class V3AssessmentService {
                         || !Objects.equals(question.responseRegionSize(), nextQuestion.responseRegionSize())
                         || !Objects.equals(question.expectedResponseCount(), nextQuestion.expectedResponseCount())
                         || question.forcePageBreakBefore() != nextQuestion.forcePageBreakBefore()) {
-                    throw layoutLocked("parts.questions", "an item number, answer box or page break");
+                    return Optional.of(new LayoutChange("parts.questions", "an item number, answer box or page break"));
                 }
                 List<String> keys = question.options().stream()
                         .sorted(Comparator.comparingInt(V3AssessmentResponse.Option::optionOrder))
@@ -548,20 +649,86 @@ public class V3AssessmentService {
                         .map(PreparedOption::optionKey)
                         .toList();
                 if (!keys.equals(nextKeys)) {
-                    throw layoutLocked("parts.questions.options", "the choices of a question");
+                    return Optional.of(new LayoutChange("parts.questions.options", "the choices of a question"));
                 }
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** Once answers were checked, the term, written points and essay rubrics stay as they were. */
+    private Optional<LayoutChange> checkedAnswerChange(V3AssessmentResponse current, PreparedAssessment next) {
+        if (current.termPeriodId() != next.termPeriodId()) {
+            return Optional.of(new LayoutChange("termPeriodId", "its term"));
+        }
+        List<V3AssessmentResponse.Part> parts = sortedParts(current);
+        for (int index = 0; index < parts.size(); index++) {
+            V3AssessmentResponse.Part part = parts.get(index);
+            PreparedPart nextPart = next.parts().get(index);
+            boolean objective = OBJECTIVE_TYPES.contains(part.questionTypeCode());
+            if (!objective && !samePoints(part.pointsPerItem(), nextPart.pointsPerItem())) {
+                return Optional.of(new LayoutChange("parts.pointsPerItem",
+                        "the points of a written part (its answers were checked)"));
+            }
+            List<V3AssessmentResponse.Question> questions = sortedQuestions(part);
+            List<PreparedQuestion> nextQuestions = sortedPrepared(nextPart);
+            for (int item = 0; item < questions.size(); item++) {
+                V3AssessmentResponse.Question question = questions.get(item);
+                PreparedQuestion nextQuestion = nextQuestions.get(item);
                 if (!objective && !samePoints(question.maximumPoints(), nextQuestion.maximumPoints())) {
-                    throw layoutLocked("parts.questions.maximumPoints", "the points of a written item (its answers were checked)");
+                    return Optional.of(new LayoutChange("parts.questions.maximumPoints",
+                            "the points of a written item (its answers were checked)"));
                 }
                 if ("essay".equals(part.questionTypeCode())) {
                     Long rubricId = question.rubric() == null ? null : question.rubric().rubricId();
                     Long nextRubricId = nextQuestion.rubric() == null ? null : nextQuestion.rubric().existingRubricId();
                     if (!Objects.equals(rubricId, nextRubricId)) {
-                        throw layoutLocked("parts.questions.rubric", "an essay's rubric");
+                        return Optional.of(new LayoutChange("parts.questions.rubric", "an essay's rubric"));
                     }
                 }
             }
         }
+        return Optional.empty();
+    }
+
+    /** Called only when the layout is the same, so parts and items line up one to one. */
+    private boolean answerKeyChanged(V3AssessmentResponse current, PreparedAssessment next) {
+        List<V3AssessmentResponse.Part> parts = sortedParts(current);
+        for (int index = 0; index < parts.size(); index++) {
+            List<V3AssessmentResponse.Question> questions = sortedQuestions(parts.get(index));
+            List<PreparedQuestion> nextQuestions = sortedPrepared(next.parts().get(index));
+            for (int item = 0; item < questions.size(); item++) {
+                if (scoringChanged(questions.get(item), nextQuestions.get(item))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** The title, part names, part instructions and points are printed on the answer sheet. */
+    private boolean printedTextChanged(V3AssessmentResponse current, PreparedAssessment next) {
+        if (!Objects.equals(current.testName(), next.testName())) {
+            return true;
+        }
+        List<V3AssessmentResponse.Part> parts = sortedParts(current);
+        for (int index = 0; index < parts.size(); index++) {
+            V3AssessmentResponse.Part part = parts.get(index);
+            PreparedPart nextPart = next.parts().get(index);
+            if (!Objects.equals(part.partName(), nextPart.partName())
+                    || !Objects.equals(part.partInstructions(), nextPart.partInstructions())
+                    || !samePoints(part.pointsPerItem(), nextPart.pointsPerItem())) {
+                return true;
+            }
+            List<V3AssessmentResponse.Question> questions = sortedQuestions(part);
+            List<PreparedQuestion> nextQuestions = sortedPrepared(nextPart);
+            for (int item = 0; item < questions.size(); item++) {
+                if (!samePoints(questions.get(item).maximumPoints(), nextQuestions.get(item).maximumPoints())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private V3AuthException layoutLocked(String field, String what) {
@@ -607,7 +774,17 @@ public class V3AssessmentService {
         return true;
     }
 
-    private void updateQuestionInPlace(V3AssessmentResponse.Question question, PreparedQuestion next) {
+    private void updateQuestionInPlace(V3AuthenticatedUser user, V3AssessmentResponse.Question question,
+                                       PreparedQuestion next, Set<Long> replacedRubrics) {
+        // An essay's rubric may change only before scanning (planActiveEdit refuses it after).
+        Long rubricId = question.rubric() == null ? null : question.rubric().rubricId();
+        Long nextRubricId = persistRubricIfNeeded(user, next.rubric());
+        if (!Objects.equals(rubricId, nextRubricId)) {
+            repository.updateQuestionRubric(question.questionId(), nextRubricId);
+            if (rubricId != null) {
+                replacedRubrics.add(rubricId);
+            }
+        }
         repository.updateQuestionContent(question.questionId(), next.questionText(), next.maximumPoints(),
                 next.responseInstructions(), next.answerOrderRequired(), next.maximumResponseLength());
         Map<String, V3AssessmentResponse.Option> options = new HashMap<>();
@@ -625,7 +802,7 @@ public class V3AssessmentService {
                 ? null
                 : options.get(key.correctOptionKey()).questionOptionId();
         repository.updateAnswerKey(question.questionId(), key.answerKeyType(), correctOptionId,
-                key.scoringMethod(), key.answerExplanation());
+                key.scoringMethod(), key.answerExplanation(), key.rubric() == null ? null : nextRubricId);
         if (!acceptedAnswersEqual(question.acceptedAnswers(), next.acceptedAnswers())) {
             repository.deleteAcceptedAnswers(question.questionId());
             for (PreparedAcceptedAnswer accepted : next.acceptedAnswers()) {
@@ -841,8 +1018,9 @@ public class V3AssessmentService {
                     + "multiple-choice and true/false items, skill mappings and the schedule can change; finalized "
                     + "results are rescored automatically. The number of items, question types and choices stay.";
         } else if (!"draft".equals(status)) {
-            reason = "This assessment is active. Everything can still change; answer sheets already generated "
-                    + "are removed and must be printed again.";
+            reason = "This assessment is active. Everything can still change. Changing items, question types "
+                    + "or choices removes the generated answer sheet, which must be printed again; other changes "
+                    + "need no reprint.";
         } else {
             reason = null;
         }

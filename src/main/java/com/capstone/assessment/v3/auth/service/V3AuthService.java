@@ -159,7 +159,7 @@ public class V3AuthService {
                 recordFailedAttempt(user.userId(), email, "rejected_account", normalizedMetadata, now);
                 throw new V3AuthException(
                         "ACCOUNT_REJECTED",
-                        "The teacher registration was rejected. Contact the school administrator.",
+                        "This teacher registration was rejected. Please contact the school principal.",
                         HttpStatus.FORBIDDEN
                 );
             }
@@ -170,7 +170,7 @@ public class V3AuthService {
                 }
                 throw new V3AuthException(
                         "ACCOUNT_INACTIVE",
-                        "The account is inactive. Contact the school administrator.",
+                        "This account is inactive. Please contact the school principal to reactivate it.",
                         HttpStatus.FORBIDDEN
                 );
             }
@@ -186,7 +186,7 @@ public class V3AuthService {
                 recordFailedAttempt(user.userId(), email, "archived_account", normalizedMetadata, now);
                 throw new V3AuthException(
                         "ACCOUNT_ARCHIVED",
-                        "This account has been archived. Contact the school principal.",
+                        "This account is archived. Please contact the school principal to restore access.",
                         HttpStatus.FORBIDDEN
                 );
             }

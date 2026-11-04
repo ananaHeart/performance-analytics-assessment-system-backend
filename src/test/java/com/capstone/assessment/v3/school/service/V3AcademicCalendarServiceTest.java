@@ -1,5 +1,6 @@
 package com.capstone.assessment.v3.school.service;
 
+import com.capstone.assessment.v3.school.dto.V3AcademicYearDatesRequest;
 import com.capstone.assessment.v3.auth.exception.V3AuthException;
 import com.capstone.assessment.v3.auth.exception.V3FieldValidationException;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
@@ -428,10 +429,52 @@ class V3AcademicCalendarServiceTest {
                         Instant.parse("2026-11-15T16:00:00Z"), "Typhoon week added"), null));
         assertEquals("These dates overlap Second Term (2026-11-01 to 2027-02-01).", overlap.getErrors().get("endAt"));
 
-        when(repository.countTermDateEdits(11)).thenReturn(3);
+        when(repository.countCalendarDateEdits(100)).thenReturn(3);
         assertEquals("TERM_EDIT_LIMIT_REACHED", assertThrows(V3AuthException.class, () ->
                 service.updateTermDates(PRINCIPAL, 100, 11,
                         new V3TermDatesRequest(first.startAt(), extendedEnd, "Typhoon week added"), null)).getCode());
+    }
+
+    @Test
+    void r2_4TheSchoolYearDatesChangeWithAReasonAndCountTowardThreePerYear() {
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("active")));
+        TermPeriodRow first = new TermPeriodRow(11, 100, "First Term", 1, Instant.parse("2026-05-31T16:00:00Z"),
+                Instant.parse("2026-09-30T16:00:00Z"), "active", "automatic", null, null, null, null, null);
+        TermPeriodRow second = new TermPeriodRow(12, 100, "Second Term", 2, Instant.parse("2026-10-31T16:00:00Z"),
+                Instant.parse("2027-01-31T16:00:00Z"), "planned", "automatic", null, null, null, null, null);
+        when(repository.listTermPeriods(100)).thenReturn(List.of(first, second));
+        when(repository.updateAcademicYearDates(100, LocalDate.of(2026, 6, 1), LocalDate.of(2027, 4, 15)))
+                .thenReturn(1);
+
+        service.updateAcademicYearDates(PRINCIPAL, 100, new V3AcademicYearDatesRequest(
+                LocalDate.of(2026, 6, 1), LocalDate.of(2027, 4, 15), "DepEd extended the school year"), null);
+        verify(repository).updateAcademicYearDates(100, LocalDate.of(2026, 6, 1), LocalDate.of(2027, 4, 15));
+        verify(auditService).record(eq(7L), eq("academic_year.dates_update"), eq("academic_years"), eq("100"),
+                eq("success"), any(), any(), eq(NOW));
+
+        assertEquals("First Term (2026-06-01 to 2026-09-30) would fall outside these dates. Change the term first.",
+                assertThrows(V3FieldValidationException.class, () -> service.updateAcademicYearDates(PRINCIPAL, 100,
+                        new V3AcademicYearDatesRequest(LocalDate.of(2026, 6, 15), LocalDate.of(2027, 3, 31),
+                                "Late opening"), null)).getErrors().get("endDate"));
+        assertThrows(V3FieldValidationException.class, () -> service.updateAcademicYearDates(PRINCIPAL, 100,
+                new V3AcademicYearDatesRequest(LocalDate.of(2026, 6, 1), LocalDate.of(2028, 1, 10),
+                        "Too long a year"), null));
+        when(repository.findOverlappingAcademicYear("SCHOOL-001", 100, LocalDate.of(2026, 6, 1),
+                LocalDate.of(2027, 6, 30))).thenReturn(Optional.of("2027-2028"));
+        assertEquals("These dates overlap school year 2027-2028.", assertThrows(V3FieldValidationException.class,
+                () -> service.updateAcademicYearDates(PRINCIPAL, 100, new V3AcademicYearDatesRequest(
+                        LocalDate.of(2026, 6, 1), LocalDate.of(2027, 6, 30), "Overlapping"), null))
+                .getErrors().get("endDate"));
+
+        when(repository.countCalendarDateEdits(100)).thenReturn(3);
+        assertEquals("TERM_EDIT_LIMIT_REACHED", assertThrows(V3AuthException.class, () ->
+                service.updateAcademicYearDates(PRINCIPAL, 100, new V3AcademicYearDatesRequest(
+                        LocalDate.of(2026, 6, 1), LocalDate.of(2027, 4, 15), "One more change"), null)).getCode());
+
+        when(repository.findAcademicYear("SCHOOL-001", 100)).thenReturn(Optional.of(year("archived")));
+        assertEquals("ACADEMIC_YEAR_LOCKED", assertThrows(V3AuthException.class, () ->
+                service.updateTermDates(PRINCIPAL, 100, 11, new V3TermDatesRequest(first.startAt(),
+                        first.endAt(), "Archived year"), null)).getCode());
     }
 
     private AcademicYearRow endedYear(String status) {

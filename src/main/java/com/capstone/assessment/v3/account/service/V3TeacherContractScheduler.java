@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Nightly lifecycle jobs (Philippine time):
- * REG-2 ended contracts become inactive; TCH-8 teachers archived 10 years ago are anonymized;
+ * REG-2 ended contracts become inactive (TCH-8: archived teachers are kept, never erased);
  * CLS-6 class assignments given 3 years ago are archived; SET-5 ended school years become
  * Completed and principals are told when one is ready to archive.
  */
@@ -36,8 +36,6 @@ public class V3TeacherContractScheduler {
     public void deactivateEndedContracts() {
         run("Set {} teacher account(s) to inactive because the contract ended.",
                 teacherAccountService::deactivateEndedContracts);
-        run("Erased the personal details of {} teacher(s) archived for 10 years.",
-                teacherAccountService::anonymizeLongArchivedTeachers);
         run("Archived {} class assignment(s) given more than 3 years ago.",
                 schoolSetupService::autoArchiveOldAssignments);
         run("Completed {} school year(s) that ended.", academicCalendarService::runYearLifecycle);

@@ -3,6 +3,7 @@ package com.capstone.assessment.v3.school.controller;
 import com.capstone.assessment.common.response.ApiResponse;
 import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
+import com.capstone.assessment.v3.school.dto.V3AcademicYearDatesRequest;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearRequest;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearResponse;
 import com.capstone.assessment.v3.school.dto.V3LifecycleReasonRequest;
@@ -120,6 +121,20 @@ public class V3AcademicCalendarController {
         return ResponseEntity.ok(ApiResponse.success(
                 "Academic year archive eligibility retrieved successfully.",
                 service.getArchiveEligibility(principal, academicYearId)
+        ));
+    }
+
+    /** R2-4: extend or correct a planned or active school year's dates, with a reason. */
+    @PatchMapping("/{academicYearId}/dates")
+    public ResponseEntity<ApiResponse<V3AcademicYearResponse>> updateYearDates(
+            @AuthenticationPrincipal V3AuthenticatedUser principal,
+            @PathVariable int academicYearId,
+            @Valid @RequestBody V3AcademicYearDatesRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "School-year dates updated successfully.",
+                service.updateAcademicYearDates(principal, academicYearId, request, metadata(httpRequest))
         ));
     }
 

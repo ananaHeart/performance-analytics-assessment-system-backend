@@ -73,6 +73,27 @@ public class V3AccountSettingsController {
                 service.updateSubjects(user, request, metadata(httpRequest))));
     }
 
+    /** R2-10: send the password-change code to the account's email. */
+    @PostMapping("/password/code")
+    public ResponseEntity<ApiResponse<V3AccountCodeResponse>> startPasswordChange(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("A code was sent to your email.",
+                service.startPasswordChange(user, metadata(httpRequest))));
+    }
+
+    @PostMapping("/password/code/resend")
+    public ResponseEntity<ApiResponse<V3AccountCodeResponse>> resendPasswordChange(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("A new code was sent to your email.",
+                service.resendPasswordChange(user, request == null ? null : request.get("challengeUuid"),
+                        metadata(httpRequest))));
+    }
+
     @PostMapping("/password")
     public ResponseEntity<ApiResponse<Map<String, Instant>>> changePassword(
             @AuthenticationPrincipal V3AuthenticatedUser user,

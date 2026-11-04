@@ -346,16 +346,43 @@ public class V3AcademicCalendarRepository {
     }
 
     /** SET-4: how many times the principal already changed this term's dates (from the audit log). */
-    public int countTermDateEdits(int termPeriodId) {
+    /**
+     * R2-4: date changes of this school year so far, the year's own dates and its terms' dates
+     * together (counted from the audit log, so no new column is needed).
+     */
+    public int countCalendarDateEdits(int academicYearId) {
         Integer count = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*)
                   FROM audit_logs
-                 WHERE action = 'term_period.dates_update'
-                   AND entity_type = 'term_periods'
-                   AND entity_id = ?
-                   AND outcome = 'success'
-                """, Integer.class, Integer.toString(termPeriodId));
+                 WHERE outcome = 'success'
+                   AND ((action = 'term_period.dates_update' AND entity_type = 'term_periods'
+                         AND entity_id IN (SELECT CAST(term_period_id AS CHAR) FROM term_periods
+                                            WHERE academic_year_id = ?))
+                     OR (action = 'academic_year.dates_update' AND entity_type = 'academic_years'
+                         AND entity_id = ?))
+                """, Integer.class, academicYearId, Integer.toString(academicYearId));
         return count == null ? 0 : count;
+    }
+
+    /** R2-4: another school year of the school whose dates overlap these, if any (its name). */
+    public Optional<String> findOverlappingAcademicYear(String schoolId, int academicYearId,
+                                                        LocalDate startDate, LocalDate endDate) {
+        return jdbcTemplate.query("""
+                SELECT year_name
+                  FROM academic_years
+                 WHERE school_id = ? AND academic_year_id <> ?
+                   AND start_date <= ? AND end_date >= ?
+                 ORDER BY start_date
+                """, (rs, rowNum) -> rs.getString(1), schoolId, academicYearId, endDate, startDate)
+                .stream().findFirst();
+    }
+
+    public int updateAcademicYearDates(int academicYearId, LocalDate startDate, LocalDate endDate) {
+        return jdbcTemplate.update("""
+                UPDATE academic_years
+                   SET start_date = ?, end_date = ?
+                 WHERE academic_year_id = ? AND status IN ('planned', 'active') AND archived_at IS NULL
+                """, startDate, endDate, academicYearId);
     }
 
     /** SET-4: assessments of this term whose opening date would fall outside the new dates. */

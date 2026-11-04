@@ -109,6 +109,19 @@ public class V3AssessmentController {
                 .body(pdf);
     }
 
+    /** R2-9: what saving this edit would do (reprint or not, rescoring, refusal), without saving. */
+    @PostMapping("/{testId}/edit-impact")
+    public ResponseEntity<ApiResponse<com.capstone.assessment.v3.assessment.dto.V3AssessmentEditImpactResponse>> editImpact(
+            @AuthenticationPrincipal V3AuthenticatedUser user,
+            @PathVariable long testId,
+            @Valid @RequestBody V3AssessmentRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Edit impact checked.",
+                assessmentService.previewEdit(user, testId, request)
+        ));
+    }
+
     @PutMapping("/{testId}")
     public ResponseEntity<ApiResponse<V3AssessmentResponse>> update(
             @AuthenticationPrincipal V3AuthenticatedUser user,

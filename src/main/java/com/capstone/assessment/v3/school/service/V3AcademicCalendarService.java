@@ -6,6 +6,7 @@ import com.capstone.assessment.v3.auth.model.V3AuthenticatedUser;
 import com.capstone.assessment.v3.auth.service.V3AuditService;
 import com.capstone.assessment.v3.notification.service.V3NotificationService;
 import com.capstone.assessment.v3.auth.service.V3RequestMetadata;
+import com.capstone.assessment.v3.school.dto.V3AcademicYearDatesRequest;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearRequest;
 import com.capstone.assessment.v3.school.dto.V3AcademicYearResponse;
 import com.capstone.assessment.v3.school.dto.V3LifecycleReasonRequest;
@@ -43,7 +44,8 @@ public class V3AcademicCalendarService {
     private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Manila");
     private static final Set<String> ACTIVATION_MODES = Set.of("automatic", "manual");
     /** SET-4 (D8): the panel's limit of changes per term. */
-    static final int MAX_TERM_DATE_EDITS = 3;
+    // R2-4: per school year, the year's own dates and all its terms together.
+    static final int MAX_DATE_EDITS_PER_YEAR = 3;
     /** SET-5: late uploads, verification and corrections stay possible this long after the year ends. */
     static final int ARCHIVE_GRACE_MONTHS = 1;
 
@@ -678,9 +680,7 @@ public class V3AcademicCalendarService {
         String reason = requireReason(new V3LifecycleReasonRequest(request.reason()));
         repository.lockAcademicYear(principal.schoolId(), academicYearId);
         AcademicYearRow year = requireAcademicYear(principal.schoolId(), academicYearId);
-        if ("completed".equals(year.status())) {
-            throw conflict("ACADEMIC_YEAR_LOCKED", "An archived school year cannot change.");
-        }
+        requireDatesEditable(year);
         TermPeriodRow term = requireTerm(academicYearId, termPeriodId);
         if ("completed".equals(term.status())) {
             throw conflict("TERM_PERIOD_LOCKED", "A completed term cannot change.");
@@ -708,12 +708,7 @@ public class V3AcademicCalendarService {
                         + other.endAt().atZone(SCHOOL_ZONE).toLocalDate() + ").");
             }
         }
-        int edits = repository.countTermDateEdits(termPeriodId);
-        if (edits >= MAX_TERM_DATE_EDITS) {
-            throw new V3AuthException("TERM_EDIT_LIMIT_REACHED",
-                    "This term's dates were already changed " + edits + " times, the most allowed.",
-                    HttpStatus.CONFLICT, Map.of("editCount", edits, "maxEdits", MAX_TERM_DATE_EDITS));
-        }
+        int edits = requireEditsLeft(academicYearId);
         int outside = repository.countAssessmentsOutside(termPeriodId, startAt, endAt);
         if (outside > 0) {
             throw new V3AuthException("TERM_HAS_ASSESSMENTS_OUTSIDE",
@@ -734,6 +729,93 @@ public class V3AcademicCalendarService {
         auditService.record(principal.userId(), "term_period.dates_update", "term_periods",
                 Integer.toString(termPeriodId), "success", metadata, details, now);
         return toResponse(requireAcademicYear(principal.schoolId(), academicYearId));
+    }
+
+    /**
+     * R2-4: the principal corrects or extends the school year's own dates. Its terms must stay
+     * inside, it keeps its school-year name (e.g. 2026-2027), it may not overlap another school
+     * year, and a running year cannot end in the past. Each change needs a reason and counts
+     * toward the 3 date changes allowed per school year.
+     */
+    @Transactional
+    public V3AcademicYearResponse updateAcademicYearDates(
+            V3AuthenticatedUser principal,
+            int academicYearId,
+            V3AcademicYearDatesRequest request,
+            V3RequestMetadata metadata
+    ) {
+        requirePrincipal(principal);
+        String reason = requireReason(new V3LifecycleReasonRequest(request.reason()));
+        repository.lockAcademicYear(principal.schoolId(), academicYearId);
+        AcademicYearRow year = requireAcademicYear(principal.schoolId(), academicYearId);
+        requireDatesEditable(year);
+        LocalDate startDate = request.startDate();
+        LocalDate endDate = request.endDate();
+        if (!endDate.isAfter(startDate)) {
+            throw invalid("endDate", "The end date must be later than the start date.");
+        }
+        if (startDate.equals(year.startDate()) && endDate.equals(year.endDate())) {
+            throw invalid("endDate", "These are already the school year's dates.");
+        }
+        if (startDate.getYear() != year.startDate().getYear() || endDate.getYear() != year.endDate().getYear()) {
+            throw invalid("endDate", "The dates must stay within school year " + year.yearName()
+                    + " (start in " + year.startDate().getYear() + ", end in " + year.endDate().getYear() + ").");
+        }
+        Instant now = clock.instant();
+        LocalDate today = LocalDate.ofInstant(now, SCHOOL_ZONE);
+        if ("active".equals(year.status()) && endDate.isBefore(today)) {
+            throw invalid("endDate", "A running school year cannot end in the past.");
+        }
+        Instant yearStart = startDate.atStartOfDay(SCHOOL_ZONE).toInstant();
+        Instant yearEnd = endDate.plusDays(1).atStartOfDay(SCHOOL_ZONE).toInstant();
+        for (TermPeriodRow term : repository.listTermPeriods(academicYearId)) {
+            if (term.startAt().isBefore(yearStart) || term.endAt().isAfter(yearEnd)) {
+                throw invalid("endDate", term.termName() + " ("
+                        + term.startAt().atZone(SCHOOL_ZONE).toLocalDate() + " to "
+                        + term.endAt().minusSeconds(1).atZone(SCHOOL_ZONE).toLocalDate()
+                        + ") would fall outside these dates. Change the term first.");
+            }
+        }
+        java.util.Optional<String> overlapping = repository.findOverlappingAcademicYear(
+                principal.schoolId(), academicYearId, startDate, endDate);
+        if (overlapping.isPresent()) {
+            throw invalid("endDate", "These dates overlap school year " + overlapping.get() + ".");
+        }
+        int edits = requireEditsLeft(academicYearId);
+        if (repository.updateAcademicYearDates(academicYearId, startDate, endDate) != 1) {
+            throw conflict("ACADEMIC_YEAR_UPDATE_CONFLICT", "The school year changed before it was saved.");
+        }
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("previousStartDate", year.startDate().toString());
+        details.put("previousEndDate", year.endDate().toString());
+        details.put("startDate", startDate.toString());
+        details.put("endDate", endDate.toString());
+        details.put("reason", reason);
+        details.put("editNumber", edits + 1);
+        auditService.record(principal.userId(), "academic_year.dates_update", "academic_years",
+                Integer.toString(academicYearId), "success", metadata, details, now);
+        return toResponse(requireAcademicYear(principal.schoolId(), academicYearId));
+    }
+
+    /** Dates change only while the year is planned or running. */
+    private void requireDatesEditable(AcademicYearRow year) {
+        if ("archived".equals(year.status())) {
+            throw conflict("ACADEMIC_YEAR_LOCKED", "An archived school year cannot change.");
+        }
+        if ("completed".equals(year.status())) {
+            throw conflict("ACADEMIC_YEAR_LOCKED", "A completed school year cannot change.");
+        }
+    }
+
+    /** R2-4: at most 3 date changes per school year, its own dates and its terms together. */
+    private int requireEditsLeft(int academicYearId) {
+        int edits = repository.countCalendarDateEdits(academicYearId);
+        if (edits >= MAX_DATE_EDITS_PER_YEAR) {
+            throw new V3AuthException("TERM_EDIT_LIMIT_REACHED",
+                    "This school year's dates were already changed " + edits + " times, the most allowed.",
+                    HttpStatus.CONFLICT, Map.of("editCount", edits, "maxEdits", MAX_DATE_EDITS_PER_YEAR));
+        }
+        return edits;
     }
 
     private V3FieldValidationException invalid(String field, String message) {

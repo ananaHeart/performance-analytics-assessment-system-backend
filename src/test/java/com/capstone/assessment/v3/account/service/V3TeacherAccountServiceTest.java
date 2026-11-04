@@ -474,20 +474,6 @@ class V3TeacherAccountServiceTest {
                 () -> service.updateTeacher(PRINCIPAL, 42L, updateRequest(4), METADATA)).getCode());
     }
 
-    @Test
-    void tch8TeachersArchivedTenYearsAgoLoseTheirPersonalDetailsOnly() {
-        Instant cutoff = NOW.atZone(java.time.ZoneId.of("Asia/Manila")).minusYears(10).toInstant();
-        when(repository.findTeachersArchivedBefore(cutoff)).thenReturn(List.of(Map.entry(42L, "ana.cruz@example.com")));
-        when(repository.anonymizeTeacher(42L, NOW)).thenReturn(1);
-
-        assertEquals(1, service.anonymizeLongArchivedTeachers());
-
-        verify(registrationRepository).anonymizeLoginAttempts(42L, "ana.cruz@example.com",
-                "anonymized-42@invalid.local");
-        verify(repository).revokeSessions(42L, NOW);
-        verify(repository, never()).endOpenClassAssignments(anyLong(), anyLong(), anyString(), any());
-    }
-
     private static V3TeacherUpdateRequest updateRequest(int majorId) {
         return new V3TeacherUpdateRequest(" Ana ", " ", "Cruz", null, 2, LocalDate.of(1990, 5, 20), 6, 2015,
                 majorId, 3,

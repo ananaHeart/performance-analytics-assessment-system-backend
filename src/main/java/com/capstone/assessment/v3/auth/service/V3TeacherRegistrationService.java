@@ -46,6 +46,7 @@ public class V3TeacherRegistrationService {
     private final V3VerificationEmailSender emailSender;
     private final V3SmsVerificationSender smsSender;
     private final V3AuthProperties properties;
+    private static final java.time.ZoneId SCHOOL_ZONE = java.time.ZoneId.of("Asia/Manila");
     private final Clock clock;
 
     @Autowired
@@ -253,7 +254,8 @@ public class V3TeacherRegistrationService {
             Instant now,
             Map<String, Object> errors
     ) {
-        LocalDate today = LocalDate.now(clock);
+        // R2-1: the Philippine date; the UTC date is still yesterday until 8:00 AM here.
+        LocalDate today = LocalDate.ofInstant(now, SCHOOL_ZONE);
         int minimumAge = properties.getMinimumTeacherAge();
         if (request.birthDate() == null
                 || !request.birthDate().isBefore(today)
@@ -269,7 +271,7 @@ public class V3TeacherRegistrationService {
         }
 
         YearMonth teachingStart = YearMonth.of(request.teachingStartYear(), request.teachingStartMonth());
-        YearMonth currentMonth = YearMonth.from(LocalDate.ofInstant(now, clock.getZone()));
+        YearMonth currentMonth = YearMonth.from(LocalDate.ofInstant(now, SCHOOL_ZONE));
         if (teachingStart.isAfter(currentMonth)) {
             errors.put("teachingStartYear", "Teaching start month and year cannot be in the future.");
         }

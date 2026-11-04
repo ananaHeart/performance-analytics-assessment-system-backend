@@ -1005,13 +1005,50 @@ public class V3AssessmentRepository {
             String answerKeyType,
             Long correctQuestionOptionId,
             String scoringMethod,
-            String answerExplanation
+            String answerExplanation,
+            Long rubricId
     ) {
         return jdbcTemplate.update("""
                 UPDATE answer_keys
-                   SET answer_key_type = ?, correct_question_option_id = ?, scoring_method = ?, answer_explanation = ?
+                   SET answer_key_type = ?, correct_question_option_id = ?, scoring_method = ?, answer_explanation = ?,
+                       rubric_id = ?
                  WHERE question_id = ?
-                """, answerKeyType, correctQuestionOptionId, scoringMethod, answerExplanation, questionId);
+                """, answerKeyType, correctQuestionOptionId, scoringMethod, answerExplanation, rubricId, questionId);
+    }
+
+    /** An unchanged row may be reported as 0 updated rows; these tell that apart from a real conflict. */
+    public boolean isEditableActiveTest(long testId) {
+        Boolean exists = jdbcTemplate.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM tests WHERE test_id = ? AND status IN ('active', 'completed'))",
+                Boolean.class, testId);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    public boolean isUnarchivedTestAssignment(long testAssignmentId) {
+        Boolean exists = jdbcTemplate.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM test_assignments WHERE test_assignment_id = ? "
+                        + "AND assignment_status <> 'archived')",
+                Boolean.class, testAssignmentId);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    public int updateQuestionRubric(long questionId, Long rubricId) {
+        return jdbcTemplate.update("UPDATE questions SET rubric_id = ? WHERE question_id = ?", rubricId, questionId);
+    }
+
+    /** R2-9: generated answer-sheet versions of this delivery (printed copies may exist). */
+    public int countAnswerSheetVersions(long testAssignmentId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM answer_sheet_versions WHERE test_assignment_id = ?", Integer.class,
+                testAssignmentId);
+        return count == null ? 0 : count;
+    }
+
+    public int countFinalizedResults(long testAssignmentId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM test_results WHERE test_assignment_id = ? AND result_status = 'finalized'",
+                Integer.class, testAssignmentId);
+        return count == null ? 0 : count;
     }
 
     public void deleteAcceptedAnswers(long questionId) {
@@ -1359,7 +1396,8 @@ public class V3AssessmentRepository {
     public List<V3AssessmentSummaryResponse> listAssessments(
             long teacherUserId,
             String schoolId,
-            long classAssignmentId
+            long classAssignmentId,
+            Instant now
     ) {
         return jdbcTemplate.query("""
                         SELECT t.test_id,
@@ -1411,7 +1449,10 @@ public class V3AssessmentRepository {
                         toInstant(rs.getTimestamp("close_at")),
                         toInstant(rs.getTimestamp("updated_at")),
                         rs.getInt("learner_count"),
-                        rs.getInt("uploaded_count")
+                        rs.getInt("uploaded_count"),
+                        V3AssessmentSummaryResponse.displayStatus(rs.getString("status"),
+                                rs.getString("assignment_status"), toInstant(rs.getTimestamp("close_at")), now,
+                                rs.getInt("learner_count"), rs.getInt("uploaded_count"))
                 ),
                 teacherUserId,
                 schoolId,

@@ -64,6 +64,17 @@ public class V3AccountSettingsRepository {
                    AND """ + condition, (rs, rowNum) -> rs.getLong(1), destination).stream().findFirst();
     }
 
+    /** R2-6: the status of an archived or rejected account with this verified email, if any. */
+    public Optional<String> findBlockedResetStatus(String email) {
+        return jdbcTemplate.query("""
+                SELECT status.status_name
+                  FROM users u
+                  JOIN statuses status ON status.status_id = u.status_id
+                 WHERE status.status_name IN ('archived', 'rejected')
+                   AND LOWER(u.email) = LOWER(?) AND u.email_verified_at IS NOT NULL
+                """, (rs, rowNum) -> rs.getString(1), email).stream().findFirst();
+    }
+
     /** TCH-7: the owner of a code, for the signed-out reset flow. */
     public Optional<Long> findChallengeOwner(String challengeUuid) {
         return jdbcTemplate.query("SELECT user_id FROM verification_challenges WHERE challenge_uuid = ?",

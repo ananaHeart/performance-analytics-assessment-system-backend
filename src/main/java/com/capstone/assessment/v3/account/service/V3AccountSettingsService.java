@@ -67,7 +67,8 @@ public class V3AccountSettingsService {
         VERIFY_EMAIL("email_verification", "email", "verify-email|"),
         VERIFY_SMS("contact_verification", "sms", "verify-sms|"),
         RESET_EMAIL("sensitive_action", "email", "password-reset|"),
-        RESET_SMS("sensitive_action", "sms", "password-reset|");
+        RESET_SMS("sensitive_action", "sms", "password-reset|"),
+        PASSWORD_CHANGE("sensitive_action", "email", "password-change|");
 
         final String purpose;
         final String channel;
@@ -151,11 +152,42 @@ public class V3AccountSettingsService {
         return toResponse(requireAccount(user));
     }
 
-    /** SET-6: change password; every other session ends, this one stays signed in. */
-    @Transactional
+    /** R2-10: a code for changing the password, sent to the account's email. */
+    @Transactional(noRollbackFor = V3AuthException.class)
+    public V3AccountCodeResponse startPasswordChange(V3AuthenticatedUser user, V3RequestMetadata metadata) {
+        AccountRow account = requireAccount(user);
+        return sendCode(account, Flow.PASSWORD_CHANGE, passwordChangeEmail(account), 0, metadata);
+    }
+
+    @Transactional(noRollbackFor = V3AuthException.class)
+    public V3AccountCodeResponse resendPasswordChange(V3AuthenticatedUser user, String challengeUuid,
+                                                      V3RequestMetadata metadata) {
+        AccountRow account = requireAccount(user);
+        return resend(account, Flow.PASSWORD_CHANGE, challengeUuid, passwordChangeEmail(account), metadata);
+    }
+
+    private String passwordChangeEmail(AccountRow account) {
+        if (account.email() == null || account.email().isBlank()) {
+            throw new V3AuthException("EMAIL_REQUIRED", "Add an email address to the account first.",
+                    HttpStatus.CONFLICT);
+        }
+        return account.email().trim().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * SET-6, R2-10: change password with the current password and the emailed code; every other
+     * session ends, this one stays signed in.
+     */
+    @Transactional(noRollbackFor = V3AuthException.class)
     public Instant changePassword(V3AuthenticatedUser user, V3PasswordChangeRequest request,
                                   V3RequestMetadata metadata) {
         AccountRow account = requireAccount(user);
+        if (request.challengeUuid() == null || request.challengeUuid().isBlank()
+                || request.code() == null || request.code().isBlank()) {
+            throw new V3FieldValidationException("Password change failed.", HttpStatus.BAD_REQUEST,
+                    Map.of("code", "VERIFICATION_CODE_REQUIRED",
+                            "verificationCode", "Request a code by email and enter it to change the password."));
+        }
         if (!passwordEncoder.matches(request.currentPassword(), account.passwordHash())) {
             throw new V3FieldValidationException("Password change failed.", HttpStatus.BAD_REQUEST,
                     Map.of("code", "CURRENT_PASSWORD_INCORRECT", "currentPassword", "The current password is incorrect."));
@@ -169,6 +201,8 @@ public class V3AccountSettingsService {
                     Map.of("code", "PASSWORD_UNCHANGED", "newPassword", "Choose a password different from the current one."));
         }
         Instant now = clock.instant();
+        confirmCode(account, Flow.PASSWORD_CHANGE, request.challengeUuid(), request.code(),
+                passwordChangeEmail(account), now);
         repository.updatePassword(account.userId(), passwordEncoder.encode(request.newPassword()), now);
         authRepository.revokeOtherSessions(account.userId(), user.sessionUuid(), now);
         auditService.record(account.userId(), "account.password_change", "users", Long.toString(account.userId()),
@@ -295,6 +329,10 @@ public class V3AccountSettingsService {
         }
         Optional<Long> userId = repository.findResettableUserId(flow.channel, destination);
         if (userId.isEmpty()) {
+            if (!bySms) {
+                repository.findBlockedResetStatus(destination)
+                        .ifPresent(status -> sendBlockedResetNotice(destination, status));
+            }
             return lookalikeCode(flow.channel, bySms ? maskPhone(destination) : V3VerificationEmailSender.maskEmail(destination));
         }
         AccountRow account = repository.lockAccount(userId.get()).orElseThrow(this::invalidChallenge);
@@ -335,6 +373,24 @@ public class V3AccountSettingsService {
         return now;
     }
 
+    /** R2-6: the owner of an archived or rejected account learns why no reset code came. */
+    private void sendBlockedResetNotice(String email, String status) {
+        boolean archived = "archived".equals(status);
+        try {
+            emailSender.sendAccountNotice(email,
+                    archived ? "Your Marka account is archived" : "Your Marka registration was rejected",
+                    "Password reset",
+                    archived ? "This account is archived" : "This registration was rejected",
+                    archived
+                            ? "Someone asked to reset the password of this Marka account, but the account is archived, "
+                                    + "so its password cannot be reset. Please contact the school principal to restore access."
+                            : "Someone asked to reset the password of this Marka account, but the teacher registration "
+                                    + "was rejected, so its password cannot be reset. Please contact the school principal.");
+        } catch (V3AuthException exception) {
+            // The screen answers the same either way; a failed notice must not reveal the account.
+        }
+    }
+
     private String resetDestination(AccountRow account, Flow flow) {
         return flow == Flow.RESET_SMS ? account.contactNumber() : account.email();
     }
@@ -344,6 +400,7 @@ public class V3AccountSettingsService {
         return switch (flow) {
             case EMAIL_CHANGE -> V3EmailCodePurpose.EMAIL_CHANGE;
             case RESET_EMAIL, RESET_SMS -> V3EmailCodePurpose.PASSWORD_RESET;
+            case PASSWORD_CHANGE -> V3EmailCodePurpose.PASSWORD_CHANGE;
             default -> V3EmailCodePurpose.VERIFY_EMAIL;
         };
     }
