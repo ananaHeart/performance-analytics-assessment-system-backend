@@ -508,6 +508,11 @@ public class V3TeacherAccountService {
         } else if (teachingStart.isBefore(YearMonth.from(request.birthDate().plusYears(minimumAge)))) {
             errors.put("teachingStartYear", "Teaching start must be on or after the teacher turned " + minimumAge + ".");
         }
+        if (request.address() != null && request.address().postalCode() != null) {
+            com.capstone.assessment.v3.auth.service.V3PostalCodes.problem(request.address().postalCode(),
+                            request.address().cityMunicipalityCode(), request.address().cityMunicipalityName())
+                    .ifPresent(message -> errors.put("address.postalCode", message));
+        }
         if (!errors.isEmpty()) {
             errors.put("code", "VALIDATION_FAILED");
             throw new V3FieldValidationException("Teacher update validation failed.", HttpStatus.BAD_REQUEST, errors);

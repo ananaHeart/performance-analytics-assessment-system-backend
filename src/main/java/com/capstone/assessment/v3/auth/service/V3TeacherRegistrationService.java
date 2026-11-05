@@ -217,6 +217,10 @@ public class V3TeacherRegistrationService {
         }
 
         validateDates(request, now, errors);
+        if (request.address() != null && request.address().postalCode() != null) {
+            V3PostalCodes.problem(request.address().postalCode(), request.address().cityMunicipalityCode(),
+                    request.address().cityMunicipalityName()).ifPresent(message -> errors.put("address.postalCode", message));
+        }
         if (!STRONG_PASSWORD_PATTERN.matcher(request.password()).matches()) {
             errors.put(
                     "password",

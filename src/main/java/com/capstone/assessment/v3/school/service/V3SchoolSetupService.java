@@ -910,6 +910,13 @@ public class V3SchoolSetupService {
         validateCodeNamePair(address.cityMunicipalityCode(), address.cityMunicipalityName(),
                 "cityMunicipality");
         validateCodeNamePair(address.barangayCode(), address.barangayName(), "barangay");
+        if (address.postalCode() != null && !address.postalCode().isBlank()) {
+            java.util.Optional<String> postalProblem = com.capstone.assessment.v3.auth.service.V3PostalCodes.problem(
+                    address.postalCode(), address.cityMunicipalityCode(), address.cityMunicipalityName());
+            if (postalProblem.isPresent()) {
+                throw invalid("address.postalCode", postalProblem.get());
+            }
+        }
         return new V3SchoolProfileUpdateRequest.Address(
                 optionalTrimmed(address.regionCode()), optionalTrimmed(address.regionName()),
                 optionalTrimmed(address.provinceCode()), optionalTrimmed(address.provinceName()),
