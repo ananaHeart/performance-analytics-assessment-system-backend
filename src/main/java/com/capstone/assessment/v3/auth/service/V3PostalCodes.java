@@ -68,6 +68,12 @@ public final class V3PostalCodes {
                 + place + ": " + valid + (cityZips.size() > LISTED_ZIPS ? ", ..." : "") + ".");
     }
 
+    /** The ZIP codes of a city/municipality (PSGC code), in order; empty when it is not listed. */
+    public static java.util.List<String> postalCodesFor(String cityMunicipalityCode) {
+        Set<String> zips = DIRECTORY.zipsByCity().get(cityMunicipalityCode == null ? "" : cityMunicipalityCode.trim());
+        return zips == null ? java.util.List.of() : java.util.List.copyOf(zips);
+    }
+
     private static Directory load() {
         Set<String> zips = new HashSet<>();
         Map<String, Set<String>> zipsByCity = new HashMap<>();

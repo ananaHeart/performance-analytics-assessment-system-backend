@@ -30,6 +30,7 @@ public class V3AuthenticationFilter extends OncePerRequestFilter {
             "/api/v3/auth/login",
             "/api/v3/auth/teacher-registration/reference-data",
             "/api/v3/auth/teacher-registration/availability",
+            "/api/v3/auth/postal-code-check",
             "/api/v3/auth/password-reset/request",
             "/api/v3/auth/password-reset/resend",
             "/api/v3/auth/password-reset/confirm",
