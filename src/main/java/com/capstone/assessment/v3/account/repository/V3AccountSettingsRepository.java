@@ -53,15 +53,24 @@ public class V3AccountSettingsRepository {
      * email or number itself verified, so a code never goes to an address nobody confirmed.
      */
     public Optional<Long> findResettableUserId(String channel, String destination) {
+        return jdbcTemplate.query(resettableUserSql(channel), (rs, rowNum) -> rs.getLong(1), destination)
+                .stream().findFirst();
+    }
+
+    /**
+     * The condition goes in front of the shared part: a text block drops the space after a
+     * trailing "AND", which once produced "ANDLOWER(...)" and broke every reset request.
+     */
+    static String resettableUserSql(String channel) {
         String condition = "sms".equals(channel)
                 ? "u.contact_number = ? AND u.contact_verified_at IS NOT NULL"
                 : "LOWER(u.email) = LOWER(?) AND u.email_verified_at IS NOT NULL";
-        return jdbcTemplate.query("""
+        return """
                 SELECT u.user_id
                   FROM users u
                   JOIN statuses status ON status.status_id = u.status_id
                  WHERE status.status_name IN ('active', 'inactive', 'locked')
-                   AND """ + condition, (rs, rowNum) -> rs.getLong(1), destination).stream().findFirst();
+                """ + "   AND " + condition;
     }
 
     /** R2-6: the status of an archived or rejected account with this verified email, if any. */
