@@ -183,7 +183,10 @@ public class V3AuthService {
                 );
             }
             case "archived" -> {
-                recordFailedAttempt(user.userId(), email, "archived_account", normalizedMetadata, now);
+                // login_attempts.failure_reason has no archived value; the audit log keeps "archived".
+                recordFailedAttempt(user.userId(), email, "other", normalizedMetadata, now);
+                auditService.record(user.userId(), "LOGIN", "users", Long.toString(user.userId()), "failed",
+                        normalizedMetadata, Map.of("reason", "archived_account"), now);
                 throw new V3AuthException(
                         "ACCOUNT_ARCHIVED",
                         "This account is archived. Please contact the school principal to restore access.",
@@ -470,16 +473,22 @@ public class V3AuthService {
             V3RequestMetadata metadata,
             Instant now
     ) {
-        authRepository.recordLoginAttempt(
-                userId,
-                email,
-                metadata.ipAddress(),
-                metadata.deviceIdentifier(),
-                metadata.userAgent(),
-                false,
-                reason,
-                now
-        );
+        // Logging a failed attempt must never replace the real answer with a 500.
+        try {
+            authRepository.recordLoginAttempt(
+                    userId,
+                    email,
+                    metadata.ipAddress(),
+                    metadata.deviceIdentifier(),
+                    metadata.userAgent(),
+                    false,
+                    reason,
+                    now
+            );
+        } catch (org.springframework.dao.DataAccessException exception) {
+            org.slf4j.LoggerFactory.getLogger(V3AuthService.class)
+                    .warn("Could not record a failed sign-in attempt ({}).", reason, exception);
+        }
         auditService.record(
                 userId,
                 "LOGIN",

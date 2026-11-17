@@ -330,8 +330,14 @@ public class V3AccountSettingsService {
         Optional<Long> userId = repository.findResettableUserId(flow.channel, destination);
         if (userId.isEmpty()) {
             if (!bySms) {
-                repository.findBlockedResetStatus(destination)
-                        .ifPresent(status -> sendBlockedResetNotice(destination, status));
+                try {
+                    repository.findBlockedResetStatus(destination)
+                            .ifPresent(status -> sendBlockedResetNotice(destination, status));
+                } catch (RuntimeException exception) {
+                    // The screen answers the same either way; a failed notice must not become a 500.
+                    org.slf4j.LoggerFactory.getLogger(V3AccountSettingsService.class)
+                            .warn("Could not send the blocked-account reset notice.", exception);
+                }
             }
             return lookalikeCode(flow.channel, bySms ? maskPhone(destination) : V3VerificationEmailSender.maskEmail(destination));
         }

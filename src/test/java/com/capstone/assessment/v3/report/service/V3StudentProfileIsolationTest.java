@@ -115,6 +115,16 @@ class V3StudentProfileIsolationTest {
     }
 
     @Test
+    void anArchivedClassAssignmentIsLeftOutOfThePrincipalsView() {
+        jdbc.update("UPDATE class_assignments SET status = 'archived' WHERE class_assignment_id = 202");
+
+        var profile = profile(10L, "principal");
+
+        assertEquals(2, profile.assessmentResults().size());
+        assertEquals(List.of("Scientific inquiry"), competencyNames(profile));
+    }
+
+    @Test
     void teacherAssignedToBothSubjectsCanSeeBothWithoutUsingAnAccountMajorAsAFilter() {
         jdbc.update("UPDATE class_assignments SET user_id = 11 WHERE class_assignment_id = 202");
 
@@ -210,7 +220,8 @@ class V3StudentProfileIsolationTest {
             CREATE TABLE classes (class_id BIGINT PRIMARY KEY, academic_year_id INT, section_id INT);
             CREATE TABLE academic_years (academic_year_id INT PRIMARY KEY, school_id VARCHAR(30));
             CREATE TABLE sections (section_id INT PRIMARY KEY, school_id VARCHAR(30));
-            CREATE TABLE class_assignments (class_assignment_id BIGINT PRIMARY KEY, class_id BIGINT, user_id BIGINT, subject_id INT);
+            CREATE TABLE class_assignments (class_assignment_id BIGINT PRIMARY KEY, class_id BIGINT, user_id BIGINT, subject_id INT,
+                status VARCHAR(20) DEFAULT 'active');
             CREATE TABLE subjects (subject_id INT PRIMARY KEY, subject_name VARCHAR(100));
             CREATE TABLE tests (test_id BIGINT PRIMARY KEY, test_name VARCHAR(100), term_period_id INT);
             CREATE TABLE term_periods (term_period_id INT PRIMARY KEY, term_name VARCHAR(50));
@@ -233,7 +244,8 @@ class V3StudentProfileIsolationTest {
             INSERT INTO classes VALUES (100,1,10),(200,1,10);
             INSERT INTO class_lists VALUES (501,77,100),(502,77,200),(503,78,100);
             INSERT INTO subjects VALUES (1,'Science'),(2,'English');
-            INSERT INTO class_assignments VALUES (201,100,11,1),(202,100,22,2),(203,200,11,1),(204,100,33,1);
+            INSERT INTO class_assignments (class_assignment_id,class_id,user_id,subject_id)
+                VALUES (201,100,11,1),(202,100,22,2),(203,200,11,1),(204,100,33,1);
             INSERT INTO term_periods VALUES (1,'Term 1'),(2,'Term 2');
             INSERT INTO tests VALUES (101,'Science A',1),(102,'English A',1),(103,'Science B',2);
             INSERT INTO test_assignments (test_assignment_id,test_id,class_assignment_id) VALUES (401,101,201),(402,102,202),(403,103,203);

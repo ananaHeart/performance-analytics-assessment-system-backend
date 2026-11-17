@@ -235,6 +235,7 @@ public class V3ReportRepository {
                   LEFT JOIN suffixes suffix ON suffix.suffix_id = teacher.suffix_id
                  WHERE teacher.school_id = ?
                    AND role_ref.role_name = 'teacher'
+                   AND status_ref.status_name <> 'archived'
                 """.formatted(TEACHER_NAME_SQL)
                 + teacherFilter
                 + " ORDER BY teacher.last_name, teacher.first_name, teacher.user_id";
@@ -308,6 +309,8 @@ public class V3ReportRepository {
                    AND section_row.school_id = ?
                    AND academic_year.school_id = ?
                    AND class_row.status <> 'archived'
+                   AND assignment.status <> 'archived'
+                   AND teacher.archived_at IS NULL
                 """.formatted(TEACHER_NAME_SQL)
                 + teacherFilter
                 + " ORDER BY academic_year.start_date DESC, grade.grade_level_id, section_row.section_name, subject.subject_name";
@@ -365,6 +368,8 @@ public class V3ReportRepository {
                    AND teacher.school_id = ?
                    AND section_row.school_id = ?
                    AND academic_year.school_id = ?
+                   AND assignment.status <> 'archived'
+                   AND teacher.archived_at IS NULL
                 """ + teacherFilter + " ORDER BY test.updated_at DESC, test.test_id DESC";
         Object[] arguments = teacherUserId == null
                 ? new Object[]{schoolId, schoolId, schoolId, schoolId}
@@ -488,6 +493,8 @@ public class V3ReportRepository {
                   JOIN grade_levels grade ON grade.grade_level_id = section_row.grade_level_id
                  WHERE test.test_id = ?
                    AND assignment.class_assignment_id = ?
+                   AND assignment.status <> 'archived'
+                   AND teacher.archived_at IS NULL
                 """.formatted(TEACHER_NAME_SQL);
         return jdbcTemplate.query(
                 sql,
@@ -824,7 +831,8 @@ public class V3ReportRepository {
             String schoolId, Long teacherUserId, Integer academicYearId, Integer termPeriodId,
             Integer gradeLevelId, Long classId, Long filterTeacherUserId, Integer subjectId, Long testId
     ) {
-        StringBuilder sql = new StringBuilder(" WHERE test.school_id = ?");
+        StringBuilder sql = new StringBuilder(" WHERE test.school_id = ?"
+                + " AND assignment.status <> 'archived' AND teacher.archived_at IS NULL");
         List<Object> params = new ArrayList<>();
         params.add(schoolId);
         Long effectiveTeacherId = teacherUserId != null ? teacherUserId : filterTeacherUserId;
@@ -1248,6 +1256,8 @@ public class V3ReportRepository {
                        GROUP BY latest.test_assignment_id
                   ) failures ON failures.test_assignment_id = sync.test_assignment_id
                  WHERE teacher.school_id = ?
+                   AND class_assignment.status <> 'archived'
+                   AND teacher.archived_at IS NULL
                    AND sync.direction = 'upload'
                 %s
                  GROUP BY sync.user_id, teacher.first_name, teacher.middle_name, teacher.last_name,
@@ -1292,6 +1302,7 @@ public class V3ReportRepository {
                     ON class_assignment.class_assignment_id = test_assignment.class_assignment_id
                   JOIN subjects subject ON subject.subject_id = class_assignment.subject_id
                  WHERE result.class_list_id IN (%s)%s
+                   AND class_assignment.status <> 'archived'
                    AND result.result_status <> 'superseded'
                    AND NOT EXISTS (
                        SELECT 1 FROM test_results newer
@@ -1351,6 +1362,7 @@ public class V3ReportRepository {
                           ON question.test_part_id = mapping.test_part_id
                          AND question.item_number BETWEEN mapping.start_item_number AND mapping.end_item_number
                        WHERE result.class_list_id IN (%s)%s
+                         AND class_assignment.status <> 'archived'
                          AND result.result_status = 'finalized'
                   ) distinct_student_skill_questions
                  GROUP BY skill_id, competency_name
@@ -1392,6 +1404,7 @@ public class V3ReportRepository {
                           ON answer_row.question_id = question.question_id
                          AND answer_row.test_result_id = result.test_result_id
                        WHERE result.class_list_id IN (%s)%s
+                         AND class_assignment.status <> 'archived'
                          AND result.result_status = 'finalized'
                   ) distinct_student_skill_answers
                  GROUP BY skill_id
@@ -1459,6 +1472,7 @@ public class V3ReportRepository {
 
     private static final String COMPETENCY_RESULT_FILTER = """
              WHERE result.result_status = 'finalized'
+               AND assignment.status <> 'archived'
                AND test.school_id = ?
                AND test.term_period_id = ?
                AND section_row.grade_level_id = ?

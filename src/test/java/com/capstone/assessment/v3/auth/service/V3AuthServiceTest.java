@@ -269,6 +269,45 @@ class V3AuthServiceTest {
 
         assertEquals("ACCOUNT_ARCHIVED", exception.getCode());
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatus());
+        // login_attempts.failure_reason has no archived value: "other" is stored, never a 500.
+        verify(authRepository).recordLoginAttempt(eq(user.userId()), eq(EMAIL), any(), any(), any(), eq(false),
+                eq("other"), any());
+    }
+
+    @Test
+    void aFailedAttemptThatCannotBeLoggedStillGivesTheRealMessage() {
+        V3UserAccount user = user("archived", false, NOW.minus(Duration.ofDays(10)));
+        when(authRepository.findUserByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, PASSWORD_HASH)).thenReturn(true);
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("enum"))
+                .when(authRepository).recordLoginAttempt(any(), any(), any(), any(), any(), eq(false), any(), any());
+
+        assertEquals("ACCOUNT_ARCHIVED", assertThrows(V3AuthException.class,
+                () -> service.login(loginRequest(), metadata())).getCode());
+    }
+
+    @Test
+    void everySignInFailureReasonIsAllowedByTheDatabaseColumn() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/capstone/assessment/v3/auth/service/V3AuthService.java"));
+        String migration = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "docs/migrations/v3/V3_003_security_sync_intervention.sql"));
+        String column = migration.substring(migration.indexOf("MODIFY COLUMN failure_reason ENUM("));
+        java.util.Set<String> allowed = new java.util.HashSet<>();
+        java.util.regex.Matcher value = java.util.regex.Pattern.compile("'([a-z_]+)'")
+                .matcher(column.substring(0, column.indexOf(')')));
+        while (value.find()) {
+            allowed.add(value.group(1));
+        }
+        java.util.regex.Matcher used = java.util.regex.Pattern
+                .compile("recordFailedAttempt\\([^;]*?\"([a-z_]+)\"").matcher(source);
+        int checked = 0;
+        while (used.find()) {
+            assertTrue(allowed.contains(used.group(1)), "Not allowed by login_attempts.failure_reason: "
+                    + used.group(1));
+            checked++;
+        }
+        assertTrue(checked > 5);
     }
 
     @Test
